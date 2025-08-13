@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studio Buddy Web - Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        
+        .test-pass {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .test-fail {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .test-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        #launch-app {
+            background: #28a745;
+            font-size: 18px;
+            padding: 15px 30px;
+        }
+        
+        #launch-app:hover {
+            background: #1e7e34;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎵 Studio Buddy Web - Test & Launch</h1>
+    
+    <div class="test-section">
+        <h2>🔧 System Compatibility Tests</h2>
+        <div id="compatibility-tests">
+            <div class="test-result test-info">Running compatibility tests...</div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🎛️ Audio System Tests</h2>
+        <div id="audio-tests">
+            <div class="test-result test-info">Running audio system tests...</div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>📊 Feature Tests</h2>
+        <div id="feature-tests">
+            <div class="test-result test-info">Running feature tests...</div>
+        </div>
+        <button onclick="testAudioProcessing()">Test Audio Processing</button>
+        <button onclick="testAudioAnalysis()">Test Audio Analysis</button>
+        <button onclick="generateTestTone()">Generate Test Tone</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>🚀 Launch Application</h2>
+        <p>Once all tests pass, you can launch the full Studio Buddy Web application.</p>
+        <button id="launch-app" onclick="launchApp()">🎵 Launch Studio Buddy Web</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>📝 Test Results Summary</h2>
+        <div id="test-summary">
+            <div class="test-result test-info">Tests not yet completed</div>
+        </div>
+    </div>
+
+    <script>
+        let testResults = {
+            compatibility: {},
+            audio: {},
+            features: {}
+        };
+
+        async function runAllTests() {
+            await runCompatibilityTests();
+            await runAudioTests();
+            await runFeatureTests();
+            updateTestSummary();
+        }
+
+        async function runCompatibilityTests() {
+            const container = document.getElementById('compatibility-tests');
+            container.innerHTML = '';
+            
+            // Test Web Audio API
+            const webAudioResult = testWebAudioAPI();
+            addTestResult(container, 'Web Audio API', webAudioResult.status, webAudioResult.message);
+            testResults.compatibility.webAudio = webAudioResult.status;
+            
+            // Test File API
+            const fileApiResult = testFileAPI();
+            addTestResult(container, 'File API', fileApiResult.status, fileApiResult.message);
+            testResults.compatibility.fileApi = fileApiResult.status;
+            
+            // Test Canvas API
+            const canvasResult = testCanvasAPI();
+            addTestResult(container, 'Canvas API', canvasResult.status, canvasResult.message);
+            testResults.compatibility.canvas = canvasResult.status;
+            
+            // Test ES6 Support
+            const es6Result = testES6Support();
+            addTestResult(container, 'ES6+ Support', es6Result.status, es6Result.message);
+            testResults.compatibility.es6 = es6Result.status;
+        }
+
+        async function runAudioTests() {
+            const container = document.getElementById('audio-tests');
+            container.innerHTML = '';
+            
+            try {
+                // Test AudioContext creation
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                addTestResult(container, 'AudioContext Creation', 'pass', `Created with sample rate: ${audioCtx.sampleRate}Hz`);
+                testResults.audio.context = 'pass';
+                
+                // Test audio buffer creation
+                try {
+                    const buffer = audioCtx.createBuffer(2, audioCtx.sampleRate * 2, audioCtx.sampleRate);
+                    addTestResult(container, 'Audio Buffer Creation', 'pass', `Created 2-second stereo buffer`);
+                    testResults.audio.buffer = 'pass';
+                } catch (error) {
+                    addTestResult(container, 'Audio Buffer Creation', 'fail', error.message);
+                    testResults.audio.buffer = 'fail';
+                }
+                
+                // Test gain node
+                try {
+                    const gainNode = audioCtx.createGain();
+                    addTestResult(container, 'Gain Node Creation', 'pass', 'Gain node created successfully');
+                    testResults.audio.gainNode = 'pass';
+                } catch (error) {
+                    addTestResult(container, 'Gain Node Creation', 'fail', error.message);
+                    testResults.audio.gainNode = 'fail';
+                }
+                
+                // Test analyser node
+                try {
+                    const analyser = audioCtx.createAnalyser();
+                    analyser.fftSize = 2048;
+                    addTestResult(container, 'Analyser Node Creation', 'pass', `FFT size: ${analyser.fftSize}`);
+                    testResults.audio.analyser = 'pass';
+                } catch (error) {
+                    addTestResult(container, 'Analyser Node Creation', 'fail', error.message);
+                    testResults.audio.analyser = 'fail';
+                }
+                
+                await audioCtx.close();
+            } catch (error) {
+                addTestResult(container, 'AudioContext Creation', 'fail', error.message);
+                testResults.audio.context = 'fail';
+            }
+        }
+
+        async function runFeatureTests() {
+            const container = document.getElementById('feature-tests');
+            container.innerHTML = '';
+            
+            // Test if classes are defined
+            const classTests = [
+                { name: 'AudioProcessor', check: () => typeof AudioProcessor !== 'undefined' },
+                { name: 'AudioAnalyzer', check: () => typeof AudioAnalyzer !== 'undefined' },
+                { name: 'StudioBuddyApp', check: () => typeof StudioBuddyApp !== 'undefined' }
+            ];
+            
+            for (const test of classTests) {
+                try {
+                    const result = test.check();
+                    addTestResult(container, test.name + ' Class', result ? 'pass' : 'fail', 
+                        result ? 'Class defined correctly' : 'Class not found');
+                    testResults.features[test.name.toLowerCase()] = result ? 'pass' : 'fail';
+                } catch (error) {
+                    addTestResult(container, test.name + ' Class', 'fail', error.message);
+                    testResults.features[test.name.toLowerCase()] = 'fail';
+                }
+            }
+        }
+
+        function testWebAudioAPI() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    return { status: 'pass', message: 'Web Audio API is supported' };
+                } else {
+                    return { status: 'fail', message: 'Web Audio API is not supported' };
+                }
+            } catch (error) {
+                return { status: 'fail', message: error.message };
+            }
+        }
+
+        function testFileAPI() {
+            try {
+                if (window.File && window.FileReader && window.FileList && window.Blob) {
+                    return { status: 'pass', message: 'File API is fully supported' };
+                } else {
+                    return { status: 'fail', message: 'File API is not fully supported' };
+                }
+            } catch (error) {
+                return { status: 'fail', message: error.message };
+            }
+        }
+
+        function testCanvasAPI() {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    return { status: 'pass', message: 'Canvas API is supported' };
+                } else {
+                    return { status: 'fail', message: 'Canvas API is not supported' };
+                }
+            } catch (error) {
+                return { status: 'fail', message: error.message };
+            }
+        }
+
+        function testES6Support() {
+            try {
+                // Test arrow functions, classes, let/const
+                const testArrow = () => true;
+                class TestClass { constructor() { this.test = true; } }
+                const testConst = 'test';
+                let testLet = 'test';
+                
+                if (testArrow() && new TestClass().test && testConst && testLet) {
+                    return { status: 'pass', message: 'ES6+ features are supported' };
+                } else {
+                    return { status: 'fail', message: 'ES6+ features are not fully supported' };
+                }
+            } catch (error) {
+                return { status: 'fail', message: 'ES6+ support test failed: ' + error.message };
+            }
+        }
+
+        async function testAudioProcessing() {
+            const container = document.getElementById('feature-tests');
+            
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const processor = new AudioProcessor(audioCtx);
+                
+                // Create a simple test buffer
+                const testBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
+                const data = testBuffer.getChannelData(0);
+                
+                // Generate a 440Hz test tone
+                for (let i = 0; i < data.length; i++) {
+                    data[i] = Math.sin(2 * Math.PI * 440 * i / audioCtx.sampleRate) * 0.1;
+                }
+                
+                // Test basic processing
+                const rms = processor.calculateRMS(data);
+                const peak = processor.calculatePeak(data);
+                
+                addTestResult(container, 'Audio Processing Test', 'pass', 
+                    `RMS: ${rms.toFixed(4)}, Peak: ${peak.toFixed(4)}`);
+                
+                await audioCtx.close();
+            } catch (error) {
+                addTestResult(container, 'Audio Processing Test', 'fail', error.message);
+            }
+        }
+
+        async function testAudioAnalysis() {
+            const container = document.getElementById('feature-tests');
+            
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const analyzer = new AudioAnalyzer(audioCtx);
+                
+                // Create a simple test buffer with known BPM
+                const testBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 4, audioCtx.sampleRate);
+                const data = testBuffer.getChannelData(0);
+                
+                // Generate a rhythmic pattern at 120 BPM
+                const beatInterval = audioCtx.sampleRate * 0.5; // 120 BPM = 0.5 second intervals
+                for (let i = 0; i < data.length; i++) {
+                    if (i % beatInterval < 1000) {
+                        data[i] = Math.sin(2 * Math.PI * 440 * i / audioCtx.sampleRate) * 0.3;
+                    }
+                }
+                
+                // Test BPM detection
+                const bpm = await analyzer.detectBPM(testBuffer);
+                addTestResult(container, 'BPM Detection Test', 'pass', `Detected BPM: ${bpm}`);
+                
+                await audioCtx.close();
+            } catch (error) {
+                addTestResult(container, 'BPM Detection Test', 'fail', error.message);
+            }
+        }
+
+        async function generateTestTone() {
+            const container = document.getElementById('feature-tests');
+            
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                if (audioCtx.state === 'suspended') {
+                    await audioCtx.resume();
+                }
+                
+                // Create a 440Hz test tone for 1 second
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                oscillator.frequency.value = 440;
+                gainNode.gain.value = 0.1;
+                
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 1);
+                
+                addTestResult(container, 'Test Tone Generation', 'pass', 'Generated 440Hz tone for 1 second');
+                
+                oscillator.onended = () => {
+                    audioCtx.close();
+                };
+            } catch (error) {
+                addTestResult(container, 'Test Tone Generation', 'fail', error.message);
+            }
+        }
+
+        function addTestResult(container, testName, status, message) {
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result test-${status}`;
+            resultDiv.innerHTML = `<strong>${testName}:</strong> ${message}`;
+            container.appendChild(resultDiv);
+        }
+
+        function updateTestSummary() {
+            const container = document.getElementById('test-summary');
+            const allResults = { ...testResults.compatibility, ...testResults.audio, ...testResults.features };
+            
+            const totalTests = Object.keys(allResults).length;
+            const passedTests = Object.values(allResults).filter(result => result === 'pass').length;
+            const failedTests = totalTests - passedTests;
+            
+            let summaryClass = 'test-info';
+            let summaryMessage = `Tests completed: ${passedTests}/${totalTests} passed`;
+            
+            if (failedTests === 0) {
+                summaryClass = 'test-pass';
+                summaryMessage = `🎉 All tests passed! (${passedTests}/${totalTests}) - Ready to launch!`;
+                document.getElementById('launch-app').disabled = false;
+            } else if (passedTests > failedTests) {
+                summaryClass = 'test-info';
+                summaryMessage = `⚠️ Most tests passed (${passedTests}/${totalTests}) - App should work with minor issues`;
+                document.getElementById('launch-app').disabled = false;
+            } else {
+                summaryClass = 'test-fail';
+                summaryMessage = `❌ Multiple test failures (${failedTests}/${totalTests} failed) - Check browser compatibility`;
+            }
+            
+            container.innerHTML = `<div class="test-result ${summaryClass}">${summaryMessage}</div>`;
+        }
+
+        function launchApp() {
+            window.open('index.html', '_blank');
+        }
+
+        // Load the main app scripts for testing
+        function loadScripts() {
+            const scripts = ['audio-processor.js', 'audio-analyzer.js', 'script.js'];
+            
+            scripts.forEach(script => {
+                const scriptElement = document.createElement('script');
+                scriptElement.src = script;
+                scriptElement.onerror = () => {
+                    console.error(`Failed to load ${script}`);
+                };
+                document.head.appendChild(scriptElement);
+            });
+        }
+
+        // Initialize tests when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            loadScripts();
+            
+            // Wait a bit for scripts to load, then run tests
+            setTimeout(() => {
+                runAllTests();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

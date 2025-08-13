@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studio Buddy - Audio Mastering Professional</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Matrix Background -->
+    <div id="matrix-background"></div>
+    
+    <!-- Desktop -->
+    <div id="desktop">
+        <!-- Desktop Icons -->
+        <div class="desktop-icons">
+            <div class="desktop-icon" data-window="studio-buddy">
+                <div class="icon">🎵</div>
+                <div class="label">Studio Buddy</div>
+            </div>
+            <div class="desktop-icon" data-window="analyzer">
+                <div class="icon">📊</div>
+                <div class="label">Key/BPM Analyzer</div>
+            </div>
+            <div class="desktop-icon" data-window="settings">
+                <div class="icon">⚙️</div>
+                <div class="label">Settings</div>
+            </div>
+        </div>
+
+        <!-- Windows -->
+        <div id="windows-container">
+            <!-- Studio Buddy Window -->
+            <div class="window" id="studio-buddy-window" style="display: none;">
+                <div class="title-bar">
+                    <div class="title-bar-text">Studio Buddy - Audio Mastering Professional</div>
+                    <div class="title-bar-controls">
+                        <button class="title-bar-control" onclick="minimizeWindow('studio-buddy-window')">_</button>
+                        <button class="title-bar-control" onclick="maximizeWindow('studio-buddy-window')">□</button>
+                        <button class="title-bar-control" onclick="closeWindow('studio-buddy-window')">×</button>
+                    </div>
+                </div>
+                <div class="window-body">
+                    <div class="studio-buddy-content">
+                        <div class="section">
+                            <h3>Audio Files</h3>
+                            <div class="file-section">
+                                <label>Source Audio:</label>
+                                <input type="file" id="source-file" accept="audio/*">
+                                <div id="source-info" class="file-info"></div>
+                            </div>
+                            <div class="file-section">
+                                <label>Reference Audio (Optional):</label>
+                                <input type="file" id="reference-file" accept="audio/*">
+                                <div id="reference-info" class="file-info"></div>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <h3>Mastering Controls</h3>
+                            <div class="controls-grid">
+                                <div class="control-group">
+                                    <label>Output Level:</label>
+                                    <input type="range" id="output-level" min="-6" max="0" value="-1" step="0.1">
+                                    <span id="output-level-value">-1.0 dB</span>
+                                </div>
+                                <div class="control-group">
+                                    <label>Compression:</label>
+                                    <input type="range" id="compression" min="1" max="10" value="3" step="1">
+                                    <span id="compression-value">3</span>
+                                </div>
+                                <div class="control-group">
+                                    <label>EQ Intensity:</label>
+                                    <input type="range" id="eq-intensity" min="0" max="100" value="50" step="5">
+                                    <span id="eq-intensity-value">50%</span>
+                                </div>
+                                <div class="control-group">
+                                    <label>Stereo Width:</label>
+                                    <input type="range" id="stereo-width" min="0" max="150" value="100" step="5">
+                                    <span id="stereo-width-value">100%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <h3>Processing</h3>
+                            <button id="master-button" class="master-button" disabled>Master Audio</button>
+                            <div id="progress-container" style="display: none;">
+                                <div class="progress-bar">
+                                    <div id="progress-fill"></div>
+                                </div>
+                                <div id="progress-text">Processing...</div>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <h3>Playback</h3>
+                            <div class="playback-controls">
+                                <button id="play-source" disabled>Play Source</button>
+                                <button id="play-reference" disabled>Play Reference</button>
+                                <button id="play-mastered" disabled>Play Mastered</button>
+                                <button id="download-mastered" disabled>Download Mastered</button>
+                            </div>
+                            <div class="audio-visualizer">
+                                <canvas id="waveform-canvas" width="400" height="100"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audio Analyzer Window -->
+            <div class="window" id="analyzer-window" style="display: none;">
+                <div class="title-bar">
+                    <div class="title-bar-text">Key/BPM Analyzer Professional</div>
+                    <div class="title-bar-controls">
+                        <button class="title-bar-control" onclick="minimizeWindow('analyzer-window')">_</button>
+                        <button class="title-bar-control" onclick="maximizeWindow('analyzer-window')">□</button>
+                        <button class="title-bar-control" onclick="closeWindow('analyzer-window')">×</button>
+                    </div>
+                </div>
+                <div class="window-body">
+                    <div class="analyzer-content">
+                        <div class="section">
+                            <h3>Audio Analysis</h3>
+                            <input type="file" id="analyze-file" accept="audio/*">
+                            <button id="analyze-button" disabled>Analyze</button>
+                        </div>
+                        
+                        <div class="section">
+                            <h3>Results</h3>
+                            <div class="results-grid">
+                                <div class="result-item">
+                                    <label>BPM:</label>
+                                    <span id="bpm-result">-</span>
+                                </div>
+                                <div class="result-item">
+                                    <label>Key:</label>
+                                    <span id="key-result">-</span>
+                                </div>
+                                <div class="result-item">
+                                    <label>Duration:</label>
+                                    <span id="duration-result">-</span>
+                                </div>
+                                <div class="result-item">
+                                    <label>Sample Rate:</label>
+                                    <span id="samplerate-result">-</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <h3>Frequency Analysis</h3>
+                            <canvas id="spectrum-canvas" width="400" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Window -->
+            <div class="window" id="settings-window" style="display: none;">
+                <div class="title-bar">
+                    <div class="title-bar-text">System Settings</div>
+                    <div class="title-bar-controls">
+                        <button class="title-bar-control" onclick="minimizeWindow('settings-window')">_</button>
+                        <button class="title-bar-control" onclick="maximizeWindow('settings-window')">□</button>
+                        <button class="title-bar-control" onclick="closeWindow('settings-window')">×</button>
+                    </div>
+                </div>
+                <div class="window-body">
+                    <div class="settings-content">
+                        <div class="section">
+                            <h3>Audio Settings</h3>
+                            <div class="setting-item">
+                                <label>
+                                    <input type="checkbox" id="auto-normalize" checked>
+                                    Auto-normalize output
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label>
+                                    <input type="checkbox" id="enable-limiting" checked>
+                                    Enable brickwall limiting
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label>
+                                    <input type="checkbox" id="psychoacoustic-processing" checked>
+                                    Psychoacoustic processing
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <h3>Performance</h3>
+                            <div class="setting-item">
+                                <label>Buffer Size:</label>
+                                <select id="buffer-size">
+                                    <option value="512">512 samples</option>
+                                    <option value="1024" selected>1024 samples</option>
+                                    <option value="2048">2048 samples</option>
+                                    <option value="4096">4096 samples</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <label>Quality:</label>
+                                <select id="quality-setting">
+                                    <option value="draft">Draft</option>
+                                    <option value="standard" selected>Standard</option>
+                                    <option value="high">High Quality</option>
+                                    <option value="ultimate">Ultimate</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Taskbar -->
+        <div class="taskbar">
+            <button class="start-button">🏠 Home</button>
+            <div class="taskbar-separator"></div>
+            <div id="task-buttons"></div>
+            <div class="system-tray">
+                <span class="volume-icon">🔊</span>
+                <span id="clock"></span>
+            </div>
+        </div>
+    </div>
+
+    <script src="audio-processor.js"></script>
+    <script src="audio-analyzer.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
