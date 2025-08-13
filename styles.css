@@ -92,7 +92,10 @@ body {
 
 .desktop-icon:hover {
     background: rgba(0, 0, 128, 0.3);
-    border: 2px dotted var(--win95-selection);
+    border: 2px solid var(--win95-selection);
+    box-shadow: 0 0 8px rgba(0, 0, 255, 0.6);
+    outline: 2px solid #0066ff;
+    outline-offset: 2px;
 }
 
 .desktop-icon .icon {
