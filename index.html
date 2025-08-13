@@ -13,15 +13,16 @@
         }
 
         body {
-            font-family: 'MS Sans Serif', Arial, sans-serif;
+            font-family: 'MS Sans Serif', sans-serif;
             font-size: 11px;
-            background: linear-gradient(45deg, #008080, #006666);
+            background: #008080;
             min-height: 100vh;
-            overflow-x: hidden;
+            overflow: hidden;
             user-select: none;
+            cursor: default;
         }
 
-        /* Matrix background animation */
+        /* Matrix digital rain background */
         .matrix-bg {
             position: fixed;
             top: 0;
@@ -29,109 +30,108 @@
             width: 100%;
             height: 100%;
             z-index: -1;
-            background: radial-gradient(circle at center, rgba(0,255,0,0.1) 0%, rgba(0,0,0,0.9) 100%);
-            animation: pulse 4s ease-in-out infinite;
+            background: #000;
+            overflow: hidden;
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 0.3; }
-            50% { opacity: 0.6; }
+        .matrix-column {
+            position: absolute;
+            top: -100px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #00ff00;
+            white-space: pre;
+            opacity: 0.8;
+            animation: matrix-fall linear infinite;
+            text-shadow: 0 0 5px #00ff00;
         }
 
-        /* Main container */
+        @keyframes matrix-fall {
+            to {
+                transform: translateY(calc(100vh + 100px));
+            }
+        }
+
+        /* Desktop container */
         .desktop-container {
             position: relative;
             width: 100vw;
             height: 100vh;
-            padding: 20px;
+            background: #008080;
         }
 
-        /* Desktop icons grid */
+        /* Desktop icons */
         .desktop-icons {
+            position: absolute;
+            top: 20px;
+            left: 20px;
             display: flex;
             flex-direction: column;
-            gap: 30px;
-            position: absolute;
-            top: 40px;
-            left: 40px;
-            z-index: 10;
+            gap: 20px;
+            z-index: 5;
         }
 
-        /* Enhanced desktop icon */
+        /* Authentic Windows 95 desktop icon */
         .desktop-icon {
             display: flex;
             flex-direction: column;
             align-items: center;
-            width: 90px;
-            padding: 12px;
+            width: 80px;
+            padding: 8px;
             cursor: pointer;
-            border: 3px solid transparent;
-            border-radius: 8px;
-            transition: all 0.2s ease;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(5px);
+            border: 1px dotted transparent;
+            user-select: none;
         }
 
-        /* CRITICAL: Enhanced hover effect with multiple visual indicators */
+        /* Windows 95 selection style */
         .desktop-icon:hover {
-            background: rgba(0, 0, 200, 0.4) !important;
-            border: 3px solid #0066ff !important;
-            box-shadow: 
-                0 0 15px rgba(0, 102, 255, 0.8),
-                inset 0 0 10px rgba(255, 255, 255, 0.2) !important;
-            outline: 2px solid #00aaff !important;
-            outline-offset: 3px !important;
-            transform: scale(1.05) !important;
+            background: rgba(0, 0, 128, 0.3) !important;
+            border: 1px dotted #ffffff !important;
         }
 
-        /* Active state */
         .desktop-icon:active {
-            transform: scale(0.95) !important;
-            box-shadow: 0 0 25px rgba(0, 255, 0, 1) !important;
+            background: rgba(0, 0, 128, 0.5) !important;
         }
 
         .desktop-icon .icon {
-            font-size: 52px;
-            margin-bottom: 8px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
-            transition: transform 0.2s ease;
-        }
-
-        .desktop-icon:hover .icon {
-            transform: scale(1.1);
+            font-size: 48px;
+            margin-bottom: 4px;
+            filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.5));
         }
 
         .desktop-icon .label {
             color: white;
-            font-size: 12px;
-            font-weight: bold;
+            font-size: 11px;
             text-align: center;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
             line-height: 1.2;
+            text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.8);
+            font-weight: normal;
         }
 
-        /* Windows */
+        /* Authentic Windows 95 windows */
         .window {
             position: fixed;
             background: #c0c0c0;
             border: 2px outset #c0c0c0;
-            box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.4);
-            min-width: 500px;
-            min-height: 400px;
+            box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            min-width: 400px;
+            min-height: 300px;
             z-index: 100;
             display: none;
             flex-direction: column;
+            font-family: 'MS Sans Serif', sans-serif;
         }
 
         .title-bar {
-            background: linear-gradient(to right, #000080, #0000aa);
+            background: linear-gradient(to right, #000080, rgba(0, 0, 128, 0.8));
             color: white;
-            padding: 4px;
+            padding: 2px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            height: 24px;
+            height: 18px;
             cursor: move;
+            font-size: 11px;
         }
 
         .title-bar.inactive {
@@ -141,7 +141,9 @@
         .title-text {
             font-weight: bold;
             font-size: 11px;
-            padding-left: 6px;
+            padding-left: 4px;
+            overflow: hidden;
+            white-space: nowrap;
         }
 
         .title-controls {
@@ -150,20 +152,21 @@
         }
 
         .title-btn {
-            width: 18px;
-            height: 16px;
+            width: 16px;
+            height: 14px;
             background: #c0c0c0;
             border: 1px outset #c0c0c0;
-            font-size: 9px;
+            font-size: 8px;
             font-weight: bold;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
+            color: black;
         }
 
         .title-btn:hover {
-            background: #d0d0d0;
+            background: #dfdfdf;
         }
 
         .title-btn:active {
@@ -172,22 +175,23 @@
 
         .window-content {
             flex: 1;
-            padding: 16px;
+            padding: 8px;
             overflow-y: auto;
+            background: #c0c0c0;
         }
 
         .section {
             background: #c0c0c0;
             border: 2px inset #c0c0c0;
-            padding: 12px;
+            padding: 8px;
             margin: 8px 0;
         }
 
         .section h3 {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: bold;
-            margin-bottom: 10px;
-            color: #000080;
+            margin-bottom: 8px;
+            color: black;
         }
 
         /* Interactive controls */
@@ -213,21 +217,29 @@
             margin: 4px 0;
         }
 
+        /* Authentic Windows 95 buttons */
         button {
             background: #c0c0c0;
             border: 2px outset #c0c0c0;
-            padding: 6px 12px;
+            padding: 4px 8px;
             font-size: 11px;
             cursor: pointer;
-            margin: 4px 2px;
+            margin: 2px;
+            font-family: 'MS Sans Serif', sans-serif;
+            color: black;
         }
 
         button:hover {
-            background: #d0d0d0;
+            background: #dfdfdf;
         }
 
         button:active {
             border: 2px inset #c0c0c0;
+        }
+
+        button:disabled {
+            color: #808080;
+            cursor: default;
         }
 
         .master-btn {
@@ -235,32 +247,116 @@
             color: white;
             font-size: 14px;
             font-weight: bold;
-            padding: 10px 20px;
+            padding: 8px 16px;
             width: 100%;
+            border: 2px outset #4CAF50;
         }
 
-        /* Console output */
+        .master-btn:hover:not(:disabled) {
+            background: linear-gradient(to bottom, #5CBF60, #55b059);
+        }
+
+        /* Windows 95 Taskbar */
+        .taskbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 28px;
+            background: #c0c0c0;
+            border-top: 2px outset #c0c0c0;
+            display: flex;
+            align-items: center;
+            z-index: 1000;
+            font-family: 'MS Sans Serif', sans-serif;
+            font-size: 11px;
+        }
+
+        .start-button {
+            height: 22px;
+            padding: 2px 8px;
+            margin: 2px;
+            background: #c0c0c0;
+            border: 2px outset #c0c0c0;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .start-button:hover {
+            background: #dfdfdf;
+        }
+
+        .start-button:active {
+            border: 2px inset #c0c0c0;
+        }
+
+        .taskbar-separator {
+            width: 2px;
+            height: 22px;
+            background: #808080;
+            margin: 0 4px;
+        }
+
+        .system-tray {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 8px;
+            height: 22px;
+            background: #c0c0c0;
+            border: 2px inset #c0c0c0;
+            margin: 2px;
+        }
+
+        .volume-icon {
+            font-size: 12px;
+        }
+
+        #clock {
+            font-size: 11px;
+            font-family: 'MS Sans Serif', sans-serif;
+        }
+
+        /* Console output - Windows 95 style */
         .console-output {
             position: fixed;
-            bottom: 20px;
+            bottom: 40px;
             right: 20px;
-            width: 400px;
-            height: 200px;
-            background: rgba(0, 0, 0, 0.9);
-            color: #00ff00;
-            font-family: 'Courier New', monospace;
-            font-size: 10px;
-            padding: 10px;
-            border: 2px solid #00ff00;
-            border-radius: 5px;
+            width: 350px;
+            height: 150px;
+            background: #c0c0c0;
+            border: 2px inset #c0c0c0;
             overflow-y: scroll;
-            z-index: 1000;
+            z-index: 999;
+            font-family: 'MS Sans Serif', sans-serif;
+            font-size: 11px;
         }
 
-        /* Progress bar */
+        .console-header {
+            background: linear-gradient(to right, #000080, rgba(0, 0, 128, 0.8));
+            color: white;
+            padding: 2px 4px;
+            font-weight: bold;
+            font-size: 11px;
+        }
+
+        .console-content {
+            padding: 4px;
+            background: white;
+            height: calc(100% - 18px);
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 9px;
+        }
+
+        /* Windows 95 Progress bar */
         .progress-container {
             width: 100%;
-            height: 24px;
+            height: 20px;
             background: white;
             border: 2px inset #c0c0c0;
             margin: 8px 0;
@@ -269,7 +365,7 @@
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(to right, #008000, #00ff00);
+            background: #000080;
             width: 0%;
             transition: width 0.3s ease;
         }
@@ -329,8 +425,8 @@
     </style>
 </head>
 <body>
-    <!-- Matrix background -->
-    <div class="matrix-bg"></div>
+    <!-- Matrix digital rain background -->
+    <div class="matrix-bg" id="matrix-bg"></div>
 
     <!-- Desktop container -->
     <div class="desktop-container">
@@ -534,10 +630,24 @@
             </div>
         </div>
 
+        <!-- Windows 95 Taskbar -->
+        <div class="taskbar">
+            <div class="start-button" onclick="logToConsole('🪟 Start button clicked', 'click')">
+                <span>🪟</span>
+                <span>Start</span>
+            </div>
+            <div class="taskbar-separator"></div>
+            
+            <div class="system-tray">
+                <div class="volume-icon">🔊</div>
+                <div id="clock"></div>
+            </div>
+        </div>
+
         <!-- Live console output -->
         <div class="console-output" id="console-output">
-            <div style="color: #ffffff; font-weight: bold; margin-bottom: 5px;">🖥️ STUDIO BUDDY CONSOLE</div>
-            <div id="console-log"></div>
+            <div class="console-header">🖥️ Studio Buddy Console</div>
+            <div class="console-content" id="console-log"></div>
         </div>
     </div>
 
@@ -555,11 +665,11 @@
             const timestamp = new Date().toLocaleTimeString();
             const logElement = document.getElementById('console-log');
             const colors = {
-                info: '#00ff00',
-                hover: '#00aaff', 
-                click: '#ffff00',
-                success: '#00ff88',
-                error: '#ff4444'
+                info: 'black',
+                hover: 'blue', 
+                click: 'darkgreen',
+                success: 'green',
+                error: 'red'
             };
             
             const logEntry = `<div style="color: ${colors[type]};">[${timestamp}] ${message}</div>`;
@@ -568,6 +678,50 @@
             
             // Also log to browser console
             console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // Matrix digital rain animation
+        function createMatrixRain() {
+            const matrix = document.getElementById('matrix-bg');
+            const characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+            
+            // Create columns
+            for (let i = 0; i < 50; i++) {
+                const column = document.createElement('div');
+                column.className = 'matrix-column';
+                column.style.left = Math.random() * 100 + '%';
+                column.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                column.style.animationDelay = Math.random() * 2 + 's';
+                
+                // Generate random characters for this column
+                let columnText = '';
+                for (let j = 0; j < 20; j++) {
+                    columnText += characters.charAt(Math.floor(Math.random() * characters.length)) + '\n';
+                }
+                column.textContent = columnText;
+                
+                matrix.appendChild(column);
+            }
+            
+            // Refresh matrix periodically
+            setInterval(() => {
+                const columns = matrix.querySelectorAll('.matrix-column');
+                columns.forEach(column => {
+                    let newText = '';
+                    for (let j = 0; j < 20; j++) {
+                        newText += characters.charAt(Math.floor(Math.random() * characters.length)) + '\n';
+                    }
+                    column.textContent = newText;
+                });
+            }, 1000);
+        }
+
+        // Update clock
+        function updateClock() {
+            const clock = document.getElementById('clock');
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            clock.textContent = timeString;
         }
 
         // Hover detection
@@ -798,12 +952,19 @@
             logToConsole('🚀 SYSTEM: Studio Buddy Web initialized', 'success');
             logToConsole('📍 URL: ' + window.location.href, 'info');
             logToConsole('🌐 User Agent: ' + navigator.userAgent.substring(0, 50) + '...', 'info');
+            
+            // Start Matrix background animation
+            createMatrixRain();
+            logToConsole('🔋 Matrix digital rain activated', 'success');
+            
+            // Start clock
+            updateClock();
+            setInterval(updateClock, 1000);
+            logToConsole('🕐 System clock synchronized', 'success');
+            
             logToConsole('🎯 Ready for interaction - hover and click icons!', 'info');
             
             isInitialized = true;
-            
-            // Test hover and click detection
-            logToConsole('🧪 Testing hover detection on page load...', 'info');
         });
 
         // Error handling
