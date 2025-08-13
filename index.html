@@ -14,15 +14,15 @@
     <div id="desktop">
         <!-- Desktop Icons -->
         <div class="desktop-icons">
-            <div class="desktop-icon" data-window="studio-buddy">
+            <div class="desktop-icon" data-window="studio-buddy" onclick="openDesktopWindow('studio-buddy')">
                 <div class="icon">🎵</div>
                 <div class="label">Studio Buddy</div>
             </div>
-            <div class="desktop-icon" data-window="analyzer">
+            <div class="desktop-icon" data-window="analyzer" onclick="openDesktopWindow('analyzer')">
                 <div class="icon">📊</div>
                 <div class="label">Key/BPM Analyzer</div>
             </div>
-            <div class="desktop-icon" data-window="settings">
+            <div class="desktop-icon" data-window="settings" onclick="openDesktopWindow('settings')">
                 <div class="icon">⚙️</div>
                 <div class="label">Settings</div>
             </div>
@@ -232,5 +232,60 @@
     <script src="audio-processor.js"></script>
     <script src="audio-analyzer.js"></script>
     <script src="script.js"></script>
+    
+    <!-- Initialize the app after all scripts are loaded -->
+    <script>
+        // Global function to handle desktop icon clicks
+        function openDesktopWindow(windowId) {
+            console.log('🖱️ Desktop icon clicked:', windowId);
+            
+            // Direct window opening without waiting for app initialization
+            const windowElement = document.getElementById(windowId + '-window');
+            if (windowElement) {
+                windowElement.style.display = 'flex';
+                console.log('✅ Window opened:', windowId);
+                
+                // Add to taskbar if app is initialized
+                if (window.studioBuddyApp) {
+                    window.studioBuddyApp.addTaskButton(windowId);
+                    window.studioBuddyApp.setActiveWindow(windowId);
+                }
+            } else {
+                console.error('❌ Window not found:', windowId + '-window');
+            }
+        }
+        
+        // Ensure all classes are loaded before initializing
+        window.addEventListener('load', () => {
+            console.log('🚀 Initializing Studio Buddy Web...');
+            
+            // Check if classes are available
+            if (typeof AudioProcessor === 'undefined') {
+                console.error('❌ AudioProcessor class not found');
+                return;
+            }
+            
+            if (typeof AudioAnalyzer === 'undefined') {
+                console.error('❌ AudioAnalyzer class not found');
+                return;
+            }
+            
+            if (typeof StudioBuddyApp === 'undefined') {
+                console.error('❌ StudioBuddyApp class not found');
+                return;
+            }
+            
+            // Initialize the app
+            try {
+                window.studioBuddyApp = new StudioBuddyApp();
+                console.log('✅ Studio Buddy Web initialized successfully');
+            } catch (error) {
+                console.error('❌ Failed to initialize Studio Buddy:', error);
+                
+                // Even if app fails to initialize, make basic window opening work
+                console.log('🔧 Setting up basic window functionality...');
+            }
+        });
+    </script>
 </body>
 </html>

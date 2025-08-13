@@ -572,7 +572,4 @@ function maximizeWindow(windowId) {
     window.classList.toggle('maximized');
 }
 
-// Initialize the app when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    window.studioBuddyApp = new StudioBuddyApp();
-});
+// App initialization is now handled in index.html to ensure proper loading order
