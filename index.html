@@ -539,6 +539,7 @@
                         <button onclick="playAudio('source')">▶️ Play Source</button>
                         <button onclick="playAudio('reference')">▶️ Play Reference</button>
                         <button onclick="playAudio('mastered')">▶️ Play Mastered</button>
+                        <button onclick="stopAudio()">⏹️ Stop</button>
                         <button onclick="downloadAudio()">💾 Download</button>
                     </div>
                     <div class="visualization">
@@ -673,6 +674,16 @@
         let isInitialized = false;
         let audioContext = null;
         let currentAudio = null;
+        let audioBuffers = {
+            source: null,
+            reference: null,
+            mastered: null
+        };
+        let audioElements = {
+            source: null,
+            reference: null,
+            mastered: null
+        };
         
         // Console logging system
         function logToConsole(message, type = 'info') {
@@ -819,8 +830,21 @@
             }
         }
 
-        // File handling
-        function handleFileLoad(type, input) {
+        // Initialize Web Audio API
+        async function initAudioContext() {
+            if (!audioContext) {
+                try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    logToConsole('🎵 Audio context initialized', 'success');
+                } catch (error) {
+                    logToConsole(`❌ Audio context error: ${error.message}`, 'error');
+                }
+            }
+            return audioContext;
+        }
+
+        // File handling with actual audio loading
+        async function handleFileLoad(type, input) {
             if (input.files && input.files[0]) {
                 const file = input.files[0];
                 const size = Math.round(file.size / 1024);
@@ -832,6 +856,27 @@
                 }
                 
                 logToConsole(`📁 FILE LOADED: ${type} - ${info}`, 'success');
+                
+                // Create audio element for playback
+                try {
+                    const audioUrl = URL.createObjectURL(file);
+                    const audio = new Audio(audioUrl);
+                    audio.preload = 'metadata';
+                    audioElements[type] = audio;
+                    
+                    audio.addEventListener('loadedmetadata', () => {
+                        const duration = Math.floor(audio.duration);
+                        const mins = Math.floor(duration / 60);
+                        const secs = duration % 60;
+                        logToConsole(`🎵 ${type} audio loaded: ${mins}:${secs.toString().padStart(2, '0')}`, 'success');
+                    });
+                    
+                    // Initialize audio context on first file load
+                    await initAudioContext();
+                    
+                } catch (error) {
+                    logToConsole(`❌ Audio load error: ${error.message}`, 'error');
+                }
             }
         }
 
@@ -853,6 +898,12 @@
                     progress = 100;
                     clearInterval(interval);
                     progressText.textContent = '✅ Mastering Complete!';
+                    
+                    // Create mastered version (copy of source for demo)
+                    if (audioElements.source) {
+                        audioElements.mastered = audioElements.source.cloneNode();
+                        logToConsole('🎵 Mastered audio ready for playback', 'success');
+                    }
                     logToConsole('✅ MASTERING: Audio mastering completed successfully!', 'success');
                     setTimeout(() => {
                         progressContainer.style.display = 'none';
@@ -884,29 +935,85 @@
             logToConsole('🔄 ANALYSIS: Analyzing BPM and musical key...', 'info');
         }
 
-        // Audio playback simulation
-        function playAudio(type) {
-            logToConsole(`▶️ PLAYBACK: Playing ${type} audio`, 'click');
-            
-            // Stop any currently playing audio
+        // Real audio playback
+        async function playAudio(type) {
+            try {
+                // Stop any currently playing audio
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio.currentTime = 0;
+                    currentAudio = null;
+                    logToConsole(`⏹️ STOPPED: Previous audio`, 'info');
+                }
+                
+                const audio = audioElements[type];
+                if (!audio) {
+                    logToConsole(`❌ No ${type} audio loaded`, 'error');
+                    return;
+                }
+                
+                logToConsole(`▶️ PLAYING: ${type} audio`, 'click');
+                currentAudio = audio;
+                
+                // Add event listeners
+                audio.addEventListener('ended', () => {
+                    logToConsole(`⏹️ FINISHED: ${type} audio`, 'success');
+                    currentAudio = null;
+                });
+                
+                audio.addEventListener('error', (e) => {
+                    logToConsole(`❌ PLAYBACK ERROR: ${e.message}`, 'error');
+                });
+                
+                // Set up audio visualization
+                if (audioContext && !analyser) {
+                    setupAudioVisualization(audio);
+                }
+                
+                // Play the audio
+                await audio.play();
+                
+                // Start waveform visualization
+                drawWaveform();
+                
+            } catch (error) {
+                logToConsole(`❌ PLAYBACK ERROR: ${error.message}`, 'error');
+                
+                // Handle autoplay restrictions
+                if (error.name === 'NotAllowedError') {
+                    logToConsole('🔇 Click anywhere to enable audio playback', 'info');
+                }
+            }
+        }
+
+        // Stop all audio
+        function stopAudio() {
             if (currentAudio) {
                 currentAudio.pause();
+                currentAudio.currentTime = 0;
                 currentAudio = null;
+                logToConsole(`⏹️ STOPPED: All audio`, 'info');
             }
-            
-            // In a real implementation, this would play actual audio
-            setTimeout(() => {
-                logToConsole(`⏹️ PLAYBACK: ${type} audio finished`, 'info');
-            }, 3000);
         }
 
         function downloadAudio() {
             logToConsole('💾 DOWNLOAD: Preparing mastered audio download...', 'click');
             
-            // Simulate download preparation
-            setTimeout(() => {
-                logToConsole('✅ DOWNLOAD: Audio file ready for download', 'success');
-            }, 1000);
+            if (audioElements.mastered) {
+                try {
+                    const a = document.createElement('a');
+                    a.href = audioElements.mastered.src;
+                    a.download = 'studio-buddy-mastered.mp3';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    logToConsole('✅ DOWNLOAD: Mastered audio downloaded', 'success');
+                } catch (error) {
+                    logToConsole(`❌ DOWNLOAD ERROR: ${error.message}`, 'error');
+                }
+            } else {
+                logToConsole('❌ No mastered audio available. Run mastering first.', 'error');
+            }
         }
 
         // Settings
@@ -914,7 +1021,27 @@
             logToConsole(`⚙️ SETTING: ${setting} = ${value}`, 'info');
         }
 
-        // Visualizations
+        // Audio visualization with Web Audio API
+        let analyser = null;
+        let animationId = null;
+
+        function setupAudioVisualization(audio) {
+            if (!audioContext || !audio) return;
+            
+            try {
+                const source = audioContext.createMediaElementSource(audio);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                
+                source.connect(analyser);
+                analyser.connect(audioContext.destination);
+                
+                logToConsole('🎵 Audio visualization connected', 'success');
+            } catch (error) {
+                logToConsole(`❌ Visualization error: ${error.message}`, 'error');
+            }
+        }
+
         function drawWaveform() {
             const canvas = document.getElementById('waveform-canvas');
             if (!canvas) return;
@@ -927,24 +1054,55 @@
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, width, height);
             
-            // Draw waveform
-            ctx.strokeStyle = '#00ff00';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            
-            for (let i = 0; i < width; i++) {
-                const amplitude = Math.sin(i * 0.02) * Math.random() * height * 0.4;
-                const y = height / 2 + amplitude;
+            if (analyser && currentAudio && !currentAudio.paused) {
+                // Real-time audio visualization
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                analyser.getByteFrequencyData(dataArray);
                 
-                if (i === 0) {
-                    ctx.moveTo(i, y);
-                } else {
-                    ctx.lineTo(i, y);
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                
+                const sliceWidth = width / bufferLength;
+                let x = 0;
+                
+                for (let i = 0; i < bufferLength; i++) {
+                    const v = dataArray[i] / 255.0;
+                    const y = v * height;
+                    
+                    if (i === 0) {
+                        ctx.moveTo(x, height - y);
+                    } else {
+                        ctx.lineTo(x, height - y);
+                    }
+                    
+                    x += sliceWidth;
                 }
+                
+                ctx.stroke();
+                
+                // Continue animation
+                animationId = requestAnimationFrame(drawWaveform);
+            } else {
+                // Static waveform when no audio playing
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                
+                for (let i = 0; i < width; i++) {
+                    const amplitude = Math.sin(i * 0.02) * height * 0.2;
+                    const y = height / 2 + amplitude;
+                    
+                    if (i === 0) {
+                        ctx.moveTo(i, y);
+                    } else {
+                        ctx.lineTo(i, y);
+                    }
+                }
+                
+                ctx.stroke();
             }
-            
-            ctx.stroke();
-            logToConsole('📈 VISUALIZATION: Waveform rendered', 'info');
         }
 
         function drawSpectrum() {
@@ -986,7 +1144,16 @@
             setInterval(updateClock, 1000);
             logToConsole('🕐 System clock synchronized', 'success');
             
+            // Enable audio context on first user interaction
+            document.addEventListener('click', async () => {
+                if (audioContext && audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                    logToConsole('🔊 Audio context resumed', 'success');
+                }
+            }, { once: true });
+            
             logToConsole('🎯 Ready for interaction - hover and click icons!', 'info');
+            logToConsole('🎵 Load audio files and click play buttons to hear audio', 'info');
             
             isInitialized = true;
         });
