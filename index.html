@@ -241,9 +241,18 @@
             
             // Direct window opening without waiting for app initialization
             const windowElement = document.getElementById(windowId + '-window');
+            console.log('🔍 Looking for element:', windowId + '-window');
+            console.log('🔍 Element found:', !!windowElement);
+            
             if (windowElement) {
+                console.log('📦 Current display style:', windowElement.style.display);
                 windowElement.style.display = 'flex';
-                console.log('✅ Window opened:', windowId);
+                windowElement.style.zIndex = '100';
+                windowElement.style.position = 'fixed';
+                windowElement.style.top = '50px';
+                windowElement.style.left = '50px';
+                console.log('✅ Window opened and positioned:', windowId);
+                console.log('📦 New display style:', windowElement.style.display);
                 
                 // Add to taskbar if app is initialized
                 if (window.studioBuddyApp) {
@@ -252,12 +261,28 @@
                 }
             } else {
                 console.error('❌ Window not found:', windowId + '-window');
+                // List all available windows for debugging
+                const allWindows = document.querySelectorAll('.window');
+                console.log('🔍 Available windows:', Array.from(allWindows).map(w => w.id));
             }
+        }
+        
+        // Test function to verify window existence
+        function testWindows() {
+            console.log('🧪 Testing window availability...');
+            const windowIds = ['studio-buddy', 'analyzer', 'settings'];
+            windowIds.forEach(id => {
+                const element = document.getElementById(id + '-window');
+                console.log(`Window ${id}:`, !!element);
+            });
         }
         
         // Ensure all classes are loaded before initializing
         window.addEventListener('load', () => {
             console.log('🚀 Initializing Studio Buddy Web...');
+            
+            // Test window availability first
+            testWindows();
             
             // Check if classes are available
             if (typeof AudioProcessor === 'undefined') {
