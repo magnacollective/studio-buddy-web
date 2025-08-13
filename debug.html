@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studio Buddy Debug - Click Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #008080;
+        }
+        
+        .debug-icon {
+            display: inline-block;
+            padding: 20px;
+            margin: 10px;
+            background: #c0c0c0;
+            border: 2px outset #c0c0c0;
+            cursor: pointer;
+            text-align: center;
+            min-width: 100px;
+        }
+        
+        .debug-icon:hover {
+            background: #d0d0d0;
+        }
+        
+        .debug-window {
+            display: none;
+            position: fixed;
+            top: 100px;
+            left: 100px;
+            width: 300px;
+            height: 200px;
+            background: #c0c0c0;
+            border: 2px outset #c0c0c0;
+            z-index: 1000;
+        }
+        
+        .window-title {
+            background: #000080;
+            color: white;
+            padding: 5px;
+            font-weight: bold;
+        }
+        
+        .window-content {
+            padding: 10px;
+        }
+        
+        .close-btn {
+            float: right;
+            background: #c0c0c0;
+            border: 1px outset #c0c0c0;
+            cursor: pointer;
+            padding: 2px 6px;
+        }
+        
+        #log {
+            background: black;
+            color: lime;
+            padding: 10px;
+            margin: 20px 0;
+            height: 200px;
+            overflow-y: scroll;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Studio Buddy Debug - Click Test</h1>
+    
+    <p>This is a simplified test to verify basic clicking functionality works.</p>
+    
+    <div class="debug-icon" onclick="testClick('studio-buddy')">
+        🎵<br>Studio Buddy
+    </div>
+    
+    <div class="debug-icon" onclick="testClick('analyzer')">
+        📊<br>Analyzer
+    </div>
+    
+    <div class="debug-icon" onclick="testClick('settings')">
+        ⚙️<br>Settings
+    </div>
+    
+    <div class="debug-icon" onclick="testBasicAlert()">
+        🚨<br>Alert Test
+    </div>
+    
+    <!-- Test Windows -->
+    <div id="studio-buddy-debug" class="debug-window">
+        <div class="window-title">
+            Studio Buddy Test Window
+            <span class="close-btn" onclick="closeDebugWindow('studio-buddy-debug')">×</span>
+        </div>
+        <div class="window-content">
+            <p>✅ Studio Buddy window opened successfully!</p>
+            <p>This confirms the clicking mechanism works.</p>
+        </div>
+    </div>
+    
+    <div id="analyzer-debug" class="debug-window">
+        <div class="window-title">
+            Analyzer Test Window
+            <span class="close-btn" onclick="closeDebugWindow('analyzer-debug')">×</span>
+        </div>
+        <div class="window-content">
+            <p>✅ Analyzer window opened successfully!</p>
+            <p>Click functionality is working properly.</p>
+        </div>
+    </div>
+    
+    <div id="settings-debug" class="debug-window">
+        <div class="window-title">
+            Settings Test Window
+            <span class="close-btn" onclick="closeDebugWindow('settings-debug')">×</span>
+        </div>
+        <div class="window-content">
+            <p>✅ Settings window opened successfully!</p>
+            <p>No issues with click handling detected.</p>
+        </div>
+    </div>
+    
+    <div id="log"></div>
+    
+    <h2>Instructions:</h2>
+    <ol>
+        <li><strong>Click the icons above</strong> - they should open test windows</li>
+        <li><strong>Check the log output</strong> below for debugging info</li>
+        <li><strong>Try the Alert Test</strong> to verify basic JavaScript works</li>
+        <li>If this works but main app doesn't, we know the issue is in the main app code</li>
+    </ol>
+    
+    <script>
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}<br>`;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+        
+        function testClick(windowType) {
+            log(`🖱️ Icon clicked: ${windowType}`);
+            
+            const windowId = windowType + '-debug';
+            const windowElement = document.getElementById(windowId);
+            
+            log(`🔍 Looking for window: ${windowId}`);
+            log(`🔍 Window found: ${!!windowElement}`);
+            
+            if (windowElement) {
+                windowElement.style.display = 'block';
+                log(`✅ Window opened: ${windowType}`);
+            } else {
+                log(`❌ Window not found: ${windowId}`);
+            }
+        }
+        
+        function closeDebugWindow(windowId) {
+            log(`🗝️ Closing window: ${windowId}`);
+            const windowElement = document.getElementById(windowId);
+            if (windowElement) {
+                windowElement.style.display = 'none';
+                log(`✅ Window closed: ${windowId}`);
+            }
+        }
+        
+        function testBasicAlert() {
+            log(`🚨 Alert test triggered`);
+            alert('✅ Basic JavaScript is working!\n\nIf you see this alert, JavaScript execution is fine.\nThe issue might be in the main app initialization.');
+            log(`✅ Alert test completed`);
+        }
+        
+        // Initialize logging
+        window.addEventListener('load', () => {
+            log('🚀 Debug page loaded successfully');
+            log('🧪 Ready for click testing');
+        });
+        
+        // Log any JavaScript errors
+        window.addEventListener('error', (e) => {
+            log(`❌ JavaScript Error: ${e.message}`);
+        });
+    </script>
+</body>
+</html>
