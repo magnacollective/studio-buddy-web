@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studio Buddy - Deployment Diagnostic</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff00;
+            padding: 20px;
+            margin: 0;
+        }
+        
+        .test-section {
+            background: #111;
+            border: 1px solid #00ff00;
+            margin: 10px 0;
+            padding: 15px;
+        }
+        
+        .pass { color: #00ff00; }
+        .fail { color: #ff0000; }
+        .info { color: #ffff00; }
+        
+        .test-icon {
+            display: inline-block;
+            width: 60px;
+            height: 60px;
+            background: #008080;
+            border: 2px solid transparent;
+            margin: 10px;
+            cursor: pointer;
+            text-align: center;
+            line-height: 56px;
+            font-size: 24px;
+        }
+        
+        .test-icon:hover {
+            background: rgba(0, 0, 128, 0.3);
+            border: 2px solid #0066ff;
+            box-shadow: 0 0 8px rgba(0, 0, 255, 0.6);
+            outline: 2px solid #0066ff;
+            outline-offset: 2px;
+        }
+        
+        #log {
+            background: #000;
+            border: 1px solid #00ff00;
+            padding: 10px;
+            height: 300px;
+            overflow-y: scroll;
+            white-space: pre-wrap;
+        }
+        
+        button {
+            background: #008000;
+            color: white;
+            border: 1px solid #00ff00;
+            padding: 5px 10px;
+            cursor: pointer;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔬 STUDIO BUDDY DEPLOYMENT DIAGNOSTIC</h1>
+    
+    <div class="test-section">
+        <h2>📊 SYSTEM ANALYSIS</h2>
+        <div id="system-info"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🌐 NETWORK & DEPLOYMENT</h2>
+        <div id="network-info"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🖱️ CLICK TEST - Hover should show blue outline</h2>
+        <div class="test-icon" onclick="logClick('test1')">🎵</div>
+        <div class="test-icon" onclick="logClick('test2')">📊</div>
+        <div class="test-icon" onclick="logClick('test3')">⚙️</div>
+        <button onclick="testFileLoading()">Test File Loading</button>
+        <button onclick="testScriptExecution()">Test Script Execution</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>📄 FILE ANALYSIS</h2>
+        <div id="file-analysis"></div>
+        <button onclick="analyzeFiles()">Analyze All Files</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>📝 REAL-TIME LOG</h2>
+        <div id="log"></div>
+        <button onclick="clearLog()">Clear Log</button>
+        <button onclick="exportLog()">Export Log</button>
+    </div>
+
+    <script>
+        // Comprehensive diagnostic system
+        const log = document.getElementById('log');
+        
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toISOString();
+            const className = type;
+            log.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            log.scrollTop = log.scrollHeight;
+            console.log(`[${type.toUpperCase()}]`, message);
+        }
+        
+        function logClick(testId) {
+            addLog(`✅ CLICK DETECTED: ${testId}`, 'pass');
+            addLog(`📍 Event timestamp: ${performance.now()}ms`, 'info');
+            addLog(`🖱️ Mouse position: ${event.clientX}, ${event.clientY}`, 'info');
+        }
+        
+        function clearLog() {
+            log.innerHTML = '';
+        }
+        
+        function exportLog() {
+            const logContent = log.textContent;
+            const blob = new Blob([logContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'studio-buddy-diagnostic.log';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function analyzeSystemInfo() {
+            const systemInfo = document.getElementById('system-info');
+            const info = {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                language: navigator.language,
+                cookiesEnabled: navigator.cookieEnabled,
+                onLine: navigator.onLine,
+                hardwareConcurrency: navigator.hardwareConcurrency,
+                maxTouchPoints: navigator.maxTouchPoints,
+                url: window.location.href,
+                referrer: document.referrer,
+                timestamp: new Date().toISOString(),
+                viewport: `${window.innerWidth}x${window.innerHeight}`,
+                screen: `${screen.width}x${screen.height}`,
+                colorDepth: screen.colorDepth,
+                pixelRatio: window.devicePixelRatio
+            };
+            
+            let html = '';
+            for (const [key, value] of Object.entries(info)) {
+                const status = value ? 'pass' : 'fail';
+                html += `<div class="${status}">${key}: ${value}</div>`;
+                addLog(`SYS: ${key} = ${value}`);
+            }
+            systemInfo.innerHTML = html;
+        }
+        
+        function analyzeNetworkInfo() {
+            const networkInfo = document.getElementById('network-info');
+            const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            
+            let html = `<div class="info">Protocol: ${window.location.protocol}</div>`;
+            html += `<div class="info">Host: ${window.location.host}</div>`;
+            html += `<div class="info">Origin: ${window.location.origin}</div>`;
+            html += `<div class="info">Path: ${window.location.pathname}</div>`;
+            
+            if (connection) {
+                html += `<div class="pass">Connection Type: ${connection.effectiveType || 'unknown'}</div>`;
+                html += `<div class="pass">Downlink: ${connection.downlink || 'unknown'} Mbps</div>`;
+                addLog(`NET: Connection type = ${connection.effectiveType}`);
+                addLog(`NET: Downlink = ${connection.downlink} Mbps`);
+            } else {
+                html += `<div class="fail">Connection API not available</div>`;
+                addLog(`NET: Connection API unavailable`, 'fail');
+            }
+            
+            // Test if we're on Vercel
+            const isVercel = window.location.hostname.includes('vercel.app');
+            html += `<div class="${isVercel ? 'pass' : 'info'}">Vercel Deployment: ${isVercel}</div>`;
+            addLog(`NET: Vercel deployment = ${isVercel}`);
+            
+            networkInfo.innerHTML = html;
+        }
+        
+        async function analyzeFiles() {
+            const fileAnalysis = document.getElementById('file-analysis');
+            const files = [
+                'audio-processor.js',
+                'audio-analyzer.js', 
+                'script.js',
+                'styles.css',
+                'index.html',
+                'standalone.html',
+                'simple.html',
+                'debug.html'
+            ];
+            
+            let html = '<h3>File Loading Analysis:</h3>';
+            
+            for (const file of files) {
+                try {
+                    addLog(`Checking file: ${file}`);
+                    const response = await fetch(file, { method: 'HEAD' });
+                    const status = response.ok ? 'pass' : 'fail';
+                    const size = response.headers.get('content-length') || 'unknown';
+                    const type = response.headers.get('content-type') || 'unknown';
+                    
+                    html += `<div class="${status}">${file}: ${response.status} (${size} bytes, ${type})</div>`;
+                    addLog(`FILE: ${file} = ${response.status} (${size} bytes)`, status === 'pass' ? 'pass' : 'fail');
+                } catch (error) {
+                    html += `<div class="fail">${file}: ERROR - ${error.message}</div>`;
+                    addLog(`FILE: ${file} = ERROR: ${error.message}`, 'fail');
+                }
+            }
+            
+            fileAnalysis.innerHTML = html;
+        }
+        
+        function testFileLoading() {
+            addLog('🧪 Testing external file loading...');
+            
+            // Test loading a simple script
+            const script = document.createElement('script');
+            script.src = 'audio-processor.js';
+            script.onload = () => {
+                addLog('✅ External script loaded successfully', 'pass');
+                addLog(`AudioProcessor available: ${typeof AudioProcessor !== 'undefined'}`, 'info');
+            };
+            script.onerror = (error) => {
+                addLog('❌ External script failed to load', 'fail');
+                addLog(`Error details: ${error.message || 'Unknown error'}`, 'fail');
+            };
+            document.head.appendChild(script);
+            
+            // Test CSS loading
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'styles.css';
+            link.onload = () => {
+                addLog('✅ External CSS loaded successfully', 'pass');
+            };
+            link.onerror = () => {
+                addLog('❌ External CSS failed to load', 'fail');
+            };
+            document.head.appendChild(link);
+        }
+        
+        function testScriptExecution() {
+            addLog('🧪 Testing JavaScript execution capabilities...');
+            
+            // Test 1: Basic execution
+            try {
+                eval('addLog("✅ eval() works", "pass")');
+            } catch (error) {
+                addLog(`❌ eval() failed: ${error.message}`, 'fail');
+            }
+            
+            // Test 2: DOM manipulation
+            try {
+                const testDiv = document.createElement('div');
+                testDiv.textContent = 'test';
+                document.body.appendChild(testDiv);
+                document.body.removeChild(testDiv);
+                addLog('✅ DOM manipulation works', 'pass');
+            } catch (error) {
+                addLog(`❌ DOM manipulation failed: ${error.message}`, 'fail');
+            }
+            
+            // Test 3: Event listeners
+            try {
+                const testBtn = document.createElement('button');
+                testBtn.addEventListener('click', () => {
+                    addLog('✅ Event listeners work', 'pass');
+                });
+                testBtn.click();
+                addLog('✅ Event listener test completed', 'pass');
+            } catch (error) {
+                addLog(`❌ Event listeners failed: ${error.message}`, 'fail');
+            }
+            
+            // Test 4: Modern JS features
+            try {
+                const arrow = () => true;
+                const {test} = {test: true};
+                const template = `Template literal works`;
+                addLog('✅ Modern JavaScript features work', 'pass');
+            } catch (error) {
+                addLog(`❌ Modern JS features failed: ${error.message}`, 'fail');
+            }
+        }
+        
+        // Initialize diagnostic
+        window.addEventListener('load', () => {
+            addLog('🚀 DIAGNOSTIC SYSTEM INITIALIZED', 'pass');
+            addLog('=' .repeat(50), 'info');
+            
+            analyzeSystemInfo();
+            analyzeNetworkInfo();
+            
+            // Auto-run comprehensive tests
+            setTimeout(() => {
+                addLog('🔄 Running automatic diagnostics...', 'info');
+                analyzeFiles();
+                testScriptExecution();
+            }, 1000);
+        });
+        
+        // Catch all errors
+        window.addEventListener('error', (event) => {
+            addLog(`❌ GLOBAL ERROR: ${event.message} at ${event.filename}:${event.lineno}`, 'fail');
+        });
+        
+        // Catch unhandled promise rejections
+        window.addEventListener('unhandledrejection', (event) => {
+            addLog(`❌ UNHANDLED PROMISE REJECTION: ${event.reason}`, 'fail');
+        });
+        
+        addLog('📋 Diagnostic script loaded successfully', 'pass');
+    </script>
+</body>
+</html>
