@@ -537,22 +537,33 @@
 
                 // Create FormData for Railway upload
                 const formData = new FormData();
-                formData.append('source', sourceInput.files[0]);
+                
+                // Try different parameter names that Railway might expect
+                formData.append('audio', sourceInput.files[0]);  // Common name
+                formData.append('source', sourceInput.files[0]); // Current name
+                formData.append('file', sourceInput.files[0]);   // Alternative name
                 
                 if (referenceInput.files[0]) {
                     formData.append('reference', referenceInput.files[0]);
+                    formData.append('reference_audio', referenceInput.files[0]);
                     log('🎯 Using reference track for style matching');
                 }
 
                 // Upload to Railway mastering service via proxy
                 log('📤 Uploading to Railway mastering service...');
+                log(`📋 FormData contents: source=${sourceInput.files[0]?.name}, reference=${referenceInput.files[0]?.name || 'none'}`);
+                
                 const response = await fetch('/api/master', {
                     method: 'POST',
                     body: formData
                 });
 
+                log(`📊 API Response: ${response.status} ${response.statusText}`);
+                
                 if (!response.ok) {
-                    throw new Error(`Service error: ${response.status}`);
+                    const errorText = await response.text();
+                    log(`❌ API Error Details: ${errorText}`);
+                    throw new Error(`Service error: ${response.status} - ${errorText}`);
                 }
 
                 log('⚡ Processing audio with professional algorithms...');
@@ -913,13 +924,19 @@
 
                 // Upload to Railway analysis service via proxy
                 log('📤 Uploading to Railway BPM/key analysis service...');
+                log(`📋 Analysis FormData: audio=${analyzeInput.files[0]?.name}`);
+                
                 const response = await fetch('/api/analyze', {
                     method: 'POST',
                     body: formData
                 });
 
+                log(`📊 Analysis Response: ${response.status} ${response.statusText}`);
+                
                 if (!response.ok) {
-                    throw new Error(`Analysis service error: ${response.status}`);
+                    const errorText = await response.text();
+                    log(`❌ Analysis Error Details: ${errorText}`);
+                    throw new Error(`Analysis service error: ${response.status} - ${errorText}`);
                 }
 
                 log('⚡ Analyzing BPM, key, and audio properties...');
