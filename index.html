@@ -29,7 +29,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 1;
+            z-index: 5;
             background: rgba(0, 0, 0, 0.8);
             overflow: hidden;
             pointer-events: none;
@@ -71,7 +71,7 @@
             width: 100vw;
             height: 100vh;
             background: transparent;
-            z-index: 2;
+            z-index: 10;
         }
 
         /* Desktop icons */
@@ -746,6 +746,13 @@
         <div class="console-output" id="console-output">
             <div class="console-header">🖥️ Studio Buddy Console</div>
             <div class="console-content" id="console-log"></div>
+        </div>
+
+        <!-- Debug controls -->
+        <div style="position: fixed; top: 10px; right: 10px; z-index: 1001; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 5px;">
+            <button onclick="runSystemCheck()" style="background: #ff0000; color: white; border: none; padding: 5px 10px; margin: 2px; cursor: pointer;">🔧 Test System</button>
+            <button onclick="createMatrixRain()" style="background: #00ff00; color: black; border: none; padding: 5px 10px; margin: 2px; cursor: pointer;">🔋 Restart Matrix</button>
+            <button onclick="handleIconClick('studio-buddy')" style="background: #0000ff; color: white; border: none; padding: 5px 10px; margin: 2px; cursor: pointer;">🎵 Test Click</button>
         </div>
     </div>
 
@@ -1685,6 +1692,59 @@
         window.addEventListener('error', (event) => {
             logToConsole(`❌ ERROR: ${event.message}`, 'error');
         });
+
+        // Comprehensive system check
+        function runSystemCheck() {
+            logToConsole('🔧 SYSTEM CHECK: Running diagnostics...', 'info');
+            
+            // Check Matrix background
+            const matrixBg = document.getElementById('matrix-bg');
+            if (matrixBg) {
+                logToConsole('✅ Matrix background element found', 'success');
+                if (matrixBg.children.length > 0) {
+                    logToConsole(`✅ Matrix has ${matrixBg.children.length} columns`, 'success');
+                } else {
+                    logToConsole('❌ Matrix columns not created', 'error');
+                }
+            } else {
+                logToConsole('❌ Matrix background element missing', 'error');
+            }
+            
+            // Check desktop icons
+            const icons = document.querySelectorAll('.desktop-icon');
+            logToConsole(`✅ Found ${icons.length} desktop icons`, 'success');
+            
+            icons.forEach((icon, index) => {
+                if (icon.onclick) {
+                    logToConsole(`✅ Icon ${index + 1} has click handler`, 'success');
+                } else {
+                    logToConsole(`❌ Icon ${index + 1} missing click handler`, 'error');
+                }
+            });
+            
+            // Check windows
+            const windows = document.querySelectorAll('.window');
+            logToConsole(`✅ Found ${windows.length} windows`, 'success');
+            
+            // Check if functions exist
+            const requiredFunctions = [
+                'handleIconClick', 'logHover', 'logHoverOut', 'createMatrixRain', 
+                'updateClock', 'initWindowDragging', 'playAudio', 'stopAudio'
+            ];
+            
+            requiredFunctions.forEach(funcName => {
+                if (typeof window[funcName] === 'function') {
+                    logToConsole(`✅ Function ${funcName} exists`, 'success');
+                } else {
+                    logToConsole(`❌ Function ${funcName} missing`, 'error');
+                }
+            });
+            
+            logToConsole('🔧 SYSTEM CHECK: Complete', 'info');
+        }
+
+        // Run system check after everything loads
+        setTimeout(runSystemCheck, 2000);
 
         logToConsole('📄 SCRIPT: Main script loaded successfully', 'success');
     </script>
