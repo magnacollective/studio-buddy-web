@@ -544,9 +544,9 @@
                     log('🎯 Using reference track for style matching');
                 }
 
-                // Upload to Railway mastering service
+                // Upload to Railway mastering service via proxy
                 log('📤 Uploading to Railway mastering service...');
-                const response = await fetch('https://studiobuddy-production.up.railway.app/master', {
+                const response = await fetch('/api/master', {
                     method: 'POST',
                     body: formData
                 });
@@ -911,9 +911,9 @@
                 const formData = new FormData();
                 formData.append('audio', analyzeInput.files[0]);
 
-                // Upload to Railway analysis service (correct endpoint)
+                // Upload to Railway analysis service via proxy
                 log('📤 Uploading to Railway BPM/key analysis service...');
-                const response = await fetch('https://song-key-bpm-finder-app-production.up.railway.app/analyze', {
+                const response = await fetch('/api/analyze', {
                     method: 'POST',
                     body: formData
                 });

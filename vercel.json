@@ -10,5 +10,15 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/master",
+      "destination": "https://studiobuddy-production.up.railway.app/master"
+    },
+    {
+      "source": "/api/analyze",
+      "destination": "https://song-key-bpm-finder-app-production.up.railway.app/analyze"
+    }
   ]
 }
