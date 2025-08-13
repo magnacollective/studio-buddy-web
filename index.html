@@ -14,15 +14,15 @@
     <div id="desktop">
         <!-- Desktop Icons -->
         <div class="desktop-icons">
-            <div class="desktop-icon" data-window="studio-buddy" onclick="openDesktopWindow('studio-buddy')">
+            <div class="desktop-icon" data-window="studio-buddy" onclick="console.log('CLICK TEST 1'); openDesktopWindow('studio-buddy')">
                 <div class="icon">🎵</div>
                 <div class="label">Studio Buddy</div>
             </div>
-            <div class="desktop-icon" data-window="analyzer" onclick="openDesktopWindow('analyzer')">
+            <div class="desktop-icon" data-window="analyzer" onclick="console.log('CLICK TEST 2'); openDesktopWindow('analyzer')">
                 <div class="icon">📊</div>
                 <div class="label">Key/BPM Analyzer</div>
             </div>
-            <div class="desktop-icon" data-window="settings" onclick="openDesktopWindow('settings')">
+            <div class="desktop-icon" data-window="settings" onclick="console.log('CLICK TEST 3'); openDesktopWindow('settings')">
                 <div class="icon">⚙️</div>
                 <div class="label">Settings</div>
             </div>
@@ -233,6 +233,14 @@
     <script src="audio-analyzer.js"></script>
     <script src="script.js"></script>
     
+    <!-- Immediate console output to verify loading -->
+    <script>
+        console.log('📄 HTML script block executing...');
+        console.log('📍 Current time:', new Date().toISOString());
+        console.log('🌐 User agent:', navigator.userAgent);
+        console.log('🔗 Page URL:', window.location.href);
+    </script>
+    
     <!-- Initialize the app after all scripts are loaded -->
     <script>
         // Global function to handle desktop icon clicks
@@ -279,38 +287,60 @@
         
         // Ensure all classes are loaded before initializing
         window.addEventListener('load', () => {
-            console.log('🚀 Initializing Studio Buddy Web...');
+            console.log('🚀 Page loaded, starting initialization...');
             
             // Test window availability first
             testWindows();
             
-            // Check if classes are available
+            // Check if classes are available with detailed logging
+            console.log('AudioProcessor available:', typeof AudioProcessor);
+            console.log('AudioAnalyzer available:', typeof AudioAnalyzer);
+            console.log('StudioBuddyApp available:', typeof StudioBuddyApp);
+            
             if (typeof AudioProcessor === 'undefined') {
-                console.error('❌ AudioProcessor class not found');
-                return;
+                console.error('❌ AudioProcessor class not found - continuing without it');
             }
             
             if (typeof AudioAnalyzer === 'undefined') {
-                console.error('❌ AudioAnalyzer class not found');
-                return;
+                console.error('❌ AudioAnalyzer class not found - continuing without it');
             }
             
             if (typeof StudioBuddyApp === 'undefined') {
-                console.error('❌ StudioBuddyApp class not found');
+                console.error('❌ StudioBuddyApp class not found - setting up basic functionality');
+                setupBasicFunctionality();
                 return;
             }
             
             // Initialize the app
             try {
+                console.log('🔧 Attempting to create StudioBuddyApp instance...');
                 window.studioBuddyApp = new StudioBuddyApp();
                 console.log('✅ Studio Buddy Web initialized successfully');
             } catch (error) {
                 console.error('❌ Failed to initialize Studio Buddy:', error);
+                console.error('Error details:', error.stack);
                 
-                // Even if app fails to initialize, make basic window opening work
+                // Fallback to basic functionality
                 console.log('🔧 Setting up basic window functionality...');
+                setupBasicFunctionality();
             }
         });
+        
+        // Fallback basic functionality if main app fails
+        function setupBasicFunctionality() {
+            console.log('🔧 Setting up basic click handlers...');
+            
+            // Add direct event listeners to desktop icons
+            document.querySelectorAll('.desktop-icon').forEach(icon => {
+                console.log('Adding click listener to:', icon.dataset.window);
+                icon.addEventListener('click', (e) => {
+                    console.log('🖱️ Basic click handler triggered:', e.currentTarget.dataset.window);
+                    openDesktopWindow(e.currentTarget.dataset.window);
+                });
+            });
+            
+            console.log('✅ Basic functionality setup complete');
+        }
     </script>
 </body>
 </html>
