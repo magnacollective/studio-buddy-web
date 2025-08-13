@@ -233,84 +233,35 @@
     <script src="audio-analyzer.js"></script>
     <script src="script.js"></script>
     
-    <!-- Initialize the app after all scripts are loaded -->
+    <!-- Simple and reliable window opening -->
     <script>
-        // Global function to handle desktop icon clicks
         function openDesktopWindow(windowId) {
-            console.log('🖱️ Desktop icon clicked:', windowId);
-            
-            // Direct window opening without waiting for app initialization
+            console.log('Opening window:', windowId);
             const windowElement = document.getElementById(windowId + '-window');
-            console.log('🔍 Looking for element:', windowId + '-window');
-            console.log('🔍 Element found:', !!windowElement);
-            
             if (windowElement) {
-                console.log('📦 Current display style:', windowElement.style.display);
                 windowElement.style.display = 'flex';
-                windowElement.style.zIndex = '100';
-                windowElement.style.position = 'fixed';
-                windowElement.style.top = '50px';
-                windowElement.style.left = '50px';
-                console.log('✅ Window opened and positioned:', windowId);
-                console.log('📦 New display style:', windowElement.style.display);
-                
-                // Add to taskbar if app is initialized
-                if (window.studioBuddyApp) {
-                    window.studioBuddyApp.addTaskButton(windowId);
-                    window.studioBuddyApp.setActiveWindow(windowId);
-                }
-            } else {
-                console.error('❌ Window not found:', windowId + '-window');
-                // List all available windows for debugging
-                const allWindows = document.querySelectorAll('.window');
-                console.log('🔍 Available windows:', Array.from(allWindows).map(w => w.id));
+                console.log('Window opened successfully:', windowId);
             }
         }
         
-        // Test function to verify window existence
-        function testWindows() {
-            console.log('🧪 Testing window availability...');
-            const windowIds = ['studio-buddy', 'analyzer', 'settings'];
-            windowIds.forEach(id => {
-                const element = document.getElementById(id + '-window');
-                console.log(`Window ${id}:`, !!element);
-            });
-        }
-        
-        // Ensure all classes are loaded before initializing
+        // Initialize audio functionality when needed
         window.addEventListener('load', () => {
-            console.log('🚀 Initializing Studio Buddy Web...');
+            console.log('Studio Buddy Web loaded');
             
-            // Test window availability first
-            testWindows();
-            
-            // Check if classes are available
-            if (typeof AudioProcessor === 'undefined') {
-                console.error('❌ AudioProcessor class not found');
-                return;
-            }
-            
-            if (typeof AudioAnalyzer === 'undefined') {
-                console.error('❌ AudioAnalyzer class not found');
-                return;
-            }
-            
-            if (typeof StudioBuddyApp === 'undefined') {
-                console.error('❌ StudioBuddyApp class not found');
-                return;
-            }
-            
-            // Initialize the app
-            try {
-                window.studioBuddyApp = new StudioBuddyApp();
-                console.log('✅ Studio Buddy Web initialized successfully');
-            } catch (error) {
-                console.error('❌ Failed to initialize Studio Buddy:', error);
-                
-                // Even if app fails to initialize, make basic window opening work
-                console.log('🔧 Setting up basic window functionality...');
-            }
+            // Initialize audio context when user interacts
+            document.addEventListener('click', initializeAudio, { once: true });
         });
+        
+        function initializeAudio() {
+            try {
+                if (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') {
+                    window.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    console.log('Audio context initialized');
+                }
+            } catch (error) {
+                console.log('Audio context initialization deferred');
+            }
+        }
     </script>
 </body>
 </html>
