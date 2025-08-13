@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studio Buddy - Simple Test</title>
+    <style>
+        body {
+            background: #008080;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .desktop-icon {
+            display: inline-block;
+            width: 80px;
+            padding: 8px;
+            margin: 10px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            text-align: center;
+            color: white;
+        }
+        
+        .desktop-icon:hover {
+            background: rgba(0, 0, 128, 0.3);
+            border: 2px dotted blue;
+        }
+        
+        .icon {
+            font-size: 48px;
+            margin-bottom: 4px;
+        }
+        
+        .window {
+            display: none;
+            position: fixed;
+            top: 50px;
+            left: 50px;
+            width: 400px;
+            height: 300px;
+            background: #c0c0c0;
+            border: 2px outset #c0c0c0;
+            z-index: 100;
+        }
+        
+        .title-bar {
+            background: #000080;
+            color: white;
+            padding: 2px;
+            font-weight: bold;
+        }
+        
+        .window-body {
+            padding: 10px;
+        }
+        
+        .close-btn {
+            float: right;
+            cursor: pointer;
+            padding: 0 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="color: white;">🎵 Studio Buddy - Simple Click Test</h1>
+    
+    <div class="desktop-icon" onclick="openWindow('studio-buddy')">
+        <div class="icon">🎵</div>
+        <div class="label">Studio Buddy</div>
+    </div>
+    
+    <div class="desktop-icon" onclick="openWindow('analyzer')">
+        <div class="icon">📊</div>
+        <div class="label">Analyzer</div>
+    </div>
+    
+    <div class="desktop-icon" onclick="openWindow('settings')">
+        <div class="icon">⚙️</div>
+        <div class="label">Settings</div>
+    </div>
+    
+    <!-- Windows -->
+    <div id="studio-buddy-window" class="window">
+        <div class="title-bar">
+            Studio Buddy
+            <span class="close-btn" onclick="closeWindow('studio-buddy-window')">×</span>
+        </div>
+        <div class="window-body">
+            <h3>Audio Mastering</h3>
+            <p>✅ Studio Buddy window opened!</p>
+            <p>This is where the audio mastering interface would be.</p>
+        </div>
+    </div>
+    
+    <div id="analyzer-window" class="window">
+        <div class="title-bar">
+            Audio Analyzer
+            <span class="close-btn" onclick="closeWindow('analyzer-window')">×</span>
+        </div>
+        <div class="window-body">
+            <h3>BPM & Key Detection</h3>
+            <p>✅ Analyzer window opened!</p>
+            <p>This is where the audio analysis would happen.</p>
+        </div>
+    </div>
+    
+    <div id="settings-window" class="window">
+        <div class="title-bar">
+            Settings
+            <span class="close-btn" onclick="closeWindow('settings-window')">×</span>
+        </div>
+        <div class="window-body">
+            <h3>App Settings</h3>
+            <p>✅ Settings window opened!</p>
+            <p>This is where you'd configure the app.</p>
+        </div>
+    </div>
+    
+    <script>
+        function openWindow(windowId) {
+            console.log('Opening window:', windowId);
+            
+            const windowElement = document.getElementById(windowId + '-window');
+            console.log('Window element:', windowElement);
+            
+            if (windowElement) {
+                windowElement.style.display = 'block';
+                console.log('Window opened successfully');
+            } else {
+                console.error('Window not found:', windowId + '-window');
+            }
+        }
+        
+        function closeWindow(windowId) {
+            console.log('Closing window:', windowId);
+            const windowElement = document.getElementById(windowId);
+            if (windowElement) {
+                windowElement.style.display = 'none';
+            }
+        }
+        
+        console.log('Simple Studio Buddy test loaded');
+    </script>
+</body>
+</html>
