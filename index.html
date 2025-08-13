@@ -535,17 +535,12 @@
                     return;
                 }
 
-                // Create FormData for Railway upload
+                // Create FormData for Railway upload - use single parameter name
                 const formData = new FormData();
-                
-                // Try different parameter names that Railway might expect
-                formData.append('audio', sourceInput.files[0]);  // Common name
-                formData.append('source', sourceInput.files[0]); // Current name
-                formData.append('file', sourceInput.files[0]);   // Alternative name
+                formData.append('audio', sourceInput.files[0]);
                 
                 if (referenceInput.files[0]) {
                     formData.append('reference', referenceInput.files[0]);
-                    formData.append('reference_audio', referenceInput.files[0]);
                     log('🎯 Using reference track for style matching');
                 }
 
@@ -555,7 +550,10 @@
                 
                 const response = await fetch('/api/master', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    headers: {
+                        // Don't set Content-Type - let browser set it with boundary for FormData
+                    }
                 });
 
                 log(`📊 API Response: ${response.status} ${response.statusText}`);

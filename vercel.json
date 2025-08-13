@@ -17,8 +17,16 @@
       "destination": "https://studiobuddy-production.up.railway.app/master"
     },
     {
-      "source": "/api/analyze",
+      "source": "/api/analyze", 
       "destination": "https://song-key-bpm-finder-app-production.up.railway.app/analyze"
     }
-  ]
+  ],
+  "functions": {
+    "app/api/master.js": {
+      "maxDuration": 30
+    },
+    "app/api/analyze.js": {
+      "maxDuration": 30
+    }
+  }
 }
