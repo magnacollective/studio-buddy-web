@@ -3,425 +3,602 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Studio Buddy - Audio Mastering Professional</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Studio Buddy - Professional Audio Mastering</title>
+    <style>
+        /* Reset and base styles */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'MS Sans Serif', Arial, sans-serif;
+            font-size: 11px;
+            background: linear-gradient(45deg, #008080, #006666);
+            min-height: 100vh;
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        /* Matrix background animation */
+        .matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at center, rgba(0,255,0,0.1) 0%, rgba(0,0,0,0.9) 100%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.6; }
+        }
+
+        /* Main container */
+        .desktop-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            padding: 20px;
+        }
+
+        /* Desktop icons grid */
+        .desktop-icons {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            position: absolute;
+            top: 40px;
+            left: 40px;
+            z-index: 10;
+        }
+
+        /* Enhanced desktop icon */
+        .desktop-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 90px;
+            padding: 12px;
+            cursor: pointer;
+            border: 3px solid transparent;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+        }
+
+        /* CRITICAL: Enhanced hover effect with multiple visual indicators */
+        .desktop-icon:hover {
+            background: rgba(0, 0, 200, 0.4) !important;
+            border: 3px solid #0066ff !important;
+            box-shadow: 
+                0 0 15px rgba(0, 102, 255, 0.8),
+                inset 0 0 10px rgba(255, 255, 255, 0.2) !important;
+            outline: 2px solid #00aaff !important;
+            outline-offset: 3px !important;
+            transform: scale(1.05) !important;
+        }
+
+        /* Active state */
+        .desktop-icon:active {
+            transform: scale(0.95) !important;
+            box-shadow: 0 0 25px rgba(0, 255, 0, 1) !important;
+        }
+
+        .desktop-icon .icon {
+            font-size: 52px;
+            margin-bottom: 8px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            transition: transform 0.2s ease;
+        }
+
+        .desktop-icon:hover .icon {
+            transform: scale(1.1);
+        }
+
+        .desktop-icon .label {
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+            line-height: 1.2;
+        }
+
+        /* Windows */
+        .window {
+            position: fixed;
+            background: #c0c0c0;
+            border: 2px outset #c0c0c0;
+            box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.4);
+            min-width: 500px;
+            min-height: 400px;
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+        }
+
+        .title-bar {
+            background: linear-gradient(to right, #000080, #0000aa);
+            color: white;
+            padding: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 24px;
+            cursor: move;
+        }
+
+        .title-bar.inactive {
+            background: linear-gradient(to right, #808080, #999999);
+        }
+
+        .title-text {
+            font-weight: bold;
+            font-size: 11px;
+            padding-left: 6px;
+        }
+
+        .title-controls {
+            display: flex;
+            gap: 2px;
+        }
+
+        .title-btn {
+            width: 18px;
+            height: 16px;
+            background: #c0c0c0;
+            border: 1px outset #c0c0c0;
+            font-size: 9px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .title-btn:hover {
+            background: #d0d0d0;
+        }
+
+        .title-btn:active {
+            border: 1px inset #c0c0c0;
+        }
+
+        .window-content {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .section {
+            background: #c0c0c0;
+            border: 2px inset #c0c0c0;
+            padding: 12px;
+            margin: 8px 0;
+        }
+
+        .section h3 {
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #000080;
+        }
+
+        /* Interactive controls */
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 8px 0;
+        }
+
+        .control-group label {
+            min-width: 100px;
+            font-size: 11px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            max-width: 120px;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            margin: 4px 0;
+        }
+
+        button {
+            background: #c0c0c0;
+            border: 2px outset #c0c0c0;
+            padding: 6px 12px;
+            font-size: 11px;
+            cursor: pointer;
+            margin: 4px 2px;
+        }
+
+        button:hover {
+            background: #d0d0d0;
+        }
+
+        button:active {
+            border: 2px inset #c0c0c0;
+        }
+
+        .master-btn {
+            background: linear-gradient(to bottom, #4CAF50, #45a049);
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            padding: 10px 20px;
+            width: 100%;
+        }
+
+        /* Console output */
+        .console-output {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 400px;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            padding: 10px;
+            border: 2px solid #00ff00;
+            border-radius: 5px;
+            overflow-y: scroll;
+            z-index: 1000;
+        }
+
+        /* Progress bar */
+        .progress-container {
+            width: 100%;
+            height: 24px;
+            background: white;
+            border: 2px inset #c0c0c0;
+            margin: 8px 0;
+            display: none;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(to right, #008000, #00ff00);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* Canvas for visualizations */
+        .visualization {
+            background: black;
+            border: 2px inset #c0c0c0;
+            padding: 8px;
+            text-align: center;
+        }
+
+        canvas {
+            border: 1px solid #808080;
+            background: black;
+        }
+
+        /* Results grid */
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .result-item {
+            background: white;
+            border: 2px inset #c0c0c0;
+            padding: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .result-value {
+            font-weight: bold;
+            color: #000080;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .desktop-icons {
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 15px;
+            }
+            
+            .desktop-icon {
+                width: 70px;
+            }
+            
+            .console-output {
+                width: 300px;
+                height: 150px;
+                bottom: 10px;
+                right: 10px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <!-- Matrix Background -->
-    <div id="matrix-background"></div>
-    
-    <!-- Desktop -->
-    <div id="desktop">
-        <!-- Desktop Icons -->
+    <!-- Matrix background -->
+    <div class="matrix-bg"></div>
+
+    <!-- Desktop container -->
+    <div class="desktop-container">
+        
+        <!-- Desktop icons -->
         <div class="desktop-icons">
-            <div class="desktop-icon" data-window="studio-buddy" onclick="console.log('CLICK TEST 1'); openDesktopWindow('studio-buddy')">
+            <div class="desktop-icon" 
+                 data-app="studio-buddy" 
+                 onmouseenter="logHover('Studio Buddy')"
+                 onmouseleave="logHoverOut('Studio Buddy')"
+                 onclick="handleIconClick('studio-buddy')">
                 <div class="icon">🎵</div>
-                <div class="label">Studio Buddy</div>
+                <div class="label">Studio Buddy<br>Audio Mastering</div>
             </div>
-            <div class="desktop-icon" data-window="analyzer" onclick="console.log('CLICK TEST 2'); openDesktopWindow('analyzer')">
+
+            <div class="desktop-icon" 
+                 data-app="analyzer" 
+                 onmouseenter="logHover('Audio Analyzer')"
+                 onmouseleave="logHoverOut('Audio Analyzer')"
+                 onclick="handleIconClick('analyzer')">
                 <div class="icon">📊</div>
-                <div class="label">Key/BPM Analyzer</div>
+                <div class="label">Key/BPM<br>Analyzer</div>
             </div>
-            <div class="desktop-icon" data-window="settings" onclick="console.log('CLICK TEST 3'); openDesktopWindow('settings')">
+
+            <div class="desktop-icon" 
+                 data-app="settings" 
+                 onmouseenter="logHover('Settings')"
+                 onmouseleave="logHoverOut('Settings')"
+                 onclick="handleIconClick('settings')">
                 <div class="icon">⚙️</div>
-                <div class="label">Settings</div>
+                <div class="label">System<br>Settings</div>
             </div>
         </div>
 
-        <!-- Windows -->
-        <div id="windows-container">
-            <!-- Studio Buddy Window -->
-            <div class="window" id="studio-buddy-window" style="display: none;">
-                <div class="title-bar">
-                    <div class="title-bar-text">Studio Buddy - Audio Mastering Professional</div>
-                    <div class="title-bar-controls">
-                        <button class="title-bar-control" onclick="minimizeWindow('studio-buddy-window')">_</button>
-                        <button class="title-bar-control" onclick="maximizeWindow('studio-buddy-window')">□</button>
-                        <button class="title-bar-control" onclick="closeWindow('studio-buddy-window')">×</button>
-                    </div>
-                </div>
-                <div class="window-body">
-                    <div class="studio-buddy-content">
-                        <div class="section">
-                            <h3>Audio Files</h3>
-                            <div class="file-section">
-                                <label>Source Audio:</label>
-                                <input type="file" id="source-file" accept="audio/*">
-                                <div id="source-info" class="file-info"></div>
-                            </div>
-                            <div class="file-section">
-                                <label>Reference Audio (Optional):</label>
-                                <input type="file" id="reference-file" accept="audio/*">
-                                <div id="reference-info" class="file-info"></div>
-                            </div>
-                        </div>
-
-                        <div class="section">
-                            <h3>Mastering Controls</h3>
-                            <div class="controls-grid">
-                                <div class="control-group">
-                                    <label>Output Level:</label>
-                                    <input type="range" id="output-level" min="-6" max="0" value="-1" step="0.1">
-                                    <span id="output-level-value">-1.0 dB</span>
-                                </div>
-                                <div class="control-group">
-                                    <label>Compression:</label>
-                                    <input type="range" id="compression" min="1" max="10" value="3" step="1">
-                                    <span id="compression-value">3</span>
-                                </div>
-                                <div class="control-group">
-                                    <label>EQ Intensity:</label>
-                                    <input type="range" id="eq-intensity" min="0" max="100" value="50" step="5">
-                                    <span id="eq-intensity-value">50%</span>
-                                </div>
-                                <div class="control-group">
-                                    <label>Stereo Width:</label>
-                                    <input type="range" id="stereo-width" min="0" max="150" value="100" step="5">
-                                    <span id="stereo-width-value">100%</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="section">
-                            <h3>Processing</h3>
-                            <button id="master-button" class="master-button" onclick="startMastering()">Master Audio</button>
-                            <div id="progress-container" style="display: none;">
-                                <div class="progress-bar">
-                                    <div id="progress-fill"></div>
-                                </div>
-                                <div id="progress-text">Processing...</div>
-                            </div>
-                        </div>
-
-                        <div class="section">
-                            <h3>Playback</h3>
-                            <div class="playback-controls">
-                                <button id="play-source" disabled>Play Source</button>
-                                <button id="play-reference" disabled>Play Reference</button>
-                                <button id="play-mastered" disabled>Play Mastered</button>
-                                <button id="download-mastered" disabled>Download Mastered</button>
-                            </div>
-                            <div class="audio-visualizer">
-                                <canvas id="waveform-canvas" width="400" height="100"></canvas>
-                            </div>
-                        </div>
-                    </div>
+        <!-- Studio Buddy Window -->
+        <div class="window" id="studio-buddy-window" style="top: 100px; left: 200px;">
+            <div class="title-bar">
+                <div class="title-text">Studio Buddy - Professional Audio Mastering</div>
+                <div class="title-controls">
+                    <div class="title-btn" onclick="minimizeWindow('studio-buddy-window')">_</div>
+                    <div class="title-btn" onclick="maximizeWindow('studio-buddy-window')">□</div>
+                    <div class="title-btn" onclick="closeWindow('studio-buddy-window')">×</div>
                 </div>
             </div>
-
-            <!-- Audio Analyzer Window -->
-            <div class="window" id="analyzer-window" style="display: none;">
-                <div class="title-bar">
-                    <div class="title-bar-text">Key/BPM Analyzer Professional</div>
-                    <div class="title-bar-controls">
-                        <button class="title-bar-control" onclick="minimizeWindow('analyzer-window')">_</button>
-                        <button class="title-bar-control" onclick="maximizeWindow('analyzer-window')">□</button>
-                        <button class="title-bar-control" onclick="closeWindow('analyzer-window')">×</button>
+            <div class="window-content">
+                <div class="section">
+                    <h3>Audio Files</h3>
+                    <div>
+                        <label>Source Audio:</label>
+                        <input type="file" id="source-file" accept="audio/*" onchange="handleFileLoad('source', this)">
+                        <div id="source-info" style="font-size: 10px; color: #666; margin-top: 4px;"></div>
+                    </div>
+                    <div style="margin-top: 12px;">
+                        <label>Reference Audio (Optional):</label>
+                        <input type="file" id="reference-file" accept="audio/*" onchange="handleFileLoad('reference', this)">
+                        <div id="reference-info" style="font-size: 10px; color: #666; margin-top: 4px;"></div>
                     </div>
                 </div>
-                <div class="window-body">
-                    <div class="analyzer-content">
-                        <div class="section">
-                            <h3>Audio Analysis</h3>
-                            <input type="file" id="analyze-file" accept="audio/*">
-                            <button id="analyze-button" onclick="startAnalysis()">Analyze</button>
-                        </div>
-                        
-                        <div class="section">
-                            <h3>Results</h3>
-                            <div class="results-grid">
-                                <div class="result-item">
-                                    <label>BPM:</label>
-                                    <span id="bpm-result">-</span>
-                                </div>
-                                <div class="result-item">
-                                    <label>Key:</label>
-                                    <span id="key-result">-</span>
-                                </div>
-                                <div class="result-item">
-                                    <label>Duration:</label>
-                                    <span id="duration-result">-</span>
-                                </div>
-                                <div class="result-item">
-                                    <label>Sample Rate:</label>
-                                    <span id="samplerate-result">-</span>
-                                </div>
-                            </div>
-                        </div>
 
-                        <div class="section">
-                            <h3>Frequency Analysis</h3>
-                            <canvas id="spectrum-canvas" width="400" height="200"></canvas>
-                        </div>
+                <div class="section">
+                    <h3>Mastering Controls</h3>
+                    <div class="control-group">
+                        <label>Output Level:</label>
+                        <input type="range" id="output-level" min="-6" max="0" value="-1" step="0.1" oninput="updateControl('output-level', this.value, ' dB')">
+                        <span id="output-level-value">-1.0 dB</span>
+                    </div>
+                    <div class="control-group">
+                        <label>Compression:</label>
+                        <input type="range" id="compression" min="1" max="10" value="3" oninput="updateControl('compression', this.value, '')">
+                        <span id="compression-value">3</span>
+                    </div>
+                    <div class="control-group">
+                        <label>EQ Intensity:</label>
+                        <input type="range" id="eq-intensity" min="0" max="100" value="50" step="5" oninput="updateControl('eq-intensity', this.value, '%')">
+                        <span id="eq-intensity-value">50%</span>
+                    </div>
+                    <div class="control-group">
+                        <label>Stereo Width:</label>
+                        <input type="range" id="stereo-width" min="0" max="150" value="100" step="5" oninput="updateControl('stereo-width', this.value, '%')">
+                        <span id="stereo-width-value">100%</span>
                     </div>
                 </div>
-            </div>
 
-            <!-- Settings Window -->
-            <div class="window" id="settings-window" style="display: none;">
-                <div class="title-bar">
-                    <div class="title-bar-text">System Settings</div>
-                    <div class="title-bar-controls">
-                        <button class="title-bar-control" onclick="minimizeWindow('settings-window')">_</button>
-                        <button class="title-bar-control" onclick="maximizeWindow('settings-window')">□</button>
-                        <button class="title-bar-control" onclick="closeWindow('settings-window')">×</button>
+                <div class="section">
+                    <h3>Processing</h3>
+                    <button class="master-btn" onclick="startMastering()">🎵 Master Audio</button>
+                    <div class="progress-container" id="progress-container">
+                        <div class="progress-fill" id="progress-fill"></div>
                     </div>
+                    <div id="progress-text" style="text-align: center; margin-top: 4px;"></div>
                 </div>
-                <div class="window-body">
-                    <div class="settings-content">
-                        <div class="section">
-                            <h3>Audio Settings</h3>
-                            <div class="setting-item">
-                                <label>
-                                    <input type="checkbox" id="auto-normalize" checked>
-                                    Auto-normalize output
-                                </label>
-                            </div>
-                            <div class="setting-item">
-                                <label>
-                                    <input type="checkbox" id="enable-limiting" checked>
-                                    Enable brickwall limiting
-                                </label>
-                            </div>
-                            <div class="setting-item">
-                                <label>
-                                    <input type="checkbox" id="psychoacoustic-processing" checked>
-                                    Psychoacoustic processing
-                                </label>
-                            </div>
-                        </div>
 
-                        <div class="section">
-                            <h3>Performance</h3>
-                            <div class="setting-item">
-                                <label>Buffer Size:</label>
-                                <select id="buffer-size">
-                                    <option value="512">512 samples</option>
-                                    <option value="1024" selected>1024 samples</option>
-                                    <option value="2048">2048 samples</option>
-                                    <option value="4096">4096 samples</option>
-                                </select>
-                            </div>
-                            <div class="setting-item">
-                                <label>Quality:</label>
-                                <select id="quality-setting">
-                                    <option value="draft">Draft</option>
-                                    <option value="standard" selected>Standard</option>
-                                    <option value="high">High Quality</option>
-                                    <option value="ultimate">Ultimate</option>
-                                </select>
-                            </div>
-                        </div>
+                <div class="section">
+                    <h3>Playback & Export</h3>
+                    <div style="display: flex; gap: 4px; margin-bottom: 12px;">
+                        <button onclick="playAudio('source')">▶️ Play Source</button>
+                        <button onclick="playAudio('reference')">▶️ Play Reference</button>
+                        <button onclick="playAudio('mastered')">▶️ Play Mastered</button>
+                        <button onclick="downloadAudio()">💾 Download</button>
+                    </div>
+                    <div class="visualization">
+                        <canvas id="waveform-canvas" width="400" height="100"></canvas>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Taskbar -->
-        <div class="taskbar">
-            <button class="start-button">🏠 Home</button>
-            <div class="taskbar-separator"></div>
-            <div id="task-buttons"></div>
-            <div class="system-tray">
-                <span class="volume-icon">🔊</span>
-                <span id="clock"></span>
+        <!-- Audio Analyzer Window -->
+        <div class="window" id="analyzer-window" style="top: 150px; left: 250px;">
+            <div class="title-bar">
+                <div class="title-text">Audio Analyzer - BPM & Key Detection</div>
+                <div class="title-controls">
+                    <div class="title-btn" onclick="minimizeWindow('analyzer-window')">_</div>
+                    <div class="title-btn" onclick="maximizeWindow('analyzer-window')">□</div>
+                    <div class="title-btn" onclick="closeWindow('analyzer-window')">×</div>
+                </div>
             </div>
+            <div class="window-content">
+                <div class="section">
+                    <h3>Audio Analysis</h3>
+                    <input type="file" id="analyze-file" accept="audio/*" onchange="handleFileLoad('analyze', this)">
+                    <button onclick="startAnalysis()" style="margin-top: 8px;">📊 Analyze Audio</button>
+                </div>
+
+                <div class="section">
+                    <h3>Results</h3>
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <span>BPM:</span>
+                            <span class="result-value" id="bpm-result">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span>Key:</span>
+                            <span class="result-value" id="key-result">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span>Duration:</span>
+                            <span class="result-value" id="duration-result">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span>Sample Rate:</span>
+                            <span class="result-value" id="samplerate-result">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>Frequency Spectrum</h3>
+                    <div class="visualization">
+                        <canvas id="spectrum-canvas" width="400" height="180"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Window -->
+        <div class="window" id="settings-window" style="top: 200px; left: 300px;">
+            <div class="title-bar">
+                <div class="title-text">System Settings</div>
+                <div class="title-controls">
+                    <div class="title-btn" onclick="minimizeWindow('settings-window')">_</div>
+                    <div class="title-btn" onclick="maximizeWindow('settings-window')">□</div>
+                    <div class="title-btn" onclick="closeWindow('settings-window')">×</div>
+                </div>
+            </div>
+            <div class="window-content">
+                <div class="section">
+                    <h3>Audio Processing</h3>
+                    <div style="margin: 8px 0;">
+                        <label><input type="checkbox" id="auto-normalize" checked onchange="logSetting('Auto Normalize', this.checked)"> Auto-normalize output</label>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <label><input type="checkbox" id="enable-limiting" checked onchange="logSetting('Brickwall Limiting', this.checked)"> Enable brickwall limiting</label>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <label><input type="checkbox" id="psychoacoustic" checked onchange="logSetting('Psychoacoustic Processing', this.checked)"> Psychoacoustic processing</label>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>Performance</h3>
+                    <div class="control-group">
+                        <label>Buffer Size:</label>
+                        <select id="buffer-size" onchange="logSetting('Buffer Size', this.value)">
+                            <option value="512">512 samples</option>
+                            <option value="1024" selected>1024 samples</option>
+                            <option value="2048">2048 samples</option>
+                            <option value="4096">4096 samples</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Quality:</label>
+                        <select id="quality" onchange="logSetting('Quality', this.value)">
+                            <option value="draft">Draft</option>
+                            <option value="standard" selected>Standard</option>
+                            <option value="high">High Quality</option>
+                            <option value="ultimate">Ultimate</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live console output -->
+        <div class="console-output" id="console-output">
+            <div style="color: #ffffff; font-weight: bold; margin-bottom: 5px;">🖥️ STUDIO BUDDY CONSOLE</div>
+            <div id="console-log"></div>
         </div>
     </div>
 
-    <!-- Embedded functionality to bypass file loading issues -->
+    <!-- JavaScript -->
     <script>
-        console.log('📄 Main app loading with embedded scripts...');
-        console.log('📍 Current time:', new Date().toISOString());
-        console.log('🌐 User agent:', navigator.userAgent);
-        console.log('🔗 Page URL:', window.location.href);
+        console.log('🚀 Studio Buddy Web - Redesigned Homepage Loading...');
         
-        // Simple working functions embedded directly
-        function openDesktopWindow(windowId) {
-            console.log('🖱️ Desktop icon clicked:', windowId);
-            const windowElement = document.getElementById(windowId + '-window');
-            console.log('🔍 Looking for element:', windowId + '-window');
-            console.log('🔍 Element found:', !!windowElement);
+        // Global state
+        let isInitialized = false;
+        let audioContext = null;
+        let currentAudio = null;
+        
+        // Console logging system
+        function logToConsole(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('console-log');
+            const colors = {
+                info: '#00ff00',
+                hover: '#00aaff', 
+                click: '#ffff00',
+                success: '#00ff88',
+                error: '#ff4444'
+            };
             
+            const logEntry = `<div style="color: ${colors[type]};">[${timestamp}] ${message}</div>`;
+            logElement.innerHTML += logEntry;
+            logElement.scrollTop = logElement.scrollHeight;
+            
+            // Also log to browser console
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // Hover detection
+        function logHover(appName) {
+            logToConsole(`🖱️ HOVER: ${appName} icon`, 'hover');
+        }
+
+        function logHoverOut(appName) {
+            logToConsole(`⬅️ HOVER OUT: ${appName} icon`, 'hover');
+        }
+
+        // Click handling
+        function handleIconClick(appId) {
+            logToConsole(`🎯 CLICK DETECTED: ${appId} icon clicked!`, 'click');
+            
+            const windowElement = document.getElementById(appId + '-window');
             if (windowElement) {
-                console.log('📦 Current display style:', windowElement.style.display);
                 windowElement.style.display = 'flex';
-                windowElement.style.position = 'fixed';
-                windowElement.style.zIndex = '200';
-                
-                // Position windows in cascade style
-                const openWindows = document.querySelectorAll('.window[style*="flex"]').length;
-                const offset = openWindows * 30;
-                windowElement.style.left = (50 + offset) + 'px';
-                windowElement.style.top = (50 + offset) + 'px';
-                
-                console.log('✅ Window opened and positioned:', windowId);
-                
-                // Make active
-                document.querySelectorAll('.title-bar').forEach(bar => bar.classList.remove('active'));
-                const titleBar = windowElement.querySelector('.title-bar');
-                if (titleBar) titleBar.classList.add('active');
-                
+                bringToFront(windowElement);
+                logToConsole(`✅ SUCCESS: ${appId} window opened`, 'success');
             } else {
-                console.error('❌ Window not found:', windowId + '-window');
-                const allWindows = document.querySelectorAll('.window');
-                console.log('🔍 Available windows:', Array.from(allWindows).map(w => w.id));
+                logToConsole(`❌ ERROR: ${appId} window not found`, 'error');
             }
         }
-        
-        // Studio Buddy functionality
-        function startMastering() {
-            console.log('🎵 Starting audio mastering process...');
-            
-            const progressContainer = document.getElementById('progress-container');
-            const progressFill = document.getElementById('progress-fill');
-            const progressText = document.getElementById('progress-text');
-            
-            if (progressContainer) {
-                progressContainer.style.display = 'block';
-                
-                let progress = 0;
-                const interval = setInterval(() => {
-                    progress += Math.random() * 15;
-                    if (progress >= 100) {
-                        progress = 100;
-                        clearInterval(interval);
-                        progressText.textContent = 'Mastering Complete!';
-                        console.log('✅ Audio mastering completed successfully');
-                    } else {
-                        progressText.textContent = `Processing... ${Math.round(progress)}%`;
-                    }
-                    progressFill.style.width = progress + '%';
-                }, 200);
-                
-                console.log('🔄 Matchering algorithm processing with psychoacoustic analysis...');
-            }
-        }
-        
-        // Audio Analyzer functionality
-        function startAnalysis() {
-            console.log('📊 Starting audio analysis...');
-            
-            setTimeout(() => {
-                const bpmResult = document.getElementById('bpm-result');
-                const keyResult = document.getElementById('key-result');
-                const durationResult = document.getElementById('duration-result');
-                const samplerateResult = document.getElementById('samplerate-result');
-                
-                if (bpmResult) bpmResult.textContent = '128 BPM';
-                if (keyResult) keyResult.textContent = 'A Minor';
-                if (durationResult) durationResult.textContent = '3:24';
-                if (samplerateResult) samplerateResult.textContent = '44.1 kHz';
-                
-                // Draw mock spectrum
-                const canvas = document.getElementById('spectrum-canvas');
-                if (canvas) {
-                    const ctx = canvas.getContext('2d');
-                    const width = canvas.width;
-                    const height = canvas.height;
-                    
-                    ctx.fillStyle = '#000';
-                    ctx.fillRect(0, 0, width, height);
-                    
-                    const barWidth = width / 64;
-                    ctx.fillStyle = '#00ff00';
-                    
-                    for (let i = 0; i < 64; i++) {
-                        const barHeight = Math.random() * height * 0.8;
-                        ctx.fillRect(i * barWidth, height - barHeight, barWidth - 1, barHeight);
-                    }
-                }
-                
-                console.log('✅ Audio analysis completed: 128 BPM, A Minor, 3:24 duration');
-            }, 1500);
-            
-            console.log('🔄 Analyzing BPM, key, and frequency spectrum...');
-        }
-        
-        // Setup control interactivity
-        function setupControls() {
-            const sliders = [
-                { id: 'output-level', valueId: 'output-level-value', suffix: ' dB' },
-                { id: 'compression', valueId: 'compression-value', suffix: '' },
-                { id: 'eq-intensity', valueId: 'eq-intensity-value', suffix: '%' },
-                { id: 'stereo-width', valueId: 'stereo-width-value', suffix: '%' }
-            ];
-            
-            sliders.forEach(slider => {
-                const element = document.getElementById(slider.id);
-                const valueElement = document.getElementById(slider.valueId);
-                
-                if (element && valueElement) {
-                    element.addEventListener('input', (e) => {
-                        valueElement.textContent = e.target.value + slider.suffix;
-                        console.log(`🎛️ ${slider.id} adjusted to: ${e.target.value}${slider.suffix}`);
-                    });
-                }
-            });
-            
-            // File inputs
-            const sourceFile = document.getElementById('source-file');
-            if (sourceFile) {
-                sourceFile.addEventListener('change', (e) => {
-                    if (e.target.files[0]) {
-                        const info = `${e.target.files[0].name} - ${Math.round(e.target.files[0].size/1024)}KB`;
-                        const infoElement = document.getElementById('source-info');
-                        if (infoElement) infoElement.textContent = info;
-                        console.log(`📁 Source file loaded: ${e.target.files[0].name}`);
-                    }
-                });
-            }
-            
-            const referenceFile = document.getElementById('reference-file');
-            if (referenceFile) {
-                referenceFile.addEventListener('change', (e) => {
-                    if (e.target.files[0]) {
-                        const info = `${e.target.files[0].name} - ${Math.round(e.target.files[0].size/1024)}KB`;
-                        const infoElement = document.getElementById('reference-info');
-                        if (infoElement) infoElement.textContent = info;
-                        console.log(`📁 Reference file loaded: ${e.target.files[0].name}`);
-                    }
-                });
-            }
-            
-            const analyzeFile = document.getElementById('analyze-file');
-            if (analyzeFile) {
-                analyzeFile.addEventListener('change', (e) => {
-                    if (e.target.files[0]) {
-                        console.log(`📁 Analysis file loaded: ${e.target.files[0].name}`);
-                    }
-                });
-            }
-            
-            console.log('🎛️ All controls initialized and interactive');
-        }
-    </script>
-    
-    <!-- Simple initialization using embedded functions -->
-    <script>
-        // Initialize when page loads
-        window.addEventListener('load', () => {
-            console.log('🚀 Studio Buddy Web main app initializing...');
-            
-            // Setup interactive controls
-            setupControls();
-            
-            // Test that windows exist
-            const windowIds = ['studio-buddy', 'analyzer', 'settings'];
-            windowIds.forEach(id => {
-                const element = document.getElementById(id + '-window');
-                console.log(`Window ${id}:`, !!element);
-            });
-            
-            console.log('✅ Main app ready - all embedded functionality active');
-        });
-        
-        // Window control functions for title bar buttons
+
+        // Window management
         function closeWindow(windowId) {
             const windowElement = document.getElementById(windowId);
             if (windowElement) {
                 windowElement.style.display = 'none';
-                console.log('🗝️ Window closed:', windowId);
+                logToConsole(`🗝️ WINDOW CLOSED: ${windowId}`, 'info');
             }
         }
 
@@ -429,7 +606,7 @@
             const windowElement = document.getElementById(windowId);
             if (windowElement) {
                 windowElement.style.display = 'none';
-                console.log('➖ Window minimized:', windowId);
+                logToConsole(`➖ WINDOW MINIMIZED: ${windowId}`, 'info');
             }
         }
 
@@ -437,9 +614,204 @@
             const windowElement = document.getElementById(windowId);
             if (windowElement) {
                 windowElement.classList.toggle('maximized');
-                console.log('⬜ Window maximized/restored:', windowId);
+                logToConsole(`⬜ WINDOW MAXIMIZED: ${windowId}`, 'info');
             }
         }
+
+        function bringToFront(windowElement) {
+            // Reset all windows z-index
+            document.querySelectorAll('.window').forEach(w => {
+                w.style.zIndex = '100';
+                const titleBar = w.querySelector('.title-bar');
+                if (titleBar) titleBar.classList.add('inactive');
+            });
+            
+            // Bring clicked window to front
+            windowElement.style.zIndex = '200';
+            const titleBar = windowElement.querySelector('.title-bar');
+            if (titleBar) titleBar.classList.remove('inactive');
+        }
+
+        // Control updates
+        function updateControl(controlId, value, suffix) {
+            const valueElement = document.getElementById(controlId + '-value');
+            if (valueElement) {
+                valueElement.textContent = value + suffix;
+                logToConsole(`🎛️ CONTROL: ${controlId} set to ${value}${suffix}`, 'info');
+            }
+        }
+
+        // File handling
+        function handleFileLoad(type, input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const size = Math.round(file.size / 1024);
+                const info = `${file.name} (${size}KB)`;
+                
+                const infoElement = document.getElementById(type + '-info');
+                if (infoElement) {
+                    infoElement.textContent = info;
+                }
+                
+                logToConsole(`📁 FILE LOADED: ${type} - ${info}`, 'success');
+            }
+        }
+
+        // Audio processing
+        function startMastering() {
+            logToConsole('🎵 MASTERING: Starting audio mastering process...', 'click');
+            
+            const progressContainer = document.getElementById('progress-container');
+            const progressFill = document.getElementById('progress-fill');
+            const progressText = document.getElementById('progress-text');
+            
+            progressContainer.style.display = 'block';
+            progressText.textContent = 'Initializing Matchering algorithm...';
+            
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 12 + 3;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    progressText.textContent = '✅ Mastering Complete!';
+                    logToConsole('✅ MASTERING: Audio mastering completed successfully!', 'success');
+                    setTimeout(() => {
+                        progressContainer.style.display = 'none';
+                        drawWaveform();
+                    }, 2000);
+                } else {
+                    progressText.textContent = `Processing... ${Math.round(progress)}%`;
+                }
+                progressFill.style.width = progress + '%';
+            }, 200);
+            
+            logToConsole('🔄 MASTERING: Applying psychoacoustic processing...', 'info');
+        }
+
+        function startAnalysis() {
+            logToConsole('📊 ANALYSIS: Starting audio analysis...', 'click');
+            
+            setTimeout(() => {
+                // Set realistic results
+                document.getElementById('bpm-result').textContent = '128 BPM';
+                document.getElementById('key-result').textContent = 'A Minor';
+                document.getElementById('duration-result').textContent = '3:24';
+                document.getElementById('samplerate-result').textContent = '44.1 kHz';
+                
+                drawSpectrum();
+                logToConsole('✅ ANALYSIS: Detected 128 BPM, A Minor key', 'success');
+            }, 1500);
+            
+            logToConsole('🔄 ANALYSIS: Analyzing BPM and musical key...', 'info');
+        }
+
+        // Audio playback simulation
+        function playAudio(type) {
+            logToConsole(`▶️ PLAYBACK: Playing ${type} audio`, 'click');
+            
+            // Stop any currently playing audio
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+            
+            // In a real implementation, this would play actual audio
+            setTimeout(() => {
+                logToConsole(`⏹️ PLAYBACK: ${type} audio finished`, 'info');
+            }, 3000);
+        }
+
+        function downloadAudio() {
+            logToConsole('💾 DOWNLOAD: Preparing mastered audio download...', 'click');
+            
+            // Simulate download preparation
+            setTimeout(() => {
+                logToConsole('✅ DOWNLOAD: Audio file ready for download', 'success');
+            }, 1000);
+        }
+
+        // Settings
+        function logSetting(setting, value) {
+            logToConsole(`⚙️ SETTING: ${setting} = ${value}`, 'info');
+        }
+
+        // Visualizations
+        function drawWaveform() {
+            const canvas = document.getElementById('waveform-canvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw waveform
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            
+            for (let i = 0; i < width; i++) {
+                const amplitude = Math.sin(i * 0.02) * Math.random() * height * 0.4;
+                const y = height / 2 + amplitude;
+                
+                if (i === 0) {
+                    ctx.moveTo(i, y);
+                } else {
+                    ctx.lineTo(i, y);
+                }
+            }
+            
+            ctx.stroke();
+            logToConsole('📈 VISUALIZATION: Waveform rendered', 'info');
+        }
+
+        function drawSpectrum() {
+            const canvas = document.getElementById('spectrum-canvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw spectrum bars
+            const barWidth = width / 64;
+            ctx.fillStyle = '#00ff00';
+            
+            for (let i = 0; i < 64; i++) {
+                const barHeight = Math.random() * height * 0.8;
+                ctx.fillRect(i * barWidth, height - barHeight, barWidth - 1, barHeight);
+            }
+            
+            logToConsole('📊 VISUALIZATION: Frequency spectrum rendered', 'info');
+        }
+
+        // Initialize application
+        window.addEventListener('load', () => {
+            logToConsole('🚀 SYSTEM: Studio Buddy Web initialized', 'success');
+            logToConsole('📍 URL: ' + window.location.href, 'info');
+            logToConsole('🌐 User Agent: ' + navigator.userAgent.substring(0, 50) + '...', 'info');
+            logToConsole('🎯 Ready for interaction - hover and click icons!', 'info');
+            
+            isInitialized = true;
+            
+            // Test hover and click detection
+            logToConsole('🧪 Testing hover detection on page load...', 'info');
+        });
+
+        // Error handling
+        window.addEventListener('error', (event) => {
+            logToConsole(`❌ ERROR: ${event.message}`, 'error');
+        });
+
+        logToConsole('📄 SCRIPT: Main script loaded successfully', 'success');
     </script>
 </body>
 </html>
