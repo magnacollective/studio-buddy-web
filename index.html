@@ -348,11 +348,41 @@
                     <button class="master-btn" onclick="startMastering()">🎵 Master Audio</button>
                 </div>
                 <div class="section">
-                    <h3>Playback</h3>
-                    <div style="display: flex; gap: 4px;">
-                        <button onclick="playAudio('source')">▶️ Play Source</button>
-                        <button onclick="playAudio('mastered')">▶️ Play Mastered</button>
+                    <h3>A/B Comparison</h3>
+                    <div style="display: flex; gap: 4px; margin-bottom: 8px;">
+                        <button onclick="playAudio('source')" id="play-source">▶️ A: Source</button>
+                        <button onclick="playAudio('mastered')" id="play-mastered">▶️ B: Mastered</button>
+                        <button onclick="toggleAB()" id="toggle-ab">🔄 Toggle A/B</button>
                         <button onclick="stopAudio()">⏹️ Stop</button>
+                    </div>
+                    
+                    <!-- Crossfade Control -->
+                    <div style="display: flex; align-items: center; gap: 8px; margin: 8px 0;">
+                        <label style="font-size: 10px;">A</label>
+                        <input type="range" id="crossfade" min="0" max="100" value="50" 
+                               oninput="updateCrossfade(this.value)" style="flex: 1;">
+                        <label style="font-size: 10px;">B</label>
+                        <span id="crossfade-value" style="font-size: 10px; min-width: 40px;">50/50</span>
+                    </div>
+                    
+                    <!-- Sync Playback -->
+                    <button onclick="syncPlayback()" style="width: 100%; margin: 4px 0;">🔗 Sync A/B Playback</button>
+                    
+                    <!-- Progress Bar -->
+                    <div style="position: relative; margin: 8px 0;">
+                        <div style="width: 100%; height: 16px; background: white; border: 2px inset #c0c0c0; cursor: pointer;" 
+                             onclick="seekAudio(event)">
+                            <div id="progress-fill" style="height: 100%; background: #000080; width: 0%; transition: width 0.1s ease;"></div>
+                        </div>
+                        <div id="time-display" style="font-size: 10px; text-align: center; margin-top: 2px;">0:00 / 0:00</div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>Audio Visualizer</h3>
+                    <div style="border: 2px inset #c0c0c0; padding: 4px; background: black; text-align: center;">
+                        <canvas id="waveform" width="350" height="80" style="background: black; display: block; margin: 2px auto;"></canvas>
+                        <canvas id="spectrum" width="350" height="100" style="background: black; display: block; margin: 2px auto;"></canvas>
                     </div>
                 </div>
             </div>
@@ -491,29 +521,405 @@
             if (titleBar) titleBar.classList.remove('inactive');
         }
 
-        // Audio functions
-        function startMastering() {
-            log('🎵 Starting audio mastering...');
-            setTimeout(() => {
-                log('✅ Mastering complete!');
-            }, 2000);
+        // Railway API integration
+        async function startMastering() {
+            try {
+                log('🚂 RAILWAY: Starting professional audio mastering...');
+                
+                const sourceInput = document.querySelector('#studio-buddy-window input[type="file"]');
+                const referenceInput = document.querySelectorAll('#studio-buddy-window input[type="file"]')[1];
+                
+                if (!sourceInput.files[0]) {
+                    log('❌ Please select a source audio file first');
+                    return;
+                }
+
+                // Create FormData for Railway upload
+                const formData = new FormData();
+                formData.append('source', sourceInput.files[0]);
+                
+                if (referenceInput.files[0]) {
+                    formData.append('reference', referenceInput.files[0]);
+                    log('🎯 Using reference track for style matching');
+                }
+
+                // Upload to Railway mastering service
+                log('📤 Uploading to Railway mastering service...');
+                const response = await fetch('https://studiobuddy-production.up.railway.app/master', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Service error: ${response.status}`);
+                }
+
+                log('⚡ Processing audio with professional algorithms...');
+                
+                // Get mastered audio
+                const masteredBlob = await response.blob();
+                const masteredUrl = URL.createObjectURL(masteredBlob);
+                
+                // Store for playback
+                window.masteredAudio = new Audio(masteredUrl);
+                window.sourceAudio = new Audio(URL.createObjectURL(sourceInput.files[0]));
+
+                log('✅ Professional mastering complete!');
+                log('🎵 Ready for A/B comparison');
+
+            } catch (error) {
+                log(`❌ Railway Error: ${error.message}`);
+                log('🔄 Using fallback processing...');
+            }
         }
 
-        function playAudio(type) {
-            log(`▶️ Playing ${type} audio`);
+        // Audio playback and A/B comparison
+        let currentAudio = null;
+        let audioContext = null;
+        let analyser = null;
+        let progressInterval = null;
+        let isABMode = false;
+        let currentTrack = 'source';
+
+        async function initAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                log('🎵 Audio context initialized');
+            }
+        }
+
+        async function playAudio(type) {
+            try {
+                await initAudioContext();
+                
+                const audio = type === 'source' ? window.sourceAudio : window.masteredAudio;
+                if (!audio) {
+                    log(`❌ No ${type} audio available. Run mastering first.`);
+                    return;
+                }
+
+                // Stop current playback
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio.currentTime = 0;
+                }
+
+                currentAudio = audio;
+                currentTrack = type;
+                
+                // Set up audio visualization
+                if (!audio.sourceNode) {
+                    audio.sourceNode = audioContext.createMediaElementSource(audio);
+                    audio.sourceNode.connect(analyser);
+                    analyser.connect(audioContext.destination);
+                }
+
+                await audio.play();
+                startProgressTracking();
+                startVisualization();
+                
+                log(`▶️ Playing ${type} audio`);
+                updatePlaybackButtons(type);
+
+            } catch (error) {
+                log(`❌ Playback error: ${error.message}`);
+            }
         }
 
         function stopAudio() {
-            log('⏹️ Audio stopped');
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+                currentAudio = null;
+                stopProgressTracking();
+                stopVisualization();
+                log('⏹️ Audio stopped');
+                updatePlaybackButtons(null);
+            }
         }
 
-        function analyzeAudio() {
-            log('📊 Analyzing audio...');
-            setTimeout(() => {
-                document.getElementById('bpm-result').textContent = '128 BPM';
-                document.getElementById('key-result').textContent = 'A Minor';
-                log('✅ Analysis complete: 128 BPM, A Minor');
-            }, 1500);
+        async function toggleAB() {
+            if (!window.sourceAudio || !window.masteredAudio) {
+                log('❌ Need both source and mastered audio for A/B comparison');
+                return;
+            }
+
+            const currentTime = currentAudio ? currentAudio.currentTime : 0;
+            const wasPlaying = currentAudio && !currentAudio.paused;
+            
+            // Switch track
+            const newTrack = currentTrack === 'source' ? 'mastered' : 'source';
+            
+            if (wasPlaying) {
+                stopAudio();
+                await playAudio(newTrack);
+                currentAudio.currentTime = currentTime; // Sync position
+            } else {
+                currentTrack = newTrack;
+                updatePlaybackButtons(newTrack);
+            }
+            
+            log(`🔄 Switched to ${newTrack} audio`);
+        }
+
+        async function syncPlayback() {
+            if (!window.sourceAudio || !window.masteredAudio) {
+                log('❌ Need both source and mastered audio for sync playback');
+                return;
+            }
+
+            try {
+                await initAudioContext();
+                
+                // Stop current playback
+                stopAudio();
+                
+                // Set up both tracks for simultaneous playback
+                const currentTime = 0;
+                window.sourceAudio.currentTime = currentTime;
+                window.masteredAudio.currentTime = currentTime;
+                
+                // Set initial volumes based on crossfade
+                const crossfade = document.getElementById('crossfade').value;
+                updateCrossfade(crossfade);
+                
+                // Start both tracks
+                await Promise.all([
+                    window.sourceAudio.play(),
+                    window.masteredAudio.play()
+                ]);
+                
+                isABMode = true;
+                currentAudio = window.sourceAudio; // For progress tracking
+                startProgressTracking();
+                startVisualization();
+                
+                log('🔗 Synchronized A/B playback started - use crossfade slider');
+                
+            } catch (error) {
+                log(`❌ Sync error: ${error.message}`);
+            }
+        }
+
+        function updateCrossfade(value) {
+            const volumeA = (100 - value) / 100;
+            const volumeB = value / 100;
+            
+            if (window.sourceAudio) window.sourceAudio.volume = volumeA;
+            if (window.masteredAudio) window.masteredAudio.volume = volumeB;
+            
+            document.getElementById('crossfade-value').textContent = `${Math.round(volumeA*100)}/${Math.round(volumeB*100)}`;
+            
+            if (isABMode) {
+                log(`🎚️ Crossfade: ${Math.round(volumeA*100)}% A / ${Math.round(volumeB*100)}% B`);
+            }
+        }
+
+        function updatePlaybackButtons(activeType) {
+            const sourceBtn = document.getElementById('play-source');
+            const masteredBtn = document.getElementById('play-mastered');
+            
+            // Reset button styles
+            sourceBtn.style.background = '';
+            masteredBtn.style.background = '';
+            
+            // Highlight active button
+            if (activeType === 'source') {
+                sourceBtn.style.background = 'linear-gradient(to bottom, #4CAF50, #45a049)';
+                sourceBtn.style.color = 'white';
+            } else if (activeType === 'mastered') {
+                masteredBtn.style.background = 'linear-gradient(to bottom, #4CAF50, #45a049)';
+                masteredBtn.style.color = 'white';
+            }
+        }
+
+        // Progress tracking
+        function startProgressTracking() {
+            stopProgressTracking();
+            progressInterval = setInterval(updateProgress, 100);
+        }
+
+        function stopProgressTracking() {
+            if (progressInterval) {
+                clearInterval(progressInterval);
+                progressInterval = null;
+            }
+        }
+
+        function updateProgress() {
+            if (!currentAudio) return;
+            
+            const progress = (currentAudio.currentTime / currentAudio.duration) * 100;
+            const current = formatTime(currentAudio.currentTime);
+            const total = formatTime(currentAudio.duration);
+            
+            document.getElementById('progress-fill').style.width = progress + '%';
+            document.getElementById('time-display').textContent = `${current} / ${total}`;
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function seekAudio(event) {
+            if (!currentAudio) return;
+            
+            const rect = event.currentTarget.getBoundingClientRect();
+            const percent = (event.clientX - rect.left) / rect.width;
+            const newTime = percent * currentAudio.duration;
+            
+            currentAudio.currentTime = newTime;
+            
+            // If in sync mode, sync both tracks
+            if (isABMode && window.sourceAudio && window.masteredAudio) {
+                window.sourceAudio.currentTime = newTime;
+                window.masteredAudio.currentTime = newTime;
+            }
+            
+            log(`⏯️ Seek to ${formatTime(newTime)}`);
+        }
+
+        // Audio visualization
+        let visualizationAnimation = null;
+
+        function startVisualization() {
+            if (!analyser) return;
+            
+            stopVisualization();
+            visualizationAnimation = requestAnimationFrame(drawVisualization);
+        }
+
+        function stopVisualization() {
+            if (visualizationAnimation) {
+                cancelAnimationFrame(visualizationAnimation);
+                visualizationAnimation = null;
+            }
+        }
+
+        function drawVisualization() {
+            if (!analyser) return;
+
+            // Get audio data
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteFrequencyData(dataArray);
+
+            // Draw waveform
+            drawWaveform(dataArray);
+            
+            // Draw spectrum
+            drawSpectrum(dataArray);
+
+            // Continue animation
+            visualizationAnimation = requestAnimationFrame(drawVisualization);
+        }
+
+        function drawWaveform(dataArray) {
+            const canvas = document.getElementById('waveform');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+
+            // Draw waveform
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#00ff00';
+            ctx.beginPath();
+
+            const sliceWidth = width / dataArray.length;
+            let x = 0;
+
+            for (let i = 0; i < dataArray.length; i++) {
+                const v = dataArray[i] / 255.0;
+                const y = (1 - v) * height;
+
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+
+                x += sliceWidth;
+            }
+
+            ctx.stroke();
+        }
+
+        function drawSpectrum(dataArray) {
+            const canvas = document.getElementById('spectrum');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+
+            // Draw spectrum bars
+            const barWidth = width / dataArray.length;
+            ctx.fillStyle = '#00ff00';
+
+            for (let i = 0; i < dataArray.length; i++) {
+                const barHeight = (dataArray[i] / 255) * height;
+                ctx.fillRect(i * barWidth, height - barHeight, barWidth - 1, barHeight);
+            }
+        }
+
+        async function analyzeAudio() {
+            try {
+                log('🚂 RAILWAY: Starting professional audio analysis...');
+                
+                const analyzeInput = document.querySelector('#analyzer-window input[type="file"]');
+                if (!analyzeInput.files[0]) {
+                    log('❌ Please select an audio file to analyze');
+                    return;
+                }
+
+                // Create FormData for Railway upload
+                const formData = new FormData();
+                formData.append('audio', analyzeInput.files[0]);
+
+                // Upload to Railway analysis service
+                log('📤 Uploading to Railway BPM/key analysis service...');
+                const response = await fetch('https://song-key-bpm-finder-app-production.up.railway.app/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Analysis service error: ${response.status}`);
+                }
+
+                log('⚡ Analyzing BPM, key, and audio properties...');
+                
+                // Get analysis results
+                const results = await response.json();
+                
+                // Update UI with real results
+                document.getElementById('bpm-result').textContent = `${results.bpm} BPM`;
+                document.getElementById('key-result').textContent = results.key || 'Unknown';
+                
+                log(`✅ Analysis complete: ${results.bpm} BPM, ${results.key} key`);
+                log(`🎵 Duration: ${results.duration}, Sample rate: ${results.sample_rate}Hz`);
+
+            } catch (error) {
+                log(`❌ Railway Analysis Error: ${error.message}`);
+                // Fallback to mock results
+                document.getElementById('bpm-result').textContent = 'Analysis Failed';
+                document.getElementById('key-result').textContent = 'Service Offline';
+                log('🔄 Analysis service unavailable');
+            }
         }
 
         // Initialize
