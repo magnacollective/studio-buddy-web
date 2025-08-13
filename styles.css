@@ -85,6 +85,8 @@ body {
     padding: 8px;
     cursor: pointer;
     border: 2px solid transparent;
+    user-select: none;
+    z-index: 5;
 }
 
 .desktop-icon:hover {

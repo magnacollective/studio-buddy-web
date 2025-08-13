@@ -35,7 +35,10 @@ class StudioBuddyApp {
         // Desktop icon clicks
         document.querySelectorAll('.desktop-icon').forEach(icon => {
             icon.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation(); // Prevent event bubbling
                 const windowId = e.currentTarget.dataset.window;
+                console.log('Desktop icon clicked:', windowId);
                 this.openWindow(windowId);
             });
         });
@@ -414,9 +417,11 @@ class StudioBuddyApp {
     }
 
     openWindow(windowId) {
-        const window = document.getElementById(windowId + '-window');
-        if (window) {
-            window.style.display = 'flex';
+        console.log('Opening window:', windowId);
+        const windowElement = document.getElementById(windowId + '-window');
+        console.log('Window element found:', !!windowElement);
+        if (windowElement) {
+            windowElement.style.display = 'flex';
             this.addTaskButton(windowId);
             this.setActiveWindow(windowId);
         }
@@ -469,21 +474,21 @@ class StudioBuddyApp {
     }
 
     setActiveWindow(windowId) {
-        document.querySelectorAll('.window').forEach(window => {
-            window.style.zIndex = '10';
+        document.querySelectorAll('.window').forEach(windowElement => {
+            windowElement.style.zIndex = '10';
         });
         
-        const window = document.getElementById(windowId + '-window');
-        if (window) {
-            window.style.zIndex = '11';
+        const windowElement = document.getElementById(windowId + '-window');
+        if (windowElement) {
+            windowElement.style.zIndex = '11';
             this.setActiveTaskButton(windowId);
         }
     }
 
     toggleWindow(windowId) {
-        const window = document.getElementById(windowId + '-window');
-        if (window.style.display === 'none') {
-            window.style.display = 'flex';
+        const windowElement = document.getElementById(windowId + '-window');
+        if (windowElement.style.display === 'none') {
+            windowElement.style.display = 'flex';
             this.setActiveWindow(windowId);
         } else {
             this.setActiveWindow(windowId);
