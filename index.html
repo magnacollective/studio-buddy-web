@@ -535,6 +535,20 @@
                     return;
                 }
 
+                // Check file size (limit to 25MB for better compatibility)
+                const maxSize = 25 * 1024 * 1024; // 25MB in bytes
+                if (sourceInput.files[0].size > maxSize) {
+                    log(`❌ File too large: ${Math.round(sourceInput.files[0].size/1024/1024)}MB. Please use files under 25MB.`);
+                    return;
+                }
+
+                // Check file type
+                const allowedTypes = ['audio/mp3', 'audio/mpeg', 'audio/wav', 'audio/wave', 'audio/x-wav', 'audio/flac', 'audio/ogg'];
+                if (!allowedTypes.includes(sourceInput.files[0].type) && !sourceInput.files[0].name.match(/\.(mp3|wav|flac|ogg)$/i)) {
+                    log(`❌ Unsupported file type: ${sourceInput.files[0].type}. Please use MP3, WAV, FLAC, or OGG files.`);
+                    return;
+                }
+
                 // Create FormData for Railway upload - use single parameter name
                 const formData = new FormData();
                 formData.append('audio', sourceInput.files[0]);
