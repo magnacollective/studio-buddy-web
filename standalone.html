@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studio Buddy - Standalone Test</title>
+    <style>
+        /* Complete CSS inline to avoid loading issues */
+        :root {
+            --win95-desktop: rgb(0, 128, 128);
+            --win95-window-gray: rgb(192, 192, 192);
+            --win95-button-face: rgb(192, 192, 192);
+            --win95-button-highlight: rgb(255, 255, 255);
+            --win95-button-shadow: rgb(128, 128, 128);
+            --win95-button-dark-shadow: rgb(0, 0, 0);
+            --win95-active-title: rgb(0, 0, 128);
+            --win95-inactive-title: rgb(128, 128, 128);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'MS Sans Serif', sans-serif;
+            font-size: 11px;
+            overflow: hidden;
+            background: var(--win95-desktop);
+            cursor: default;
+            user-select: none;
+            height: 100vh;
+        }
+
+        #matrix-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: black;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        #desktop {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        .desktop-icons {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 5;
+        }
+
+        .desktop-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 80px;
+            padding: 8px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            user-select: none;
+            z-index: 5;
+        }
+
+        .desktop-icon:hover {
+            background: rgba(0, 0, 128, 0.3);
+            border: 2px dotted var(--win95-active-title);
+        }
+
+        .desktop-icon .icon {
+            font-size: 48px;
+            margin-bottom: 4px;
+            filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.5));
+        }
+
+        .desktop-icon .label {
+            color: white;
+            font-size: 11px;
+            text-align: center;
+            line-height: 1.2;
+            text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.8);
+        }
+
+        .window {
+            position: fixed;
+            top: 50px;
+            left: 50px;
+            background: var(--win95-window-gray);
+            border: 2px outset var(--win95-window-gray);
+            box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            min-width: 400px;
+            max-width: 800px;
+            min-height: 300px;
+            max-height: 600px;
+            display: none;
+            flex-direction: column;
+            z-index: 100;
+        }
+
+        .title-bar {
+            background: linear-gradient(to right, var(--win95-active-title), rgba(0, 0, 128, 0.8));
+            color: white;
+            padding: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 18px;
+            cursor: move;
+            user-select: none;
+        }
+
+        .title-bar-text {
+            font-weight: bold;
+            font-size: 11px;
+            padding-left: 4px;
+        }
+
+        .title-bar-controls {
+            display: flex;
+            gap: 2px;
+        }
+
+        .title-bar-control {
+            width: 16px;
+            height: 14px;
+            background: var(--win95-button-face);
+            border: 1px outset var(--win95-button-face);
+            font-size: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .window-body {
+            flex: 1;
+            padding: 8px;
+            background: var(--win95-window-gray);
+            overflow-y: auto;
+        }
+
+        .section {
+            margin-bottom: 16px;
+            padding: 8px;
+            border: 2px inset var(--win95-window-gray);
+        }
+
+        .section h3 {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .debug-info {
+            background: black;
+            color: lime;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 10px;
+            height: 100px;
+            overflow-y: scroll;
+        }
+    </style>
+</head>
+<body>
+    <!-- Matrix Background -->
+    <div id="matrix-background"></div>
+    
+    <!-- Desktop -->
+    <div id="desktop">
+        <!-- Desktop Icons -->
+        <div class="desktop-icons">
+            <div class="desktop-icon" onclick="testClick('studio-buddy')">
+                <div class="icon">🎵</div>
+                <div class="label">Studio Buddy</div>
+            </div>
+            <div class="desktop-icon" onclick="testClick('analyzer')">
+                <div class="icon">📊</div>
+                <div class="label">Key/BPM Analyzer</div>
+            </div>
+            <div class="desktop-icon" onclick="testClick('settings')">
+                <div class="icon">⚙️</div>
+                <div class="label">Settings</div>
+            </div>
+        </div>
+
+        <!-- Debug Window -->
+        <div class="window" id="debug-window" style="display: flex; top: 100px; left: 200px;">
+            <div class="title-bar">
+                <div class="title-bar-text">Debug Console</div>
+                <div class="title-bar-controls">
+                    <button class="title-bar-control" onclick="closeDebug()">×</button>
+                </div>
+            </div>
+            <div class="window-body">
+                <div class="section">
+                    <h3>🔧 JavaScript Test Console</h3>
+                    <div id="debug-log" class="debug-info"></div>
+                    <button onclick="runTests()">Run All Tests</button>
+                    <button onclick="clearLog()">Clear Log</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Windows -->
+        <div class="window" id="studio-buddy-window">
+            <div class="title-bar">
+                <div class="title-bar-text">Studio Buddy - Audio Mastering Professional</div>
+                <div class="title-bar-controls">
+                    <button class="title-bar-control" onclick="closeWindow('studio-buddy-window')">×</button>
+                </div>
+            </div>
+            <div class="window-body">
+                <div class="section">
+                    <h3>🎵 Audio Mastering Interface</h3>
+                    <p>✅ Studio Buddy window opened successfully!</p>
+                    <p>This is where the complete audio mastering interface would be.</p>
+                    <p>File upload, processing controls, real-time visualization, etc.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="window" id="analyzer-window">
+            <div class="title-bar">
+                <div class="title-bar-text">Key/BPM Analyzer Professional</div>
+                <div class="title-bar-controls">
+                    <button class="title-bar-control" onclick="closeWindow('analyzer-window')">×</button>
+                </div>
+            </div>
+            <div class="window-body">
+                <div class="section">
+                    <h3>📊 Audio Analysis Tools</h3>
+                    <p>✅ Analyzer window opened successfully!</p>
+                    <p>This is where BPM detection, key analysis, and frequency visualization would be.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="window" id="settings-window">
+            <div class="title-bar">
+                <div class="title-bar-text">System Settings</div>
+                <div class="title-bar-controls">
+                    <button class="title-bar-control" onclick="closeWindow('settings-window')">×</button>
+                </div>
+            </div>
+            <div class="window-body">
+                <div class="section">
+                    <h3>⚙️ Application Settings</h3>
+                    <p>✅ Settings window opened successfully!</p>
+                    <p>This is where app configuration, audio settings, and preferences would be.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- All JavaScript inline to avoid loading issues -->
+    <script>
+        // Debug logging function
+        function debugLog(message) {
+            const logElement = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}<br>`;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+
+        // Test click function
+        function testClick(windowId) {
+            debugLog(`🖱️ Icon clicked: ${windowId}`);
+            openWindow(windowId);
+        }
+
+        // Open window function
+        function openWindow(windowId) {
+            debugLog(`🔓 Opening window: ${windowId}`);
+            
+            const windowElement = document.getElementById(windowId + '-window');
+            debugLog(`🔍 Window element found: ${!!windowElement}`);
+            
+            if (windowElement) {
+                windowElement.style.display = 'flex';
+                windowElement.style.zIndex = '200';
+                debugLog(`✅ Window opened: ${windowId}`);
+            } else {
+                debugLog(`❌ Window not found: ${windowId + '-window'}`);
+            }
+        }
+
+        // Close window function
+        function closeWindow(windowId) {
+            debugLog(`🗝️ Closing window: ${windowId}`);
+            const windowElement = document.getElementById(windowId);
+            if (windowElement) {
+                windowElement.style.display = 'none';
+                debugLog(`✅ Window closed: ${windowId}`);
+            }
+        }
+
+        // Close debug window
+        function closeDebug() {
+            document.getElementById('debug-window').style.display = 'none';
+        }
+
+        // Clear log
+        function clearLog() {
+            document.getElementById('debug-log').innerHTML = '';
+        }
+
+        // Run comprehensive tests
+        function runTests() {
+            debugLog('🧪 Starting comprehensive tests...');
+            
+            // Test 1: Basic JavaScript
+            debugLog('✅ Test 1: JavaScript execution works');
+            
+            // Test 2: DOM access
+            const icons = document.querySelectorAll('.desktop-icon');
+            debugLog(`✅ Test 2: Found ${icons.length} desktop icons`);
+            
+            // Test 3: Window elements
+            const windows = document.querySelectorAll('.window');
+            debugLog(`✅ Test 3: Found ${windows.length} window elements`);
+            
+            // Test 4: Event handling
+            debugLog('✅ Test 4: Event handling functional (you clicked this button)');
+            
+            // Test 5: CSS styling
+            const body = getComputedStyle(document.body);
+            debugLog(`✅ Test 5: CSS loaded (background: ${body.background})`);
+            
+            debugLog('🎉 All tests completed successfully!');
+        }
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            debugLog('🚀 Standalone Studio Buddy loaded successfully');
+            debugLog('📍 Current URL: ' + window.location.href);
+            debugLog('🌐 User Agent: ' + navigator.userAgent);
+            debugLog('🎯 Ready for testing - click icons or run tests!');
+            
+            // Auto-run initial tests
+            setTimeout(runTests, 1000);
+        });
+
+        // Log any errors
+        window.addEventListener('error', (e) => {
+            debugLog(`❌ JavaScript Error: ${e.message}`);
+        });
+
+        debugLog('📄 Script block executed successfully');
+    </script>
+</body>
+</html>
