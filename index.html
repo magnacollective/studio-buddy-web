@@ -772,6 +772,11 @@
         let comparisonAudio = { a: null, b: null };
         let crossfadeValue = 50;
         
+        // Window dragging state
+        let isDragging = false;
+        let dragWindow = null;
+        let dragOffset = { x: 0, y: 0 };
+        
         // Console logging system
         function logToConsole(message, type = 'info') {
             const timestamp = new Date().toLocaleTimeString();
@@ -908,6 +913,69 @@
             if (titleBar) titleBar.classList.remove('inactive');
         }
 
+        // Window dragging functionality
+        function initWindowDragging() {
+            document.querySelectorAll('.window').forEach(windowElement => {
+                const titleBar = windowElement.querySelector('.title-bar');
+                if (!titleBar) return;
+
+                titleBar.addEventListener('mousedown', (e) => {
+                    if (e.target.classList.contains('title-btn')) return; // Don't drag when clicking buttons
+                    
+                    isDragging = true;
+                    dragWindow = windowElement;
+                    
+                    const rect = windowElement.getBoundingClientRect();
+                    dragOffset.x = e.clientX - rect.left;
+                    dragOffset.y = e.clientY - rect.top;
+                    
+                    bringToFront(windowElement);
+                    
+                    // Add visual feedback
+                    windowElement.style.cursor = 'grabbing';
+                    titleBar.style.cursor = 'grabbing';
+                    
+                    logToConsole(`🪟 Dragging window: ${windowElement.id}`, 'info');
+                    
+                    e.preventDefault();
+                });
+            });
+
+            // Global mouse move handler
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging || !dragWindow) return;
+                
+                const newX = e.clientX - dragOffset.x;
+                const newY = e.clientY - dragOffset.y;
+                
+                // Keep window within viewport bounds
+                const maxX = window.innerWidth - 100; // Leave some window visible
+                const maxY = window.innerHeight - 50;
+                
+                const constrainedX = Math.max(0, Math.min(newX, maxX));
+                const constrainedY = Math.max(0, Math.min(newY, maxY));
+                
+                dragWindow.style.left = constrainedX + 'px';
+                dragWindow.style.top = constrainedY + 'px';
+            });
+
+            // Global mouse up handler
+            document.addEventListener('mouseup', () => {
+                if (isDragging && dragWindow) {
+                    const titleBar = dragWindow.querySelector('.title-bar');
+                    
+                    // Remove visual feedback
+                    dragWindow.style.cursor = 'default';
+                    if (titleBar) titleBar.style.cursor = 'move';
+                    
+                    logToConsole(`🪟 Window dropped: ${dragWindow.id}`, 'info');
+                }
+                
+                isDragging = false;
+                dragWindow = null;
+            });
+        }
+
         // Control updates
         function updateControl(controlId, value, suffix) {
             const valueElement = document.getElementById(controlId + '-value');
@@ -986,10 +1054,9 @@
                     clearInterval(interval);
                     progressText.textContent = '✅ Mastering Complete!';
                     
-                    // Create mastered version (copy of source for demo)
+                    // Apply real mastering processing via Railway
                     if (audioElements.source) {
-                        audioElements.mastered = audioElements.source.cloneNode();
-                        logToConsole('🎵 Mastered audio ready for playback', 'success');
+                        await processAudioWithRailway();
                     }
                     logToConsole('✅ MASTERING: Audio mastering completed successfully!', 'success');
                     setTimeout(() => {
@@ -1005,21 +1072,141 @@
             logToConsole('🔄 MASTERING: Applying psychoacoustic processing...', 'info');
         }
 
-        function startAnalysis() {
-            logToConsole('📊 ANALYSIS: Starting audio analysis...', 'click');
-            
-            setTimeout(() => {
-                // Set realistic results
-                document.getElementById('bpm-result').textContent = '128 BPM';
-                document.getElementById('key-result').textContent = 'A Minor';
-                document.getElementById('duration-result').textContent = '3:24';
-                document.getElementById('samplerate-result').textContent = '44.1 kHz';
+        // Railway mastering service integration
+        async function processAudioWithRailway() {
+            try {
+                if (!audioElements.source) {
+                    logToConsole('❌ Source audio not available', 'error');
+                    return;
+                }
+
+                logToConsole('🚂 RAILWAY: Uploading audio for mastering...', 'info');
+
+                // Get the source file from the file input
+                const sourceInput = document.getElementById('source-file');
+                const referenceInput = document.getElementById('reference-file');
                 
+                if (!sourceInput.files[0]) {
+                    logToConsole('❌ No source file selected', 'error');
+                    return;
+                }
+
+                // Create FormData for upload
+                const formData = new FormData();
+                formData.append('source', sourceInput.files[0]);
+                
+                // Add reference if available
+                if (referenceInput.files[0]) {
+                    formData.append('reference', referenceInput.files[0]);
+                    logToConsole('🎯 RAILWAY: Using reference track for mastering', 'info');
+                }
+
+                // Add mastering parameters from UI controls
+                const outputLevel = document.getElementById('output-level').value;
+                const compression = document.getElementById('compression').value;
+                const eqIntensity = document.getElementById('eq-intensity').value;
+                const stereoWidth = document.getElementById('stereo-width').value;
+
+                formData.append('output_level', outputLevel);
+                formData.append('compression', compression);
+                formData.append('eq_intensity', eqIntensity);
+                formData.append('stereo_width', stereoWidth);
+
+                // Upload to Railway mastering service
+                const response = await fetch('https://studiobuddy-production.up.railway.app/master', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Railway service error: ${response.status} ${response.statusText}`);
+                }
+
+                logToConsole('🎵 RAILWAY: Processing completed, downloading result...', 'success');
+
+                // Get the mastered audio blob
+                const masteredBlob = await response.blob();
+                const masteredUrl = URL.createObjectURL(masteredBlob);
+                
+                // Create new audio element for mastered version
+                const masteredAudio = new Audio(masteredUrl);
+                masteredAudio.preload = 'metadata';
+                audioElements.mastered = masteredAudio;
+
+                masteredAudio.addEventListener('loadedmetadata', () => {
+                    const duration = Math.floor(masteredAudio.duration);
+                    const mins = Math.floor(duration / 60);
+                    const secs = duration % 60;
+                    logToConsole(`🎵 RAILWAY: Mastered audio ready: ${mins}:${secs.toString().padStart(2, '0')}`, 'success');
+                });
+
+                logToConsole('✅ RAILWAY: Professional mastering completed!', 'success');
+
+            } catch (error) {
+                logToConsole(`❌ RAILWAY ERROR: ${error.message}`, 'error');
+                
+                // Fallback to local copy
+                audioElements.mastered = audioElements.source.cloneNode();
+                logToConsole('🔄 Using fallback mastered audio (local copy)', 'info');
+            }
+        }
+
+
+        async function startAnalysis() {
+            try {
+                logToConsole('📊 ANALYSIS: Starting audio analysis...', 'click');
+                
+                // Get the analysis file
+                const analyzeInput = document.getElementById('analyze-file');
+                if (!analyzeInput.files[0]) {
+                    logToConsole('❌ No audio file selected for analysis', 'error');
+                    return;
+                }
+
+                logToConsole('🚂 RAILWAY: Uploading audio for BPM/key analysis...', 'info');
+
+                // Create FormData for upload
+                const formData = new FormData();
+                formData.append('audio', analyzeInput.files[0]);
+
+                // Upload to Railway analysis service
+                const response = await fetch('https://song-key-bpm-finder-app-production.up.railway.app/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Railway analysis service error: ${response.status} ${response.statusText}`);
+                }
+
+                logToConsole('🔄 RAILWAY: Processing audio analysis...', 'info');
+
+                // Get analysis results
+                const results = await response.json();
+                
+                // Update UI with real results
+                document.getElementById('bpm-result').textContent = `${results.bpm} BPM`;
+                document.getElementById('key-result').textContent = results.key || 'Unknown';
+                document.getElementById('duration-result').textContent = results.duration || '0:00';
+                document.getElementById('samplerate-result').textContent = `${results.sample_rate || 44100} Hz`;
+                
+                // Draw spectrum visualization
                 drawSpectrum();
-                logToConsole('✅ ANALYSIS: Detected 128 BPM, A Minor key', 'success');
-            }, 1500);
-            
-            logToConsole('🔄 ANALYSIS: Analyzing BPM and musical key...', 'info');
+                
+                logToConsole(`✅ RAILWAY: Detected ${results.bpm} BPM, ${results.key} key`, 'success');
+                logToConsole(`🎵 RAILWAY: Duration ${results.duration}, Sample rate ${results.sample_rate}Hz`, 'info');
+
+            } catch (error) {
+                logToConsole(`❌ RAILWAY ANALYSIS ERROR: ${error.message}`, 'error');
+                
+                // Fallback to mock results
+                document.getElementById('bpm-result').textContent = '--- BPM';
+                document.getElementById('key-result').textContent = 'Analysis Failed';
+                document.getElementById('duration-result').textContent = '---';
+                document.getElementById('samplerate-result').textContent = '--- Hz';
+                
+                logToConsole('🔄 Analysis service unavailable, showing placeholder', 'info');
+            }
         }
 
         // Real audio playback
@@ -1483,8 +1670,13 @@
                 }
             }, { once: true });
             
+            // Initialize window dragging
+            initWindowDragging();
+            logToConsole('🪟 Window dragging enabled', 'success');
+            
             logToConsole('🎯 Ready for interaction - hover and click icons!', 'info');
             logToConsole('🎵 Load audio files and click play buttons to hear audio', 'info');
+            logToConsole('🚂 Professional mastering via Railway services', 'info');
             
             isInitialized = true;
         });
