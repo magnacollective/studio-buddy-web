@@ -41,6 +41,22 @@ class StudioBuddyApp {
                 console.log('Desktop icon clicked:', windowId);
                 this.openWindow(windowId);
             });
+            
+            // Make desktop icons draggable
+            this.makeDraggable(icon);
+        });
+        
+        // Make windows draggable by their title bars and add focus functionality
+        document.querySelectorAll('.window').forEach(windowElement => {
+            const titleBar = windowElement.querySelector('.title-bar');
+            if (titleBar) {
+                this.makeDraggable(windowElement, titleBar);
+            }
+            
+            // Add click to focus functionality
+            windowElement.addEventListener('mousedown', (e) => {
+                this.bringToFront(windowElement);
+            });
         });
 
         // File inputs
@@ -422,6 +438,15 @@ class StudioBuddyApp {
         console.log('Window element found:', !!windowElement);
         if (windowElement) {
             windowElement.style.display = 'flex';
+            windowElement.style.position = 'fixed';
+            
+            // Position windows in cascade style if multiple are open
+            const openWindows = document.querySelectorAll('.window[style*="flex"]').length;
+            const offset = openWindows * 30;
+            windowElement.style.left = (50 + offset) + 'px';
+            windowElement.style.top = (50 + offset) + 'px';
+            
+            this.bringToFront(windowElement);
             this.addTaskButton(windowId);
             this.setActiveWindow(windowId);
         }
@@ -550,6 +575,81 @@ class StudioBuddyApp {
         const mins = Math.floor(seconds / 60);
         const secs = Math.floor(seconds % 60);
         return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+    
+    bringToFront(windowElement) {
+        // Reset all windows to base z-index
+        document.querySelectorAll('.window').forEach(win => {
+            win.style.zIndex = '100';
+        });
+        
+        // Bring clicked window to front
+        windowElement.style.zIndex = '200';
+        
+        // Update title bar styling to show active state
+        document.querySelectorAll('.title-bar').forEach(titleBar => {
+            titleBar.classList.remove('active');
+        });
+        
+        const titleBar = windowElement.querySelector('.title-bar');
+        if (titleBar) {
+            titleBar.classList.add('active');
+        }
+    }
+    
+    makeDraggable(element, handle = null) {
+        const dragHandle = handle || element;
+        let isDragging = false;
+        let startX, startY, startLeft, startTop;
+        
+        dragHandle.style.cursor = 'move';
+        dragHandle.addEventListener('mousedown', startDrag);
+        
+        function startDrag(e) {
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') {
+                return; // Don't drag when clicking buttons or inputs
+            }
+            
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            
+            const rect = element.getBoundingClientRect();
+            startLeft = rect.left;
+            startTop = rect.top;
+            
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', stopDrag);
+            e.preventDefault();
+        }
+        
+        function drag(e) {
+            if (!isDragging) return;
+            
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+            
+            const newLeft = startLeft + deltaX;
+            const newTop = startTop + deltaY;
+            
+            // Keep element within viewport bounds
+            const maxLeft = window.innerWidth - element.offsetWidth;
+            const maxTop = window.innerHeight - element.offsetHeight;
+            
+            const clampedLeft = Math.max(0, Math.min(newLeft, maxLeft));
+            const clampedTop = Math.max(0, Math.min(newTop, maxTop));
+            
+            element.style.position = 'fixed';
+            element.style.left = clampedLeft + 'px';
+            element.style.top = clampedTop + 'px';
+            element.style.transform = 'none'; // Remove any existing transforms
+        }
+        
+        function stopDrag() {
+            isDragging = false;
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('mouseup', stopDrag);
+        }
     }
 }
 

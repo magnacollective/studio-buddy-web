@@ -147,14 +147,21 @@ body {
 
 /* Title Bar */
 .title-bar {
-    background: linear-gradient(to right, var(--win95-active-title), rgba(0, 0, 128, 0.8));
-    color: white;
+    background: linear-gradient(to right, var(--win95-inactive-title), var(--win95-inactive-title));
+    color: var(--win95-button-light);
     padding: 2px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     height: 18px;
     border-bottom: 1px solid var(--win95-window-frame);
+    cursor: move;
+    user-select: none;
+}
+
+.title-bar.active {
+    background: linear-gradient(to right, var(--win95-active-title), rgba(0, 0, 128, 0.8));
+    color: white;
 }
 
 .title-bar-text {
