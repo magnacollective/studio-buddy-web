@@ -384,6 +384,63 @@
             transition: width 0.3s ease;
         }
 
+        /* Audio progress bar */
+        .audio-progress {
+            width: 100%;
+            height: 16px;
+            background: white;
+            border: 2px inset #c0c0c0;
+            margin: 8px 0;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .audio-progress-fill {
+            height: 100%;
+            background: #000080;
+            width: 0%;
+            transition: width 0.1s ease;
+        }
+
+        .audio-progress-time {
+            position: absolute;
+            top: -18px;
+            right: 0;
+            font-size: 10px;
+            color: black;
+        }
+
+        /* A/B Comparison controls */
+        .comparison-section {
+            background: #c0c0c0;
+            border: 2px inset #c0c0c0;
+            padding: 8px;
+            margin: 8px 0;
+        }
+
+        .comparison-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin: 8px 0;
+        }
+
+        .crossfade-slider {
+            flex: 1;
+            margin: 0 8px;
+        }
+
+        .ab-button {
+            background: linear-gradient(to bottom, #ff6b6b, #ff5252);
+            color: white;
+            font-weight: bold;
+            min-width: 80px;
+        }
+
+        .ab-button.active {
+            background: linear-gradient(to bottom, #4CAF50, #45a049);
+        }
+
         /* Canvas for visualizations */
         .visualization {
             background: black;
@@ -534,7 +591,7 @@
                 </div>
 
                 <div class="section">
-                    <h3>Playback & Export</h3>
+                    <h3>Playback Controls</h3>
                     <div style="display: flex; gap: 4px; margin-bottom: 12px;">
                         <button onclick="playAudio('source')">▶️ Play Source</button>
                         <button onclick="playAudio('reference')">▶️ Play Reference</button>
@@ -542,6 +599,32 @@
                         <button onclick="stopAudio()">⏹️ Stop</button>
                         <button onclick="downloadAudio()">💾 Download</button>
                     </div>
+                    
+                    <!-- Audio Progress Bar -->
+                    <div class="audio-progress" onclick="seekAudio(event)">
+                        <div class="audio-progress-fill" id="audio-progress-fill"></div>
+                        <div class="audio-progress-time" id="audio-progress-time">0:00 / 0:00</div>
+                    </div>
+                </div>
+
+                <div class="comparison-section">
+                    <h3>A/B Comparison</h3>
+                    <div class="comparison-controls">
+                        <button class="ab-button" id="ab-source" onclick="startComparison('source')">A: Source</button>
+                        <label style="font-size: 10px;">Crossfade:</label>
+                        <input type="range" class="crossfade-slider" id="crossfade" min="0" max="100" value="50" 
+                               oninput="updateCrossfade(this.value)">
+                        <button class="ab-button" id="ab-mastered" onclick="startComparison('mastered')">B: Mastered</button>
+                    </div>
+                    <div style="display: flex; gap: 4px;">
+                        <button onclick="toggleComparison()">🔄 Toggle A/B</button>
+                        <button onclick="syncPlayback()">🔗 Sync Playback</button>
+                        <button onclick="stopComparison()">⏹️ Stop Compare</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>Live Visualization</h3>
                     <div class="visualization">
                         <canvas id="waveform-canvas" width="400" height="100"></canvas>
                     </div>
@@ -684,6 +767,10 @@
             reference: null,
             mastered: null
         };
+        let progressUpdateInterval = null;
+        let comparisonMode = false;
+        let comparisonAudio = { a: null, b: null };
+        let crossfadeValue = 50;
         
         // Console logging system
         function logToConsole(message, type = 'info') {
@@ -973,6 +1060,9 @@
                 // Play the audio
                 await audio.play();
                 
+                // Start progress tracking
+                startProgressUpdate();
+                
                 // Start waveform visualization
                 drawWaveform();
                 
@@ -993,6 +1083,247 @@
                 currentAudio.currentTime = 0;
                 currentAudio = null;
                 logToConsole(`⏹️ STOPPED: All audio`, 'info');
+            }
+            
+            // Clear progress bar
+            clearProgressUpdate();
+            updateProgressBar(0, 0);
+        }
+
+        // Progress bar functionality
+        function updateProgressBar(currentTime, duration) {
+            const progressFill = document.getElementById('audio-progress-fill');
+            const progressTime = document.getElementById('audio-progress-time');
+            
+            if (progressFill && duration > 0) {
+                const percentage = (currentTime / duration) * 100;
+                progressFill.style.width = percentage + '%';
+            }
+            
+            if (progressTime) {
+                const current = formatTime(currentTime);
+                const total = formatTime(duration);
+                progressTime.textContent = `${current} / ${total}`;
+            }
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function startProgressUpdate() {
+            clearProgressUpdate();
+            progressUpdateInterval = setInterval(() => {
+                if (currentAudio && !currentAudio.paused) {
+                    updateProgressBar(currentAudio.currentTime, currentAudio.duration);
+                }
+            }, 100);
+        }
+
+        function clearProgressUpdate() {
+            if (progressUpdateInterval) {
+                clearInterval(progressUpdateInterval);
+                progressUpdateInterval = null;
+            }
+        }
+
+        function seekAudio(event) {
+            if (!currentAudio) return;
+            
+            const progressBar = event.currentTarget;
+            const rect = progressBar.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const percentage = clickX / rect.width;
+            const newTime = percentage * currentAudio.duration;
+            
+            currentAudio.currentTime = newTime;
+            updateProgressBar(newTime, currentAudio.duration);
+            
+            logToConsole(`⏯️ SEEK: ${formatTime(newTime)}`, 'info');
+        }
+
+        // A/B Comparison functionality
+        async function startComparison(type) {
+            try {
+                if (!audioElements.source || !audioElements.mastered) {
+                    logToConsole('❌ Need both source and mastered audio for comparison', 'error');
+                    return;
+                }
+
+                comparisonMode = true;
+                comparisonAudio.a = audioElements.source;
+                comparisonAudio.b = audioElements.mastered;
+
+                // Stop any current playback
+                stopAudio();
+                stopComparison();
+
+                // Set up gain nodes for crossfading
+                if (audioContext) {
+                    setupComparisonGains();
+                }
+
+                // Start with specified type
+                if (type === 'source') {
+                    await playComparisonAudio('a');
+                    updateABButtons('source');
+                } else {
+                    await playComparisonAudio('b');
+                    updateABButtons('mastered');
+                }
+
+                logToConsole(`🔄 A/B Comparison started: ${type}`, 'success');
+            } catch (error) {
+                logToConsole(`❌ Comparison error: ${error.message}`, 'error');
+            }
+        }
+
+        let gainNodeA = null;
+        let gainNodeB = null;
+
+        function setupComparisonGains() {
+            if (!audioContext) return;
+
+            try {
+                gainNodeA = audioContext.createGain();
+                gainNodeB = audioContext.createGain();
+                
+                gainNodeA.connect(audioContext.destination);
+                gainNodeB.connect(audioContext.destination);
+                
+                // Initialize crossfade
+                updateCrossfade(crossfadeValue);
+            } catch (error) {
+                logToConsole(`❌ Gain setup error: ${error.message}`, 'error');
+            }
+        }
+
+        async function playComparisonAudio(which) {
+            const audio = which === 'a' ? comparisonAudio.a : comparisonAudio.b;
+            if (!audio) return;
+
+            currentAudio = audio;
+            await audio.play();
+            startProgressUpdate();
+            drawWaveform();
+        }
+
+        function updateCrossfade(value) {
+            crossfadeValue = value;
+            
+            if (gainNodeA && gainNodeB) {
+                const gainA = Math.cos((value / 100) * Math.PI / 2);
+                const gainB = Math.sin((value / 100) * Math.PI / 2);
+                
+                gainNodeA.gain.value = gainA;
+                gainNodeB.gain.value = gainB;
+            }
+
+            // Update visual feedback
+            const crossfadeSlider = document.getElementById('crossfade');
+            if (crossfadeSlider) {
+                crossfadeSlider.value = value;
+            }
+
+            // If in real-time comparison mode, adjust volumes
+            if (comparisonMode && comparisonAudio.a && comparisonAudio.b) {
+                const volumeA = (100 - value) / 100;
+                const volumeB = value / 100;
+                
+                comparisonAudio.a.volume = volumeA;
+                comparisonAudio.b.volume = volumeB;
+            }
+
+            logToConsole(`🎚️ Crossfade: ${Math.round(100-value)}% A / ${Math.round(value)}% B`, 'info');
+        }
+
+        async function toggleComparison() {
+            if (!comparisonMode) {
+                logToConsole('❌ Start A/B comparison first', 'error');
+                return;
+            }
+
+            const isPlayingA = currentAudio === comparisonAudio.a;
+            const currentTime = currentAudio ? currentAudio.currentTime : 0;
+            
+            // Stop current
+            if (currentAudio) {
+                currentAudio.pause();
+            }
+
+            // Switch to other audio
+            const nextAudio = isPlayingA ? comparisonAudio.b : comparisonAudio.a;
+            const nextType = isPlayingA ? 'mastered' : 'source';
+            
+            if (nextAudio) {
+                nextAudio.currentTime = currentTime; // Sync position
+                await nextAudio.play();
+                currentAudio = nextAudio;
+                updateABButtons(nextType);
+                logToConsole(`🔄 Switched to: ${nextType}`, 'click');
+            }
+        }
+
+        async function syncPlayback() {
+            if (!comparisonMode || !comparisonAudio.a || !comparisonAudio.b) return;
+
+            const currentTime = currentAudio ? currentAudio.currentTime : 0;
+            
+            // Sync both audio positions
+            comparisonAudio.a.currentTime = currentTime;
+            comparisonAudio.b.currentTime = currentTime;
+            
+            // Start simultaneous playback for real-time mixing
+            try {
+                await Promise.all([
+                    comparisonAudio.a.play(),
+                    comparisonAudio.b.play()
+                ]);
+                
+                // Use crossfade to control mix
+                updateCrossfade(crossfadeValue);
+                
+                logToConsole('🔗 Synchronized playback started - use crossfade slider', 'success');
+            } catch (error) {
+                logToConsole(`❌ Sync error: ${error.message}`, 'error');
+            }
+        }
+
+        function stopComparison() {
+            comparisonMode = false;
+            
+            if (comparisonAudio.a) {
+                comparisonAudio.a.pause();
+                comparisonAudio.a.currentTime = 0;
+            }
+            if (comparisonAudio.b) {
+                comparisonAudio.b.pause();
+                comparisonAudio.b.currentTime = 0;
+            }
+            
+            currentAudio = null;
+            clearProgressUpdate();
+            updateProgressBar(0, 0);
+            updateABButtons(null);
+            
+            logToConsole('⏹️ A/B Comparison stopped', 'info');
+        }
+
+        function updateABButtons(activeType) {
+            const sourceBtn = document.getElementById('ab-source');
+            const masteredBtn = document.getElementById('ab-mastered');
+            
+            if (sourceBtn && masteredBtn) {
+                sourceBtn.classList.remove('active');
+                masteredBtn.classList.remove('active');
+                
+                if (activeType === 'source') {
+                    sourceBtn.classList.add('active');
+                } else if (activeType === 'mastered') {
+                    masteredBtn.classList.add('active');
+                }
             }
         }
 
