@@ -1162,6 +1162,15 @@
                     };
                     
                     log(`[AUDIO] Source file selected: ${input.files[0].name}`);
+                    
+                    // Initialize A/B state for first audio load
+                    if (!window.masteredAudio) {
+                        abActiveTrack = 'source';
+                        currentAudio = window.sourceAudio;
+                        currentTrack = 'source';
+                        abSyncedPosition = 0;
+                    }
+                    
                 } catch (error) {
                     log(`[ERROR] Failed to load source audio: ${error.message}`);
                 }
@@ -2000,6 +2009,9 @@
                 currentTrack = trackType;
                 
                 if (currentAudio) {
+                    // Initialize audio context
+                    await initAudioContext();
+                    
                     // Resume from synced position if available
                     currentAudio.currentTime = abSyncedPosition;
                     
@@ -2010,6 +2022,11 @@
                     // Connect to visualizer
                     if (audioMotion) {
                         connectAudioToAudioMotion(currentAudio);
+                    } else {
+                        await initAudioMotion();
+                        if (audioMotion) {
+                            connectAudioToAudioMotion(currentAudio);
+                        }
                     }
                     startVisualization();
                     startProgressTracking();
@@ -2020,87 +2037,9 @@
                     }
                     
                     log(`[PLAY] Started ${trackType} track`);
-                }
-            }
-        }
-
-        async function playAudio(type) {
-            try {
-                const audio = type === 'source' ? window.sourceAudio : window.masteredAudio;
-                if (!audio) {
-                    log(`[ERROR] No ${type} audio available. Run mastering first.`);
-                    return;
-                }
-
-                log(`[AUDIO] Initializing playback for ${type} audio...`);
-
-                // Initialize audio context first
-                await initAudioContext();
-                
-                if (!audioContext) {
-                    log('[ERROR] Failed to initialize audio context');
-                    return;
-                }
-
-                // Stop current playback if switching tracks
-                if (currentAudio && currentAudio !== audio) {
-                    const oldTime = currentAudio.currentTime;
-                    currentAudio.pause();
-                    currentAudio = audio;
-                    // Sync position when switching
-                    audio.currentTime = oldTime;
-                    log(`[RESET] Switched from ${currentTrack} to ${type} at ${oldTime.toFixed(1)}s`);
                 } else {
-                    currentAudio = audio;
+                    log('[ERROR] No audio available to play');
                 }
-                
-                currentTrack = type;
-                
-                // Connect audio to audioMotion visualizer BEFORE playing
-                if (audioMotion) {
-                    connectAudioToAudioMotion(audio);
-                } else {
-                    // Initialize audioMotion if not ready yet
-                    await initAudioMotion();
-                    if (audioMotion) {
-                        connectAudioToAudioMotion(audio);
-                    }
-                }
-                
-                // Ensure audio context is resumed (required by browsers)
-                if (audioContext.state === 'suspended') {
-                    await audioContext.resume();
-                    log('[AUDIO] Audio context resumed');
-                }
-                
-                // Unmute for user-initiated playback
-                audio.muted = false;
-                
-                // Play audio directly - simple and reliable
-                await audio.play();
-                isPlaying = true;
-                startProgressTracking();
-                startVisualization();
-                
-                log(`[PLAY] Playing ${type === 'source' ? 'Original' : 'Mastered'} audio`);
-                log(`[VIZ] Visualizer should now show real frequency data`);
-                
-                // Verify connection
-                setTimeout(() => {
-                    if (analyser && audioSource) {
-                        const testData = new Uint8Array(analyser.frequencyBinCount);
-                        analyser.getByteFrequencyData(testData);
-                        const activity = testData.reduce((sum, val) => sum + val, 0);
-                        log(`[DEBUG] Audio analysis activity level: ${activity}`);
-                    }
-                }, 1000);
-
-            } catch (error) {
-                log(`[ERROR] Playback error: ${error.message}`);
-                console.error('Full playback error:', error);
-                // Try to recover
-                currentAudio = null;
-                isPlaying = false;
             }
         }
 
