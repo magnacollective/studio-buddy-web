@@ -449,10 +449,15 @@
 <body>
     <!-- DOS Boot Screen -->
     <div class="boot-screen" id="boot-screen">
-        <div class="boot-text" style="animation-delay: 0.5s;">STUDIO BUDDY BIOS Version 2.1</div>
-        <div class="boot-text" style="animation-delay: 1s;">Copyright (C) 1995 StudioBuddy Technologies, Inc.</div>
-        <div class="boot-text" style="animation-delay: 1.2s;">All Rights Reserved</div>
-        <div class="boot-text" style="animation-delay: 1.5s;"></div>
+        <!-- Click to Start Button -->
+        <div id="boot-start-button" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; color: #000; padding: 20px 40px; font-family: 'Courier New', monospace; font-size: 16px; border: 2px solid #000; cursor: pointer; z-index: 1000; animation: blink 1s infinite;">CLICK TO START</div>
+        
+        <!-- Boot sequence (hidden initially) -->
+        <div id="boot-sequence" style="display: none;">
+            <div class="boot-text" style="animation-delay: 0.5s;">STUDIO BUDDY BIOS Version 2.1</div>
+            <div class="boot-text" style="animation-delay: 1s;">Copyright (C) 1995 StudioBuddy Technologies, Inc.</div>
+            <div class="boot-text" style="animation-delay: 1.2s;">All Rights Reserved</div>
+            <div class="boot-text" style="animation-delay: 1.5s;"></div>
         
         <div class="boot-text" style="animation-delay: 2s;">POST - Power On Self Test</div>
         <div class="boot-text" style="animation-delay: 2.5s;">Testing System Memory....... OK</div>
@@ -477,7 +482,8 @@
             <div class="boot-percentage" id="boot-percentage">0%</div>
         </div>
         
-        <div class="boot-text" style="animation-delay: 12.5s;">System Ready - Press any key to continue</div>
+            <div class="boot-text" style="animation-delay: 12.5s;">System Ready - Press any key to continue</div>
+        </div>
     </div>
 
     <!-- Main Interface -->
@@ -1064,7 +1070,10 @@
                     
                     // Check if we're getting real audio data
                     const dataSum = rawData.reduce((sum, val) => sum + val, 0);
-                    if (dataSum > 100) { // Threshold for real audio activity
+                    const maxValue = Math.max(...rawData);
+                    
+                    // Lower threshold for detection and add more debugging
+                    if (dataSum > 10 || maxValue > 10) { // Lower threshold for real audio activity
                         usingRealData = true;
                         
                         // Reduce to 64 bars for visualization
@@ -1080,12 +1089,22 @@
                         
                         // Log real data usage occasionally
                         if (frameCount % 120 === 0) {
-                            log(`🎨 Using real audio data (activity: ${dataSum})`);
+                            log(`🎨 Using real audio data (sum: ${dataSum}, max: ${maxValue})`);
                         }
                     }
                 }
                 
                 if (!usingRealData) {
+                    // Debug: Log why we're not using real data
+                    if (frameCount % 120 === 0 && analyser && isPlaying) {
+                        const bufferLength = analyser.frequencyBinCount;
+                        const testData = new Uint8Array(bufferLength);
+                        analyser.getByteFrequencyData(testData);
+                        const testSum = testData.reduce((sum, val) => sum + val, 0);
+                        const testMax = Math.max(...testData);
+                        log(`🔍 No real data: sum=${testSum}, max=${testMax}, playing=${isPlaying}, analyser=${!!analyser}, audioSource=${!!audioSource}`);
+                    }
+                    
                     // Fallback to simulated visualization
                     dataArray = new Uint8Array(64);
                     const time = Date.now() * 0.001;
@@ -1246,14 +1265,16 @@
         }
 
         // DOS-style boot beeps
-        function playDOSBootBeeps() {
+        async function playDOSBootBeeps() {
             try {
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 
                 // Ensure audio context is resumed (required by modern browsers)
                 if (audioContext.state === 'suspended') {
-                    audioContext.resume();
+                    await audioContext.resume();
                 }
+                
+                log('🔊 Playing DOS boot beeps...');
                 
                 const now = audioContext.currentTime;
                 
@@ -1303,10 +1324,11 @@
                     oscillator.stop(startTime + beep.duration);
                 });
                 
-                console.log('🔊 DOS boot beeps initiated');
-                
+                log('✅ DOS boot beeps scheduled and playing');
+                return true;
             } catch (error) {
-                console.log('🔇 Boot beeps unavailable:', error.message);
+                log(`🔇 Boot beeps failed: ${error.message}`);
+                return false;
             }
         }
 
@@ -1917,7 +1939,6 @@
             try {
                 // Check if this audio element already has a source connected
                 if (audio._connectedSource) {
-                    // Just update the reference to the existing source
                     audioSource = audio._connectedSource;
                     log('🔗 Using existing audio connection');
                     return;
@@ -1944,6 +1965,16 @@
                 
                 log('🔗 Audio connected to visualizer successfully');
                 log(`🎛️ Analyser settings: FFT=${analyser.fftSize}, Smoothing=${analyser.smoothingTimeConstant}`);
+                log(`🎵 Audio duration: ${audio.duration}s, current time: ${audio.currentTime}s`);
+                
+                // Force a test to see if we're getting data
+                setTimeout(() => {
+                    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                    analyser.getByteFrequencyData(dataArray);
+                    const hasData = dataArray.some(value => value > 0);
+                    const maxValue = Math.max(...dataArray);
+                    log(`📊 Visualizer data test: ${hasData ? 'RECEIVING DATA ✅' : 'NO DATA ❌'} (max: ${maxValue})`);
+                }, 500);
                 
             } catch (error) {
                 if (error.message.includes('already connected')) {
@@ -2382,8 +2413,25 @@
 
         // Boot sequence
         function startBootSequence() {
-            // Play DOS boot beeps immediately
-            playDOSBootBeeps();
+            // Show click to start button first
+            document.getElementById('boot-start-button').style.display = 'block';
+            
+            // Add click handler for starting with audio
+            document.getElementById('boot-start-button').onclick = async function() {
+                // Hide start button and show boot sequence
+                document.getElementById('boot-start-button').style.display = 'none';
+                document.getElementById('boot-sequence').style.display = 'block';
+                
+                // Now we can play beeps with user interaction
+                await playDOSBootBeeps();
+                
+                // Continue with normal boot sequence
+                startBootAnimation();
+            };
+        }
+        
+        function startBootAnimation() {
+            // This is the original boot sequence without the beeps
             
             // Progress bar animation
             setTimeout(() => {
