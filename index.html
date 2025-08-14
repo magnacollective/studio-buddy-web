@@ -475,6 +475,91 @@
         #progress-container:hover #progress-fill {
             box-shadow: 0 0 10px rgba(0, 102, 255, 0.5);
         }
+
+        /* Railway API Integration Styles */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 1000;
+            font-size: 12px;
+            max-width: 300px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .notification-warning {
+            background: linear-gradient(135deg, #e67e22, #f39c12);
+        }
+
+        .notification-error {
+            background: linear-gradient(135deg, #c0392b, #e74c3c);
+        }
+
+        .notification-success {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+        }
+
+        .notification-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .notification-content button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 0 0 0 10px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .stem-result {
+            background: #2c3e50;
+            border: 1px solid #34495e;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            color: white;
+        }
+
+        .stem-result h3 {
+            color: #3498db;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .download-link {
+            display: inline-block;
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+            padding: 8px 16px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-size: 12px;
+            transition: background 0.3s;
+        }
+
+        .download-link:hover {
+            background: linear-gradient(135deg, #229954, #28b463);
+        }
     </style>
 </head>
 <body>
@@ -3533,10 +3618,8 @@
     </script>
     </div> <!-- Close main-interface -->
     
-    <!-- Audio Analysis Scripts -->
-    <script src="audio-analyzer.js"></script>
-    <script src="tunebat-analyzer.js"></script>
-    <script src="enhanced-audio-manager.js"></script>
+    <!-- Railway API Integration - Server-Side Analysis Only -->
+    <script src="railway-api-manager.js"></script>
     <script src="audio-processor.js"></script>
     <script src="script.js"></script>
 </body>

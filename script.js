@@ -19,10 +19,21 @@ class StudioBuddyApp {
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
             this.audioProcessor = new AudioProcessor(this.audioContext);
             
-            // Use Enhanced Audio Manager with TuneBat-style analysis - CLIENT ONLY
-            this.audioAnalyzer = new EnhancedAudioManager(this.audioContext);
-            this.audioAnalyzer.setServerFallback(false); // Disable server - use client-side only
-            this.audioAnalyzer.setConfidenceThreshold(0.5); // Lower threshold since no fallback
+            // Use Railway API Manager - SERVER ONLY (no client-side fallback)
+            this.audioAnalyzer = new RailwayAPIManager();
+            
+            // Check API health on startup
+            const isHealthy = await this.audioAnalyzer.checkHealth();
+            if (!isHealthy) {
+                console.warn('⚠️  Railway API health check failed');
+                this.showNotification('Railway API may be unavailable', 'warning');
+            } else {
+                console.log('✅ Railway API is healthy');
+                const version = await this.audioAnalyzer.getVersion();
+                if (version) {
+                    console.log('Railway API version:', version);
+                }
+            }
             
             this.setupEventListeners();
             this.setupMatrixBackground();
@@ -242,27 +253,37 @@ class StudioBuddyApp {
         }
 
         try {
-            this.showProgress('Analyzing audio with TuneBat-style algorithms...');
+            this.showProgress('Analyzing audio with Railway API (HTDemucs + Advanced Algorithms)...');
             
-            const analysis = await this.audioAnalyzer.analyzeAudio(this.analyzeBuffer);
+            // Get analysis options from UI if available
+            const analysisOptions = {
+                window_sec: 75,
+                prefer_min_bpm: 90,
+                prefer_max_bpm: 180,
+                profile: 'accurate',
+                backend: 'pro'
+            };
+            
+            const analysis = await this.audioAnalyzer.analyzeAudio(this.analyzeBuffer, analysisOptions);
             
             // Update main results
             document.getElementById('bpm-result').textContent = Math.round(analysis.bpm) + ' BPM';
             document.getElementById('key-result').textContent = analysis.key;
-            document.getElementById('duration-result').textContent = this.formatDuration(this.analyzeBuffer.duration);
-            document.getElementById('samplerate-result').textContent = this.analyzeBuffer.sampleRate + ' Hz';
+            document.getElementById('duration-result').textContent = analysis.duration || this.formatDuration(this.analyzeBuffer.duration);
+            document.getElementById('samplerate-result').textContent = analysis.sampleRate || (this.analyzeBuffer.sampleRate + ' Hz');
             
             // Display enhanced features if available
             this.displayEnhancedResults(analysis);
             
-            this.drawSpectrum(analysis.spectrum);
+            // Generate basic spectrum visualization since Railway API may not return spectrum
+            this.drawSpectrumFromBuffer(this.analyzeBuffer);
             this.hideProgress();
             
-            console.log('Analysis complete:', analysis.analysisMethod, 'confidence:', analysis.confidence);
+            console.log('Analysis complete via Railway API:', analysis.analysisMethod, 'confidence:', analysis.confidence);
         } catch (error) {
-            console.error('Error analyzing audio:', error);
-            alert('Error during audio analysis.');
+            console.error('Error analyzing audio via Railway API:', error);
             this.hideProgress();
+            alert(`Railway API analysis failed: ${error.message}\n\nPlease check your internet connection and try again.`);
         }
     }
 
@@ -750,6 +771,118 @@ class StudioBuddyApp {
             isDragging = false;
             document.removeEventListener('mousemove', drag);
             document.removeEventListener('mouseup', stopDrag);
+        }
+    }
+
+    // Utility methods for Railway API integration
+    showNotification(message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+            <div class="notification-content">
+                <span>${message}</span>
+                <button onclick="this.parentElement.parentElement.remove()">×</button>
+            </div>
+        `;
+        
+        // Add to page
+        document.body.appendChild(notification);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+
+    drawSpectrumFromBuffer(audioBuffer) {
+        // Generate basic spectrum visualization from AudioBuffer
+        // This is a fallback since Railway API doesn't return spectrum data
+        try {
+            const canvas = document.getElementById('spectrum-canvas');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+
+            // Get audio data (first channel)
+            const audioData = audioBuffer.getChannelData(0);
+            const sampleSize = Math.floor(audioData.length / width);
+
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+
+            for (let x = 0; x < width; x++) {
+                const start = x * sampleSize;
+                const end = start + sampleSize;
+                let sum = 0;
+
+                for (let i = start; i < end && i < audioData.length; i++) {
+                    sum += Math.abs(audioData[i]);
+                }
+
+                const average = sum / sampleSize;
+                const y = height - (average * height);
+
+                if (x === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+
+            ctx.stroke();
+        } catch (error) {
+            console.warn('Could not draw spectrum:', error);
+        }
+    }
+
+    // Add vocal removal feature using Railway API
+    async separateStems(stemType = 'instrumental') {
+        if (!this.analyzeBuffer) {
+            alert('Please load an audio file first.');
+            return;
+        }
+
+        try {
+            this.showProgress(`Separating ${stemType} using Railway API (HTDemucs AI)...`);
+            
+            const result = await this.audioAnalyzer.separateStems(this.analyzeBuffer, stemType);
+            
+            // Create download link for separated audio
+            const url = URL.createObjectURL(result.audioBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${stemType}_separated.wav`;
+            link.textContent = `Download ${stemType}`;
+            link.className = 'download-link';
+            
+            // Add to results area
+            const resultsDiv = document.getElementById('analysis-results') || document.body;
+            const container = document.createElement('div');
+            container.className = 'stem-result';
+            container.innerHTML = `
+                <h3>Stem Separation Complete</h3>
+                <p>AI-separated ${stemType} is ready for download:</p>
+            `;
+            container.appendChild(link);
+            resultsDiv.appendChild(container);
+            
+            this.hideProgress();
+            this.showNotification(`${stemType} separation completed successfully!`, 'success');
+            
+        } catch (error) {
+            console.error('Error separating stems via Railway API:', error);
+            this.hideProgress();
+            alert(`Railway API stem separation failed: ${error.message}\n\nPlease check your internet connection and try again.`);
         }
     }
 }
