@@ -2474,8 +2474,8 @@
                             const analyzer = new TuneBatAnalyzer(audioContext);
                             results = await runAnalysisWithYielding(analyzer, audioBuffer);
                         } else {
-                            // Fallback to simple analysis
-                            results = await performSimpleAnalysis(audioBuffer);
+                            // Fallback to optimized analysis
+                            results = await performOptimizedAnalysis(audioBuffer);
                         }
                         
                         updateAnalysisProgress('Finalizing...', 90);
@@ -2547,21 +2547,34 @@
             if (progress) progress.remove();
         }
 
-        // Run TuneBat analysis with yielding to prevent UI blocking
+        // Optimized analysis targeting 10-15 second processing time
         async function runAnalysisWithYielding(analyzer, audioBuffer) {
             // Yield to UI before starting
             await new Promise(resolve => setTimeout(resolve, 10));
             
             try {
-                // If audio is too long, analyze just the middle portion to speed up
+                // Smart windowing for optimal speed/accuracy balance
                 let processBuffer = audioBuffer;
-                if (audioBuffer.duration > 60) {
-                    // Extract middle 45 seconds for long tracks
-                    const startTime = (audioBuffer.duration - 45) / 2;
+                let windowDuration = audioBuffer.duration;
+                
+                // Adjust analysis window based on file length
+                if (audioBuffer.duration > 180) { // >3 minutes
+                    windowDuration = 30; // Use 30 seconds from middle
+                } else if (audioBuffer.duration > 120) { // >2 minutes  
+                    windowDuration = 45; // Use 45 seconds from middle
+                } else if (audioBuffer.duration > 60) { // >1 minute
+                    windowDuration = Math.min(60, audioBuffer.duration); // Up to 60 seconds
+                } else {
+                    windowDuration = audioBuffer.duration; // Use full duration for short tracks
+                }
+                
+                // Extract optimal window if needed
+                if (windowDuration < audioBuffer.duration) {
+                    const startTime = (audioBuffer.duration - windowDuration) / 2;
                     const startSample = Math.floor(startTime * audioBuffer.sampleRate);
-                    const endSample = startSample + (45 * audioBuffer.sampleRate);
+                    const endSample = startSample + (windowDuration * audioBuffer.sampleRate);
                     
-                    // Create new buffer with middle section
+                    // Create new buffer with optimal window
                     const shorterBuffer = audioBuffer.audioContext.createBuffer(
                         audioBuffer.numberOfChannels,
                         endSample - startSample,
@@ -2578,8 +2591,13 @@
                     processBuffer = shorterBuffer;
                 }
                 
-                // Run the actual TuneBat analysis
-                const results = await analyzer.analyzeAudio(processBuffer);
+                // Run TuneBat analysis with timeout to prevent excessive delays
+                const analysisPromise = analyzer.analyzeAudio(processBuffer);
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Analysis timeout')), 20000) // 20 second max
+                );
+                
+                const results = await Promise.race([analysisPromise, timeoutPromise]);
                 
                 // Restore original duration
                 results.duration = audioBuffer.duration;
@@ -2587,57 +2605,137 @@
                 return results;
                 
             } catch (error) {
-                console.error('TuneBat analysis failed:', error);
-                // Fallback to simple analysis
-                return await performSimpleAnalysis(audioBuffer);
+                console.warn('TuneBat analysis failed or timed out:', error);
+                // Fallback to fast analysis
+                return await performOptimizedAnalysis(audioBuffer);
             }
         }
 
-        // Simple analysis fallback - restored original working version
-        async function performSimpleAnalysis(audioBuffer) {
+        // Optimized analysis for 10-15 second target processing time
+        async function performOptimizedAnalysis(audioBuffer) {
             const samples = audioBuffer.getChannelData(0);
             const sampleRate = audioBuffer.sampleRate;
             
-            // Basic BPM detection using autocorrelation (original working version)
+            // Smart window sizing for speed
+            let windowSize;
+            if (audioBuffer.duration > 120) {
+                windowSize = sampleRate * 20; // 20 seconds for long tracks
+            } else if (audioBuffer.duration > 60) {
+                windowSize = sampleRate * 15; // 15 seconds for medium tracks  
+            } else {
+                windowSize = Math.min(samples.length, sampleRate * audioBuffer.duration); // Full for short tracks
+            }
+            
+            // Use middle section for best results
+            const startSample = Math.floor((samples.length - windowSize) / 2);
+            const analyzeSamples = samples.slice(startSample, startSample + windowSize);
+            
+            // Optimized BPM detection with reduced resolution for speed
             let bestBPM = 120;
-            const windowSize = Math.min(samples.length, sampleRate * 30); // Max 30 seconds
+            const minLag = Math.floor(sampleRate * 0.3);  // 200 BPM max
+            const maxLag = Math.floor(sampleRate * 1.5);  // 40 BPM min  
+            const lagStep = 4; // Skip samples for 4x speedup
+            
             const autocorr = [];
             
-            // Yield before intensive computation
-            await new Promise(resolve => setTimeout(resolve, 10));
+            // Yield before computation
+            await new Promise(resolve => setTimeout(resolve, 5));
             
-            for (let lag = Math.floor(sampleRate * 0.3); lag < Math.floor(sampleRate * 2); lag++) {
+            for (let lag = minLag; lag < maxLag; lag += lagStep) {
                 let sum = 0;
-                for (let i = 0; i < windowSize - lag; i++) {
-                    sum += samples[i] * samples[i + lag];
+                const step = 8; // Sample sparsely for speed
+                for (let i = 0; i < analyzeSamples.length - lag; i += step) {
+                    sum += analyzeSamples[i] * analyzeSamples[i + lag];
                 }
                 autocorr.push({ lag, value: sum });
                 
-                // Yield occasionally to prevent blocking
-                if (lag % 1000 === 0) {
+                // Yield less frequently for speed
+                if (lag % 5000 === 0) {
                     await new Promise(resolve => setTimeout(resolve, 1));
                 }
             }
             
-            // Find peak
+            // Find peak with interpolation for better accuracy despite lower resolution
             let maxValue = 0;
             let bestLag = 0;
-            for (const { lag, value } of autocorr) {
-                if (value > maxValue) {
-                    maxValue = value;
-                    bestLag = lag;
+            for (let i = 1; i < autocorr.length - 1; i++) {
+                const curr = autocorr[i];
+                if (curr.value > maxValue) {
+                    maxValue = curr.value;
+                    bestLag = curr.lag;
+                    
+                    // Simple parabolic interpolation for sub-sample accuracy
+                    const prev = autocorr[i-1];
+                    const next = autocorr[i+1];
+                    const a = prev.value;
+                    const b = curr.value; 
+                    const c = next.value;
+                    
+                    if (2*b > a + c) { // Valid peak shape
+                        const offset = lagStep * (a - c) / (2 * (a - 2*b + c));
+                        bestLag = curr.lag + offset;
+                    }
                 }
             }
             
             if (bestLag > 0) {
                 bestBPM = (60 * sampleRate) / bestLag;
-                if (bestBPM < 60) bestBPM *= 2;
-                if (bestBPM > 200) bestBPM /= 2;
+                
+                // Handle common tempo relationships
+                if (bestBPM < 70) bestBPM *= 2;
+                else if (bestBPM > 170) bestBPM /= 2;
+                
+                // Fine-tune for common BPMs
+                const commonBPMs = [120, 128, 140, 100, 110, 130, 90, 95, 160, 80];
+                for (const commonBPM of commonBPMs) {
+                    if (Math.abs(bestBPM - commonBPM) < 3) {
+                        bestBPM = commonBPM;
+                        break;
+                    }
+                }
+            }
+            
+            // Basic key detection (simplified for speed)
+            let detectedKey = 'C Major';
+            try {
+                // Quick spectral analysis on a small window
+                const keyWindow = 4096;
+                const startIdx = Math.floor((analyzeSamples.length - keyWindow) / 2);
+                const keySegment = analyzeSamples.slice(startIdx, startIdx + keyWindow);
+                
+                // Simple dominant frequency detection
+                let maxMag = 0;
+                let dominantFreq = 440;
+                
+                for (let k = 10; k < keyWindow / 8; k += 2) { // Sparse sampling
+                    let real = 0, imag = 0;
+                    for (let n = 0; n < keyWindow; n += 4) { // 4x decimation
+                        const angle = -2 * Math.PI * k * n / keyWindow;
+                        real += keySegment[n] * Math.cos(angle);
+                        imag += keySegment[n] * Math.sin(angle);
+                    }
+                    
+                    const magnitude = real * real + imag * imag;
+                    if (magnitude > maxMag) {
+                        maxMag = magnitude;
+                        dominantFreq = (k * sampleRate) / keyWindow;
+                    }
+                }
+                
+                // Map to key
+                if (dominantFreq > 80 && dominantFreq < 2000) {
+                    const keys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+                    const pitch = 12 * Math.log2(dominantFreq / 440) + 69;
+                    const keyIndex = Math.round(pitch) % 12;
+                    detectedKey = keys[keyIndex >= 0 ? keyIndex : keyIndex + 12] + ' Major';
+                }
+            } catch (e) {
+                // Keep default
             }
             
             return {
-                bpm: Math.round(bestBPM),
-                key: 'C Major',
+                bpm: Math.round(Math.max(60, Math.min(200, bestBPM))),
+                key: detectedKey,
                 duration: audioBuffer.duration,
                 sampleRate: audioBuffer.sampleRate
             };
@@ -2790,18 +2888,33 @@
                 progressText.textContent = `Separating ${stemType}...`;
                 progressFill.style.width = '10%';
 
-                // Create FormData
+                // Create FormData (only audio in body; stem type via query for FastAPI compatibility)
                 const formData = new FormData();
                 formData.append('audio', vocalInput.files[0]);
-                formData.append('stem_type', stemType);
 
                 log(`[UPLOAD] Uploading to vocal-remover service...`);
-                
-                const response = await fetch(`${VOCAL_API_URL}/separate`, {
+
+                // Optional reachability check for clearer errors
+                try {
+                    const health = await fetch(`${VOCAL_API_URL}/health`, { mode: 'cors', cache: 'no-store' });
+                    log(`[HEALTH] Vocal API: ${health.status}`);
+                } catch (e) {
+                    log('[WARN] Health check failed (continuing): ' + e.message);
+                }
+
+                // Robust fetch with timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for large uploads
+
+                const response = await fetch(`${VOCAL_API_URL}/separate?stem_type=${encodeURIComponent(stemType)}`, {
                     method: 'POST',
                     body: formData,
-                    mode: 'cors'
-                });
+                    mode: 'cors',
+                    credentials: 'omit',
+                    headers: { 'Accept': 'audio/wav' },
+                    signal: controller.signal,
+                    cache: 'no-store'
+                }).finally(() => clearTimeout(timeoutId));
 
                 log(`[DATA] Separation Response: ${response.status} ${response.statusText}`);
                 
