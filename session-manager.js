@@ -84,39 +84,150 @@ class SessionManager {
         transform: translate(-50%, -50%);
         background: #c0c0c0;
         border: 2px outset #c0c0c0;
-        padding: 16px;
+        width: 90%;
+        max-width: 500px;
         z-index: 10000;
         font-family: 'MS Sans Serif', sans-serif;
         font-size: 11px;
-        box-shadow: 4px 4px 8px rgba(0,0,0,0.3);
+        box-shadow: 4px 4px 12px rgba(0,0,0,0.3);
       }
       
-      .auth-required-dialog h3 {
-        margin: 0 0 8px 0;
-        color: #000080;
+      .dialog-header {
+        background: linear-gradient(90deg, #0080ff, #004080);
+        color: white;
+        padding: 6px 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: -2px -2px 0 -2px;
       }
       
-      .auth-required-dialog p {
-        margin: 0 0 12px 0;
+      .dialog-header h3 {
+        margin: 0;
+        font-size: 12px;
+        font-weight: bold;
+      }
+      
+      .dialog-close {
+        background: #c0c0c0;
+        border: 1px outset #c0c0c0;
+        width: 18px;
+        height: 16px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: bold;
         color: #000;
       }
       
-      .auth-required-dialog button {
-        background: #c0c0c0;
-        border: 2px outset #c0c0c0;
-        padding: 4px 12px;
-        cursor: pointer;
-        font-family: inherit;
-        font-size: 11px;
-        margin-right: 8px;
-      }
-      
-      .auth-required-dialog button:hover {
+      .dialog-close:hover {
         background: #d0d0d0;
       }
       
-      .auth-required-dialog button:active {
-        border: 2px inset #c0c0c0;
+      .dialog-body {
+        padding: 16px;
+      }
+      
+      .dialog-body p {
+        margin: 0 0 16px 0;
+        color: #000;
+        line-height: 1.4;
+      }
+      
+      .plan-comparison {
+        display: flex;
+        gap: 12px;
+        margin: 16px 0;
+      }
+      
+      .plan-item {
+        flex: 1;
+        background: #e0e0e0;
+        border: 1px inset #c0c0c0;
+        padding: 10px;
+      }
+      
+      .plan-item.premium {
+        background: #ffffcc;
+        border-color: #ffcc00;
+      }
+      
+      .plan-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 8px;
+        font-weight: bold;
+        color: #000080;
+      }
+      
+      .plan-item.premium .plan-header {
+        color: #cc6600;
+      }
+      
+      .plan-icon {
+        font-size: 14px;
+      }
+      
+      .plan-features {
+        font-size: 10px;
+        line-height: 1.3;
+        color: #333;
+      }
+      
+      .dialog-actions {
+        padding: 0 16px 16px 16px;
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      
+      .btn {
+        padding: 6px 12px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 11px;
+        border: 2px outset;
+        min-width: 80px;
+      }
+      
+      .btn-primary {
+        background: #0080ff;
+        color: white;
+        border-color: #0080ff;
+        font-weight: bold;
+      }
+      
+      .btn-primary:hover {
+        background: #0066cc;
+      }
+      
+      .btn-secondary {
+        background: #00cc00;
+        color: white;
+        border-color: #00cc00;
+        font-weight: bold;
+      }
+      
+      .btn-secondary:hover {
+        background: #00aa00;
+      }
+      
+      .btn-tertiary {
+        background: #c0c0c0;
+        color: #000;
+        border-color: #c0c0c0;
+      }
+      
+      .btn-tertiary:hover {
+        background: #d0d0d0;
+      }
+      
+      .btn:active {
+        border-style: inset;
       }
       
       .start-menu {
@@ -125,10 +236,33 @@ class SessionManager {
         left: 0;
         background: #c0c0c0;
         border: 2px outset #c0c0c0;
-        min-width: 200px;
+        min-width: 220px;
+        max-width: 300px;
         font-family: 'MS Sans Serif', sans-serif;
         font-size: 11px;
         z-index: 1001;
+        box-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      }
+      
+      .start-menu-section {
+        padding: 4px 0;
+      }
+      
+      .start-menu-header {
+        background: #e0e0e0;
+        padding: 4px 12px;
+        font-weight: bold;
+        color: #000080;
+        font-size: 10px;
+        text-transform: uppercase;
+        border-bottom: 1px solid #808080;
+        margin-bottom: 2px;
+      }
+      
+      .start-menu-divider {
+        height: 1px;
+        background: #808080;
+        margin: 4px 8px;
       }
       
       .start-menu-item {
@@ -136,7 +270,7 @@ class SessionManager {
         align-items: center;
         padding: 6px 12px;
         cursor: pointer;
-        border-bottom: 1px solid #808080;
+        transition: background 0.2s;
       }
       
       .start-menu-item:hover {
@@ -144,13 +278,11 @@ class SessionManager {
         color: white;
       }
       
-      .start-menu-item:last-child {
-        border-bottom: none;
-      }
-      
       .start-menu-icon {
         margin-right: 8px;
         font-size: 14px;
+        width: 18px;
+        text-align: center;
       }
     `;
 
@@ -177,17 +309,43 @@ class SessionManager {
     startMenu.className = 'start-menu';
     startMenu.id = 'start-menu';
     startMenu.innerHTML = `
-      <div class="start-menu-item" onclick="sessionManager.authModal.show(); sessionManager.removeStartMenu();">
-        <span class="start-menu-icon">🔑</span>
-        Sign In
+      <div class="start-menu-section">
+        <div class="start-menu-header">Account</div>
+        <div class="start-menu-item" onclick="window.sessionManager.authModal.show(); window.sessionManager.removeStartMenu();">
+          <span class="start-menu-icon">🔑</span>
+          Sign In
+        </div>
+        <div class="start-menu-item" onclick="window.sessionManager.authModal.show(); window.sessionManager.authModal.switchTab('signup'); window.sessionManager.removeStartMenu();">
+          <span class="start-menu-icon">👤</span>
+          Create Free Account
+        </div>
       </div>
-      <div class="start-menu-item" onclick="sessionManager.authModal.show(); sessionManager.authModal.switchTab('signup'); sessionManager.removeStartMenu();">
-        <span class="start-menu-icon">👤</span>
-        Create Account
+      <div class="start-menu-divider"></div>
+      <div class="start-menu-section">
+        <div class="start-menu-header">Features</div>
+        <div class="start-menu-item" onclick="openWindow('audio-mastering'); window.sessionManager.removeStartMenu();">
+          <span class="start-menu-icon">🎛️</span>
+          Audio Mastering
+        </div>
+        <div class="start-menu-item" onclick="openWindow('audio-analysis'); window.sessionManager.removeStartMenu();">
+          <span class="start-menu-icon">📊</span>
+          Audio Analysis
+        </div>
+        <div class="start-menu-item" onclick="openWindow('vocal-remover'); window.sessionManager.removeStartMenu();">
+          <span class="start-menu-icon">🎤</span>
+          Vocal Remover
+        </div>
+        <div class="start-menu-item" onclick="openWindow('lyrics-generator'); window.sessionManager.removeStartMenu();">
+          <span class="start-menu-icon">✍️</span>
+          AI Lyrics Generator
+        </div>
       </div>
-      <div class="start-menu-item" onclick="sessionManager.showAuthRequiredDialog();">
-        <span class="start-menu-icon">ℹ️</span>
-        About Authentication
+      <div class="start-menu-divider"></div>
+      <div class="start-menu-section">
+        <div class="start-menu-item" onclick="window.sessionManager.showAuthRequiredDialog(); window.sessionManager.removeStartMenu();">
+          <span class="start-menu-icon">⭐</span>
+          Upgrade to Premium
+        </div>
       </div>
     `;
     
@@ -208,21 +366,50 @@ class SessionManager {
     // Remove existing menu
     this.removeStartMenu();
     
+    const user = window.authManager.getCurrentUser();
+    const displayName = user ? (user.displayName || user.email.split('@')[0]) : 'User';
+    
     const startMenu = document.createElement('div');
     startMenu.className = 'start-menu';
     startMenu.id = 'start-menu';
     startMenu.innerHTML = `
-      <div class="start-menu-item" onclick="sessionManager.showDashboard(); sessionManager.removeStartMenu();">
-        <span class="start-menu-icon">📊</span>
-        Dashboard
+      <div class="start-menu-section">
+        <div class="start-menu-header">Welcome, ${displayName}</div>
+        <div class="start-menu-item" onclick="window.sessionManager.showDashboard(); window.sessionManager.removeStartMenu();">
+          <span class="start-menu-icon">📊</span>
+          My Dashboard
+        </div>
+        <div class="start-menu-item" onclick="window.sessionManager.showUpgradeModal(); window.sessionManager.removeStartMenu();">
+          <span class="start-menu-icon">⭐</span>
+          Upgrade to Premium
+        </div>
       </div>
-      <div class="start-menu-item" onclick="sessionManager.showUpgradeModal(); sessionManager.removeStartMenu();">
-        <span class="start-menu-icon">⭐</span>
-        Upgrade to Premium
+      <div class="start-menu-divider"></div>
+      <div class="start-menu-section">
+        <div class="start-menu-header">Features</div>
+        <div class="start-menu-item" onclick="openWindow('audio-mastering'); window.sessionManager.removeStartMenu();">
+          <span class="start-menu-icon">🎛️</span>
+          Audio Mastering
+        </div>
+        <div class="start-menu-item" onclick="openWindow('audio-analysis'); window.sessionManager.removeStartMenu();">
+          <span class="start-menu-icon">📊</span>
+          Audio Analysis
+        </div>
+        <div class="start-menu-item" onclick="openWindow('vocal-remover'); window.sessionManager.removeStartMenu();">
+          <span class="start-menu-icon">🎤</span>
+          Vocal Remover
+        </div>
+        <div class="start-menu-item" onclick="openWindow('lyrics-generator'); window.sessionManager.removeStartMenu();">
+          <span class="start-menu-icon">✍️</span>
+          AI Lyrics Generator
+        </div>
       </div>
-      <div class="start-menu-item" onclick="sessionManager.signOut(); sessionManager.removeStartMenu();">
-        <span class="start-menu-icon">🚪</span>
-        Sign Out
+      <div class="start-menu-divider"></div>
+      <div class="start-menu-section">
+        <div class="start-menu-item" onclick="window.sessionManager.signOut(); window.sessionManager.removeStartMenu();">
+          <span class="start-menu-icon">🚪</span>
+          Sign Out
+        </div>
       </div>
     `;
     

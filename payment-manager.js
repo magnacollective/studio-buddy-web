@@ -152,6 +152,12 @@ export class PaymentManager {
 
   // Show upgrade modal with payment options
   showUpgradeModal() {
+    // Remove existing modal if any
+    const existingModal = document.querySelector('.upgrade-modal');
+    if (existingModal) {
+      existingModal.remove();
+    }
+    
     const modal = this.createUpgradeModal();
     document.body.appendChild(modal);
     modal.style.display = 'flex';
@@ -188,8 +194,18 @@ export class PaymentManager {
             </button>
             
             <div class="payment-info">
-              <div class="secure-payment">🔒 Secure payment powered by Stripe</div>
-              <div class="trial-info">7-day free trial • Cancel anytime</div>
+              <div class="secure-payment">🔒 Demo Mode - No actual payment required</div>
+              <div class="trial-info">For testing • Real Stripe integration ready</div>
+            </div>
+            
+            <div class="demo-controls" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #808080;">
+              <div style="font-size: 10px; margin-bottom: 8px; color: #666;">Demo Controls:</div>
+              <button class="demo-btn" id="downgrade-btn" style="background: #ff6666; color: white; border: 1px solid #ff6666; padding: 4px 8px; margin-right: 8px; font-size: 10px; cursor: pointer;">
+                Simulate Downgrade
+              </button>
+              <button class="demo-btn" onclick="alert('Feature: View payment history, manage billing, update payment methods')" style="background: #666; color: white; border: 1px solid #666; padding: 4px 8px; font-size: 10px; cursor: pointer;">
+                Billing Settings
+              </button>
             </div>
           </div>
         </div>
@@ -215,11 +231,20 @@ export class PaymentManager {
         modal.querySelector('#subscribe-btn').textContent = 'Processing...';
         modal.querySelector('#subscribe-btn').disabled = true;
         
-        await this.createPremiumCheckout();
+        // For demo purposes - simulate successful upgrade
+        await this.simulateSuccessfulUpgrade();
       } catch (error) {
-        alert('Error starting checkout: ' + error.message);
+        this.showPaymentNotification('Error processing upgrade: ' + error.message, 'error');
         modal.querySelector('#subscribe-btn').textContent = 'Subscribe Now';
         modal.querySelector('#subscribe-btn').disabled = false;
+      }
+    });
+
+    // Add downgrade button event listener
+    modal.querySelector('#downgrade-btn').addEventListener('click', async () => {
+      if (confirm('Downgrade to Free Plan?\n\nYou will lose Premium benefits and be limited to 3 tracks per month.')) {
+        modal.remove();
+        await this.simulateDowngrade();
       }
     });
 
@@ -371,22 +396,109 @@ export class PaymentManager {
     modal.appendChild(style);
   }
 
+  // Simulate successful upgrade for demo purposes
+  async simulateSuccessfulUpgrade() {
+    return new Promise((resolve) => {
+      setTimeout(async () => {
+        try {
+          // Update user subscription to premium
+          const success = await window.authManager.updateSubscription('premium', 'active', null);
+          
+          if (success) {
+            // Close modal
+            const modal = document.querySelector('.upgrade-modal');
+            if (modal) modal.remove();
+            
+            this.showPaymentNotification('🎉 Welcome to Premium! You now have unlimited access to all features.', 'success');
+            
+            // Update the start button to reflect premium status
+            const userStatus = document.getElementById('user-status');
+            if (userStatus) {
+              userStatus.textContent = '⭐';
+            }
+            
+            resolve();
+          } else {
+            throw new Error('Failed to update subscription');
+          }
+        } catch (error) {
+          this.showPaymentNotification('Error upgrading account: ' + error.message, 'error');
+          throw error;
+        }
+      }, 2000); // 2 second delay to simulate processing
+    });
+  }
+
+  // Simulate downgrade for demo purposes
+  async simulateDowngrade() {
+    try {
+      const success = await window.authManager.updateSubscription('free', 'active', null);
+      
+      if (success) {
+        this.showPaymentNotification('Downgraded to Free Plan. You now have 3 tracks per month.', 'info');
+        
+        // Update the start button to reflect free status
+        const userStatus = document.getElementById('user-status');
+        if (userStatus) {
+          userStatus.textContent = '👤';
+        }
+      } else {
+        throw new Error('Failed to downgrade subscription');
+      }
+    } catch (error) {
+      this.showPaymentNotification('Error downgrading account: ' + error.message, 'error');
+    }
+  }
+
+  showPaymentNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `payment-notification notification-${type}`;
+    notification.textContent = message;
+    
+    Object.assign(notification.style, {
+      position: 'fixed',
+      top: '20px',
+      right: '20px',
+      background: type === 'error' ? '#ffcccc' : type === 'success' ? '#ccffcc' : type === 'warning' ? '#ffffcc' : '#ccccff',
+      border: `2px outset ${type === 'error' ? '#ff6666' : type === 'success' ? '#00cc00' : type === 'warning' ? '#ffcc00' : '#0066cc'}`,
+      color: type === 'error' ? '#cc0000' : type === 'success' ? '#006600' : type === 'warning' ? '#cc6600' : '#000066',
+      padding: '12px 16px',
+      maxWidth: '350px',
+      zIndex: '10004',
+      fontFamily: 'MS Sans Serif, sans-serif',
+      fontSize: '11px',
+      fontWeight: 'bold',
+      wordWrap: 'break-word',
+      boxShadow: '4px 4px 8px rgba(0,0,0,0.3)'
+    });
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 6 seconds for success messages, 8 seconds for others
+    const timeout = type === 'success' ? 6000 : 8000;
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, timeout);
+  }
+
   // Mock backend endpoints for development
   static createMockEndpoints() {
-    // This would be replaced with actual backend implementation
     console.log('🚀 Payment system ready for backend integration');
     console.log('📋 Required backend endpoints:');
     console.log('  - POST /api/create-checkout-session');
     console.log('  - POST /api/verify-payment');
     console.log('  - POST /api/cancel-subscription');
     console.log('  - POST /api/webhook/stripe (for payment webhooks)');
+    console.log('');
+    console.log('💡 Currently using demo mode - upgrades are simulated');
   }
 }
 
 // Create global payment manager
-export const paymentManager = new PaymentManager();
+const paymentManager = new PaymentManager();
+window.paymentManager = paymentManager;
 
 // Log setup instructions
 PaymentManager.createMockEndpoints();
-
-export default paymentManager;

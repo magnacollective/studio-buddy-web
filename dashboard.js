@@ -60,7 +60,7 @@ export class UserDashboard {
             </div>
             
             <div class="dashboard-section" id="upgrade-section">
-              <h3>Upgrade to Premium</h3>
+              <h3 id="subscription-header">Upgrade to Premium</h3>
               <div class="premium-benefits">
                 <div class="benefit-item">✓ Unlimited track processing</div>
                 <div class="benefit-item">✓ Priority processing speed</div>
@@ -71,6 +71,21 @@ export class UserDashboard {
               <button class="upgrade-btn-large" id="upgrade-btn-large">
                 Upgrade to Premium - $9.99/month
               </button>
+              
+              <div id="premium-management" style="display: none;">
+                <div style="background: #e0ffe0; padding: 12px; margin: 12px 0; border: 1px solid #00cc00;">
+                  <strong>Premium Active</strong><br>
+                  You have unlimited access to all Studio Buddy features!
+                </div>
+                <div class="premium-actions">
+                  <button class="action-btn" onclick="window.paymentManager.showUpgradeModal();">
+                    Manage Subscription
+                  </button>
+                  <button class="action-btn danger" onclick="window.paymentManager.simulateDowngrade();">
+                    Cancel Premium
+                  </button>
+                </div>
+              </div>
             </div>
             
             <div class="dashboard-section">
@@ -316,12 +331,26 @@ export class UserDashboard {
         border: 2px inset #ff6666;
       }
 
+      .premium-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      .premium-actions .action-btn {
+        flex: 1;
+      }
+
       @media (max-width: 600px) {
         .usage-stats {
           flex-direction: column;
         }
         
         .action-buttons {
+          flex-direction: column;
+        }
+        
+        .premium-actions {
           flex-direction: column;
         }
       }
@@ -406,53 +435,110 @@ export class UserDashboard {
     const usagePercentage = plan === 'premium' ? 100 : (processedTracks / monthlyLimit) * 100;
     document.getElementById('dashboard-usage-fill').style.width = Math.min(usagePercentage, 100) + '%';
 
-    // Show/hide upgrade section
-    const upgradeSection = document.getElementById('upgrade-section');
-    upgradeSection.style.display = plan === 'premium' ? 'none' : 'block';
+    // Update subscription section based on plan
+    const subscriptionHeader = document.getElementById('subscription-header');
+    const upgradeBtnLarge = document.getElementById('upgrade-btn-large');
+    const premiumManagement = document.getElementById('premium-management');
+    
+    if (plan === 'premium') {
+      subscriptionHeader.textContent = 'Premium Subscription';
+      upgradeBtnLarge.style.display = 'none';
+      premiumManagement.style.display = 'block';
+    } else {
+      subscriptionHeader.textContent = 'Upgrade to Premium';
+      upgradeBtnLarge.style.display = 'block';
+      premiumManagement.style.display = 'none';
+    }
   }
 
   showUpgradeModal() {
-    // This would integrate with payment system
-    alert('Payment integration coming soon! This would redirect to Stripe/payment processor.');
     this.hide();
+    window.paymentManager.showUpgradeModal();
   }
 
   async resetUsage() {
-    if (!confirm('Reset monthly usage counter? This is for testing purposes only.')) {
+    if (!confirm('Reset your monthly usage counter?\n\nThis will reset your processed tracks count to 0 for the current month.')) {
       return;
     }
 
-    // This would normally be restricted to admins or have proper validation
-    const user = authManager.getCurrentUser();
+    const user = window.authManager.getCurrentUser();
     if (user) {
       try {
-        const userDoc = doc(db, 'users', user.uid);
-        await updateDoc(userDoc, {
-          'usage.processedTracks': 0
+        const userDoc = window.firebaseDB.collection('users').doc(user.uid);
+        await userDoc.update({
+          'usage.processedTracks': 0,
+          'usage.lastReset': new Date()
         });
         
-        alert('Usage counter reset successfully!');
+        this.showNotification('Usage counter reset successfully!', 'success');
         await this.loadUserData();
       } catch (error) {
-        alert('Error resetting usage: ' + error.message);
+        this.showNotification('Error resetting usage: ' + error.message, 'error');
       }
     }
   }
 
   async deleteAccount() {
-    if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+    const confirmText = 'DELETE MY ACCOUNT';
+    const userInput = prompt(`⚠️ DANGER: Account Deletion\n\nThis will permanently delete:\n• Your account and profile\n• All usage history\n• Your subscription (if any)\n\nType "${confirmText}" to confirm:`);
+    
+    if (userInput !== confirmText) {
+      this.showNotification('Account deletion cancelled', 'info');
       return;
     }
 
-    if (!confirm('This will permanently delete all your data. Are you absolutely sure?')) {
-      return;
+    const user = window.authManager.getCurrentUser();
+    if (user) {
+      try {
+        // Delete user document from Firestore
+        await window.firebaseDB.collection('users').doc(user.uid).delete();
+        
+        // Delete the user account
+        await user.delete();
+        
+        this.hide();
+        this.showNotification('Account deleted successfully', 'success');
+        
+        // Reload page after account deletion
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } catch (error) {
+        this.showNotification('Error deleting account: ' + error.message, 'error');
+      }
     }
+  }
 
-    // This would normally involve backend cleanup
-    alert('Account deletion feature coming soon! This would require backend integration for secure deletion.');
+  showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `dashboard-notification notification-${type}`;
+    notification.textContent = message;
+    
+    Object.assign(notification.style, {
+      position: 'fixed',
+      top: '20px',
+      right: '20px',
+      background: type === 'error' ? '#ffcccc' : type === 'success' ? '#ccffcc' : type === 'warning' ? '#ffffcc' : '#ccccff',
+      border: `2px outset ${type === 'error' ? '#ff6666' : type === 'success' ? '#00cc00' : type === 'warning' ? '#ffcc00' : '#0066cc'}`,
+      color: type === 'error' ? '#cc0000' : type === 'success' ? '#006600' : type === 'warning' ? '#cc6600' : '#000066',
+      padding: '8px 12px',
+      maxWidth: '300px',
+      zIndex: '10003',
+      fontFamily: 'MS Sans Serif, sans-serif',
+      fontSize: '11px',
+      wordWrap: 'break-word'
+    });
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 4000);
   }
 }
 
 // Create global dashboard instance
-export const userDashboard = new UserDashboard();
-export default userDashboard;
+const userDashboard = new UserDashboard();
+window.userDashboard = userDashboard;
