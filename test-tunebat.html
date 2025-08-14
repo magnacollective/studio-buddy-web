@@ -208,14 +208,10 @@
     </div>
     
     <div class="test-container">
-        <h2>⚙️ Settings</h2>
-        <label>
-            <input type="checkbox" id="enableServerFallback" checked> Enable Server Fallback
-        </label><br>
-        <label>
-            Confidence Threshold: <input type="range" id="confidenceThreshold" min="0.3" max="0.9" step="0.1" value="0.7">
-            <span id="thresholdValue">0.7</span>
-        </label>
+        <h2>ℹ️ About</h2>
+        <p><strong>100% Client-Side Analysis</strong></p>
+        <p>All audio processing happens in your browser. No files are uploaded to any server.</p>
+        <p>Using TuneBat-style multi-algorithm ensemble for accurate BPM and key detection.</p>
     </div>
     
     <!-- Scripts -->
@@ -233,26 +229,7 @@
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 enhancedAnalyzer = new EnhancedAudioManager(audioContext);
                 
-                // Setup settings
-                const serverFallback = document.getElementById('enableServerFallback');
-                const confidenceThreshold = document.getElementById('confidenceThreshold');
-                const thresholdValue = document.getElementById('thresholdValue');
-                
-                serverFallback.addEventListener('change', (e) => {
-                    enhancedAnalyzer.setServerFallback(e.target.checked);
-                });
-                
-                confidenceThreshold.addEventListener('input', (e) => {
-                    const value = parseFloat(e.target.value);
-                    enhancedAnalyzer.setConfidenceThreshold(value);
-                    thresholdValue.textContent = value.toFixed(1);
-                });
-                
-                // Apply initial settings
-                enhancedAnalyzer.setServerFallback(serverFallback.checked);
-                enhancedAnalyzer.setConfidenceThreshold(parseFloat(confidenceThreshold.value));
-                
-                console.log('✅ Test page initialized');
+                console.log('✅ Test page initialized - Client-side only mode');
             } catch (error) {
                 console.error('❌ Initialization failed:', error);
                 document.getElementById('status').textContent = 'Initialization failed: ' + error.message;

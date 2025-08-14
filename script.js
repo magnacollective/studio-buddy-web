@@ -19,10 +19,10 @@ class StudioBuddyApp {
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
             this.audioProcessor = new AudioProcessor(this.audioContext);
             
-            // Use Enhanced Audio Manager with TuneBat-style analysis
+            // Use Enhanced Audio Manager with TuneBat-style analysis - CLIENT ONLY
             this.audioAnalyzer = new EnhancedAudioManager(this.audioContext);
-            this.audioAnalyzer.setServerFallback(true); // Enable server fallback
-            this.audioAnalyzer.setConfidenceThreshold(0.7); // Set confidence threshold
+            this.audioAnalyzer.setServerFallback(false); // Disable server - use client-side only
+            this.audioAnalyzer.setConfidenceThreshold(0.5); // Lower threshold since no fallback
             
             this.setupEventListeners();
             this.setupMatrixBackground();

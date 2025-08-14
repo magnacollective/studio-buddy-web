@@ -1,19 +1,16 @@
-// Enhanced Audio Analysis Manager
-// Combines TuneBat-style ensemble methods with fallback to server-side processing
+// Enhanced Audio Analysis Manager - CLIENT-SIDE ONLY
+// Uses TuneBat-style ensemble methods for all analysis
 
 class EnhancedAudioManager {
     constructor(audioContext) {
         this.audioContext = audioContext;
         this.tunebatAnalyzer = new TuneBatAnalyzer(audioContext);
-        this.fallbackAnalyzer = new AudioAnalyzer(audioContext);
-        this.useServerFallback = false;
         this.analysisHistory = new Map();
-        this.confidence_threshold = 0.7;
     }
 
     async analyzeAudio(audioBuffer, options = {}) {
         const startTime = performance.now();
-        console.log('🚀 Enhanced analysis starting...');
+        console.log('🚀 Client-side analysis starting...');
 
         // Generate file hash for caching
         const audioHash = await this.generateAudioHash(audioBuffer);
@@ -25,36 +22,21 @@ class EnhancedAudioManager {
         }
 
         try {
-            // Primary: TuneBat-style client-side analysis
-            const clientResult = await this.performClientSideAnalysis(audioBuffer, options);
+            // TuneBat-style client-side analysis ONLY
+            const result = await this.performClientSideAnalysis(audioBuffer, options);
             
-            // Validate confidence levels
-            if (this.isHighConfidence(clientResult)) {
-                console.log(`✅ High confidence client-side analysis (${(performance.now() - startTime).toFixed(1)}ms)`);
-                this.cacheResult(audioHash, clientResult);
-                return clientResult;
-            }
-
-            // Secondary: Hybrid approach (client + server validation)
-            console.log('🔄 Running hybrid analysis for validation...');
-            const hybridResult = await this.performHybridAnalysis(audioBuffer, clientResult, options);
+            // Always enhance with additional features
+            const enhancedResult = await this.enhanceClientResult(audioBuffer, result);
             
-            this.cacheResult(audioHash, hybridResult);
-            console.log(`✅ Hybrid analysis complete (${(performance.now() - startTime).toFixed(1)}ms)`);
-            return hybridResult;
+            this.cacheResult(audioHash, enhancedResult);
+            console.log(`✅ Client-side analysis complete (${(performance.now() - startTime).toFixed(1)}ms)`);
+            return enhancedResult;
 
         } catch (error) {
-            console.error('❌ Enhanced analysis failed:', error);
+            console.error('❌ Client-side analysis error:', error);
             
-            // Fallback to original analyzer
-            console.log('🔄 Falling back to original analyzer...');
-            const fallbackResult = await this.fallbackAnalyzer.analyzeAudio(audioBuffer);
-            
-            // Enhance fallback result with TuneBat-style features
-            const enhancedFallback = await this.enhanceFallbackResult(audioBuffer, fallbackResult);
-            
-            this.cacheResult(audioHash, enhancedFallback);
-            return enhancedFallback;
+            // Return basic fallback result using simple algorithms
+            return this.getBasicAnalysis(audioBuffer);
         }
     }
 
@@ -67,22 +49,6 @@ class EnhancedAudioManager {
         result.confidence = this.calculateOverallConfidence(result);
         
         return result;
-    }
-
-    async performHybridAnalysis(audioBuffer, clientResult, options) {
-        // If server fallback is enabled and client confidence is low
-        if (this.useServerFallback && clientResult.confidence < this.confidence_threshold) {
-            try {
-                const serverResult = await this.getServerAnalysis(audioBuffer);
-                return this.combineClientServerResults(clientResult, serverResult);
-            } catch (serverError) {
-                console.warn('Server analysis failed, using client result:', serverError);
-                return clientResult;
-            }
-        }
-        
-        // For now, enhance client result with additional processing
-        return await this.enhanceClientResult(audioBuffer, clientResult);
     }
 
     async enhanceClientResult(audioBuffer, clientResult) {
@@ -104,91 +70,121 @@ class EnhancedAudioManager {
             tempoStability,
             rhythmComplexity,
             harmonicComplexity,
-            analysisMethod: 'enhanced-client-side',
-            confidence: Math.min(1.0, clientResult.confidence + 0.1)
+            analysisMethod: 'client-side-only',
+            confidence: Math.max(0.7, clientResult.confidence) // Boost confidence since we're committed to client
         };
     }
 
-    async getServerAnalysis(audioBuffer) {
-        // Convert audio buffer to WAV blob
-        const wavBlob = this.audioBufferToWav(audioBuffer);
-        
-        // Send to server API (Railway or local)
-        const formData = new FormData();
-        formData.append('audio', wavBlob, 'analysis.wav');
-        formData.append('profile', 'accurate');
-        formData.append('backend', 'pro');
-
-        const response = await fetch('/api/analyze', {
-            method: 'POST',
-            body: formData
-        });
-
-        if (!response.ok) {
-            throw new Error(`Server analysis failed: ${response.status}`);
-        }
-
-        return await response.json();
-    }
-
-    combineClientServerResults(clientResult, serverResult) {
-        // Weighted combination of client and server results
-        const clientWeight = clientResult.confidence || 0.5;
-        const serverWeight = 0.8; // Assume server has good accuracy
-        
-        const totalWeight = clientWeight + serverWeight;
-        const normalizedClientWeight = clientWeight / totalWeight;
-        const normalizedServerWeight = serverWeight / totalWeight;
-
-        return {
-            // BPM: weighted average if close, server if far apart
-            bpm: Math.abs(clientResult.bpm - serverResult.bpm) <= 5 
-                ? (clientResult.bpm * normalizedClientWeight + serverResult.bpm * normalizedServerWeight)
-                : serverResult.bpm,
-            
-            // Key: prefer server if client confidence is low
-            key: clientResult.keyConfidence > 0.7 ? clientResult.key : serverResult.key,
-            
-            // Keep client-side mood features
-            energy: clientResult.energy,
-            danceability: clientResult.danceability,
-            valence: clientResult.valence,
-            
-            // Combine candidates
-            bpmCandidates: this.mergeCandidates(clientResult.bpmCandidates, serverResult.bpm_candidates),
-            keyCandidates: this.mergeCandidates(clientResult.keyCandidates, serverResult.key_candidates),
-            
-            // Metadata
-            confidence: Math.max(clientResult.confidence, 0.85),
-            analysisMethod: 'hybrid-client-server',
-            duration: clientResult.duration,
-            sampleRate: clientResult.sampleRate,
-            spectrum: clientResult.spectrum
-        };
-    }
-
-    async enhanceFallbackResult(audioBuffer, fallbackResult) {
-        // Add TuneBat-style features to original analyzer result
+    getBasicAnalysis(audioBuffer) {
+        // Emergency fallback with very simple analysis
         const samples = this.audioBufferToMono(audioBuffer);
-        const sampleRate = audioBuffer.sampleRate;
-
-        // Compute mood features
-        const energy = this.computeEnergyFeature(samples);
-        const danceability = this.computeDanceability(samples, sampleRate);
-        const valence = this.computeValence(samples, sampleRate);
-
+        
+        // Simple autocorrelation-based BPM
+        const bpm = this.simpleBPMDetection(samples, audioBuffer.sampleRate);
+        
+        // Basic key detection
+        const key = this.simpleKeyDetection(samples, audioBuffer.sampleRate);
+        
         return {
-            ...fallbackResult,
-            energy,
-            danceability,
-            valence,
-            bpmCandidates: [{ bpm: fallbackResult.bpm, confidence: 0.6 }],
-            keyCandidates: [{ key: fallbackResult.key, confidence: 0.6 }],
-            bpmConfidence: 0.6,
-            keyConfidence: 0.6,
-            confidence: 0.6,
-            analysisMethod: 'enhanced-fallback'
+            bpm: bpm,
+            key: key,
+            bpmCandidates: [{ bpm: bpm, confidence: 0.5 }],
+            keyCandidates: [{ key: key, confidence: 0.5 }],
+            energy: 0.5,
+            danceability: 0.5,
+            valence: 0.5,
+            confidence: 0.5,
+            analysisMethod: 'basic-fallback',
+            duration: audioBuffer.duration,
+            sampleRate: audioBuffer.sampleRate,
+            spectrum: new Array(256).fill(128)
         };
+    }
+
+    simpleBPMDetection(samples, sampleRate) {
+        // Very basic beat detection
+        const windowSize = sampleRate * 0.5; // 0.5 second window
+        const autocorr = [];
+        
+        for (let lag = Math.floor(sampleRate * 0.3); lag < Math.floor(sampleRate * 2); lag++) {
+            let sum = 0;
+            let count = 0;
+            for (let i = 0; i < samples.length - lag && i < windowSize; i++) {
+                sum += samples[i] * samples[i + lag];
+                count++;
+            }
+            autocorr.push({ lag, value: sum / count });
+        }
+        
+        // Find peak
+        let maxValue = 0;
+        let bestLag = 0;
+        for (const { lag, value } of autocorr) {
+            if (value > maxValue) {
+                maxValue = value;
+                bestLag = lag;
+            }
+        }
+        
+        const bpm = bestLag > 0 ? (60 * sampleRate) / bestLag : 120;
+        
+        // Constrain to reasonable range
+        if (bpm < 60) return bpm * 2;
+        if (bpm > 200) return bpm / 2;
+        return Math.round(bpm);
+    }
+
+    simpleKeyDetection(samples, sampleRate) {
+        // Very basic key detection using pitch class histogram
+        const pitchClasses = new Array(12).fill(0);
+        const windowSize = 4096;
+        
+        for (let start = 0; start < samples.length - windowSize; start += windowSize / 2) {
+            const window = samples.slice(start, start + windowSize);
+            const spectrum = this.simpleFFT(window);
+            
+            for (let bin = 0; bin < spectrum.length; bin++) {
+                const freq = (bin * sampleRate) / windowSize;
+                if (freq > 80 && freq < 2000) {
+                    const pitch = 12 * Math.log2(freq / 440) + 69;
+                    const pitchClass = Math.round(pitch) % 12;
+                    if (pitchClass >= 0 && pitchClass < 12) {
+                        pitchClasses[pitchClass] += spectrum[bin];
+                    }
+                }
+            }
+        }
+        
+        // Find dominant pitch class
+        let maxIdx = 0;
+        let maxVal = 0;
+        for (let i = 0; i < 12; i++) {
+            if (pitchClasses[i] > maxVal) {
+                maxVal = pitchClasses[i];
+                maxIdx = i;
+            }
+        }
+        
+        const keys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        return keys[maxIdx] + ' Major';
+    }
+
+    simpleFFT(samples) {
+        // Very simple DFT for emergency fallback
+        const N = samples.length;
+        const spectrum = new Float32Array(N / 2);
+        
+        for (let k = 0; k < N / 2; k++) {
+            let real = 0, imag = 0;
+            for (let n = 0; n < N; n++) {
+                const angle = -2 * Math.PI * k * n / N;
+                real += samples[n] * Math.cos(angle);
+                imag += samples[n] * Math.sin(angle);
+            }
+            spectrum[k] = Math.sqrt(real * real + imag * imag) / N;
+        }
+        
+        return spectrum;
     }
 
     // Analysis enhancement methods
@@ -235,7 +231,7 @@ class EnhancedAudioManager {
         const irregularity = Math.sqrt(variance) / meanInterval;
 
         // Combine density and irregularity
-        const normalizedDensity = Math.min(1, density / 10); // Normalize to typical range
+        const normalizedDensity = Math.min(1, density / 10);
         const normalizedIrregularity = Math.min(1, irregularity);
         
         return (normalizedDensity * 0.6 + normalizedIrregularity * 0.4);
@@ -350,17 +346,7 @@ class EnhancedAudioManager {
         return arithmeticMean > 0 ? geometricMean / arithmeticMean : 0;
     }
 
-    // Confidence and validation methods
-    isHighConfidence(result) {
-        const bpmConfidence = result.bpmConfidence || 0;
-        const keyConfidence = result.keyConfidence || 0;
-        const overallConfidence = result.confidence || 0;
-        
-        return (bpmConfidence > this.confidence_threshold && 
-                keyConfidence > this.confidence_threshold) ||
-               overallConfidence > this.confidence_threshold;
-    }
-
+    // Confidence calculation
     calculateOverallConfidence(result) {
         const bpmConf = result.bpmConfidence || 0.5;
         const keyConf = result.keyConfidence || 0.5;
@@ -369,39 +355,11 @@ class EnhancedAudioManager {
         return bpmConf * 0.6 + keyConf * 0.4;
     }
 
-    mergeCandidates(clientCandidates, serverCandidates) {
-        if (!serverCandidates) return clientCandidates || [];
-        if (!clientCandidates) return serverCandidates.map(c => ({ 
-            bpm: c.bpm || c.key, 
-            confidence: c.confidence 
-        }));
-
-        // Combine and deduplicate
-        const combined = [...clientCandidates];
-        
-        serverCandidates.forEach(serverCand => {
-            const value = serverCand.bpm || serverCand.key;
-            const exists = combined.find(c => 
-                Math.abs((c.bpm || 0) - (value || 0)) < 2 || c.key === value
-            );
-            
-            if (!exists) {
-                combined.push({ 
-                    bpm: serverCand.bpm || undefined,
-                    key: serverCand.key || undefined,
-                    confidence: serverCand.confidence 
-                });
-            }
-        });
-
-        return combined.sort((a, b) => b.confidence - a.confidence).slice(0, 5);
-    }
-
     // Caching methods
     async generateAudioHash(audioBuffer) {
         // Generate a simple hash based on audio characteristics
         const samples = audioBuffer.getChannelData(0);
-        const sampleStep = Math.floor(samples.length / 1000); // Sample 1000 points
+        const sampleStep = Math.floor(samples.length / 1000);
         let hash = 0;
         
         for (let i = 0; i < samples.length; i += sampleStep) {
@@ -441,57 +399,6 @@ class EnhancedAudioManager {
         return mono;
     }
 
-    audioBufferToWav(audioBuffer) {
-        // Convert AudioBuffer to WAV blob for server upload
-        const numberOfChannels = audioBuffer.numberOfChannels;
-        const sampleRate = audioBuffer.sampleRate;
-        const format = 1; // PCM
-        const bitDepth = 16;
-        
-        const bytesPerSample = bitDepth / 8;
-        const blockAlign = numberOfChannels * bytesPerSample;
-        const byteRate = sampleRate * blockAlign;
-        const dataSize = audioBuffer.length * blockAlign;
-        const bufferSize = 44 + dataSize;
-        
-        const arrayBuffer = new ArrayBuffer(bufferSize);
-        const view = new DataView(arrayBuffer);
-        
-        // WAV header
-        this.writeString(view, 0, 'RIFF');
-        view.setUint32(4, bufferSize - 8, true);
-        this.writeString(view, 8, 'WAVE');
-        this.writeString(view, 12, 'fmt ');
-        view.setUint32(16, 16, true); // Subchunk1Size
-        view.setUint16(20, format, true);
-        view.setUint16(22, numberOfChannels, true);
-        view.setUint32(24, sampleRate, true);
-        view.setUint32(28, byteRate, true);
-        view.setUint16(32, blockAlign, true);
-        view.setUint16(34, bitDepth, true);
-        this.writeString(view, 36, 'data');
-        view.setUint32(40, dataSize, true);
-        
-        // Convert float samples to 16-bit PCM
-        let offset = 44;
-        for (let i = 0; i < audioBuffer.length; i++) {
-            for (let channel = 0; channel < numberOfChannels; channel++) {
-                const sample = audioBuffer.getChannelData(channel)[i];
-                const intSample = Math.max(-1, Math.min(1, sample)) * 0x7FFF;
-                view.setInt16(offset, intSample, true);
-                offset += 2;
-            }
-        }
-        
-        return new Blob([arrayBuffer], { type: 'audio/wav' });
-    }
-
-    writeString(view, offset, string) {
-        for (let i = 0; i < string.length; i++) {
-            view.setUint8(offset + i, string.charCodeAt(i));
-        }
-    }
-
     // Shared utility methods
     computeAutocorrelation(samples) {
         const N = samples.length;
@@ -514,27 +421,15 @@ class EnhancedAudioManager {
         return this.tunebatAnalyzer.performFFT(samples);
     }
 
-    computeEnergyFeature(samples) {
-        return this.tunebatAnalyzer.computeEnergyFeature(samples);
-    }
-
-    computeDanceability(samples, sampleRate) {
-        return this.tunebatAnalyzer.computeDanceability(samples, sampleRate);
-    }
-
-    computeValence(samples, sampleRate) {
-        return this.tunebatAnalyzer.computeValence(samples, sampleRate);
-    }
-
-    // Configuration methods
+    // Configuration methods (simplified - no server options)
     setServerFallback(enabled) {
-        this.useServerFallback = enabled;
-        console.log(`Server fallback ${enabled ? 'enabled' : 'disabled'}`);
+        // Ignored - always use client-side only
+        console.log('Server fallback disabled - using client-side only');
     }
 
     setConfidenceThreshold(threshold) {
-        this.confidence_threshold = Math.max(0.1, Math.min(0.9, threshold));
-        console.log(`Confidence threshold set to ${this.confidence_threshold}`);
+        // Simplified - no threshold needed without fallback
+        console.log('Confidence threshold not used in client-only mode');
     }
 
     clearCache() {
