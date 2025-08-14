@@ -32,9 +32,12 @@ class SessionManager {
     this.createUserInterface();
     
     // Listen for auth state changes
-    window.authManager.onAuthStateChange((user) => {
+    console.log('📋 Setting up auth state change listener...');
+    const unsubscribe = window.authManager.onAuthStateChange((user) => {
+      console.log('🔄 SessionManager received auth state change:', user ? user.email : 'signed out');
       this.handleAuthStateChange(user);
     });
+    console.log('✅ Auth state listener registered');
 
     // Listen for successful sign-ins
     window.addEventListener('userSignedIn', (event) => {
@@ -52,6 +55,50 @@ class SessionManager {
       console.log('🔍 Auth modal available:', !!window.authModal);
       console.log('🔍 Auth manager available:', !!window.authManager);
       this.handleStartButtonClick();
+    };
+
+    // Create global openWindow function that works with all apps
+    window.openWindow = (windowType) => {
+      console.log('🚪 Opening window:', windowType);
+      
+      // Map window types to their actual window IDs
+      const windowMap = {
+        'audio-mastering': 'studio-buddy-window',
+        'audio-analysis': 'analyzer-window', 
+        'vocal-remover': 'vocal-remover-window',
+        'lyrics-generator': 'lyrics-generator-window',
+        'settings': 'settings-window',
+        'studio-buddy': 'studio-buddy-window',
+        'analyzer': 'analyzer-window'
+      };
+      
+      const windowId = windowMap[windowType] || windowType + '-window';
+      const windowElement = document.getElementById(windowId);
+      
+      if (windowElement) {
+        // Show the window
+        windowElement.style.display = 'flex';
+        windowElement.style.position = 'fixed';
+        
+        // Position windows in cascade style if multiple are open
+        const openWindows = document.querySelectorAll('.window[style*="flex"]').length;
+        const offset = openWindows * 30;
+        windowElement.style.left = (50 + offset) + 'px';
+        windowElement.style.top = (50 + offset) + 'px';
+        windowElement.style.zIndex = 1000 + openWindows;
+        
+        console.log('✅ Window opened:', windowId);
+        
+        // If script.js windowManager exists, use it for additional functionality
+        if (window.windowManager && typeof window.windowManager.bringToFront === 'function') {
+          window.windowManager.bringToFront(windowElement);
+          window.windowManager.addTaskButton(windowType);
+          window.windowManager.setActiveWindow(windowType);
+        }
+      } else {
+        console.warn('❌ Window element not found:', windowId);
+        alert(`${windowType} feature is not available in this view. Please use the main interface.`);
+      }
     };
     
     // Add authentication overlay styles

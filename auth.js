@@ -9,18 +9,24 @@ class AuthManager {
   }
 
   init() {
+    console.log('🚀 AuthManager initializing...');
     // Wait for Firebase to be available
     const checkFirebase = () => {
       if (typeof firebase !== 'undefined' && window.firebaseAuth) {
+        console.log('✅ Firebase available, setting up auth state listener');
         window.firebaseAuth.onAuthStateChanged(async (user) => {
+          console.log('🔥 Firebase auth state changed:', user ? `User: ${user.email}` : 'No user');
           this.currentUser = user;
           if (user) {
+            console.log('👤 Ensuring user document for:', user.email);
             await this.ensureUserDocument(user);
           }
           this.isInitialized = true;
+          console.log('📢 Notifying', this.authListeners.length, 'listeners');
           this.notifyListeners(user);
         });
       } else {
+        console.log('⏳ Firebase not ready, checking again...');
         setTimeout(checkFirebase, 100);
       }
     };
@@ -50,7 +56,15 @@ class AuthManager {
   }
 
   notifyListeners(user) {
-    this.authListeners.forEach(callback => callback(user));
+    console.log('📣 Notifying auth listeners:', this.authListeners.length);
+    this.authListeners.forEach((callback, index) => {
+      console.log(`📞 Calling listener ${index + 1}`);
+      try {
+        callback(user);
+      } catch (error) {
+        console.error('❌ Error in auth listener:', error);
+      }
+    });
   }
 
   // Create user document in Firestore

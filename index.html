@@ -3861,6 +3861,30 @@
                 console.error('❌ Start menu elements not found');
             }
         }, 1000);
+        
+        // Add manual test functions for debugging
+        window.testAuthState = () => {
+            console.log('🧪 Manual auth state test');
+            console.log('Auth manager exists:', !!window.authManager);
+            console.log('Session manager exists:', !!window.sessionManager);
+            console.log('Current user:', window.authManager?.getCurrentUser());
+            console.log('Is authenticated:', window.authManager?.isAuthenticated());
+            
+            // Test manual auth state change
+            if (window.sessionManager) {
+                console.log('🔄 Testing manual auth state change...');
+                const mockUser = window.authManager?.getCurrentUser();
+                window.sessionManager.handleAuthStateChange(mockUser);
+            }
+        };
+        
+        // Test auth state every 5 seconds for debugging
+        setInterval(() => {
+            if (window.authManager && window.authManager.getCurrentUser()) {
+                const user = window.authManager.getCurrentUser();
+                console.log('🔍 Periodic auth check - User:', user.email, 'Authenticated:', window.authManager.isAuthenticated());
+            }
+        }, 5000);
     </script>
 </body>
 </html>
