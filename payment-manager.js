@@ -1,18 +1,66 @@
-// Payment Manager for subscription handling
-import { authManager } from './auth.js';
+// Payment Manager for subscription handling - Global Window Implementation
 
 class PaymentManager {
   constructor() {
     // Configuration - uses environment variables or defaults to demo mode
     this.config = {
-      stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY || 'pk_test_demo_mode',
-      priceId: process.env.STRIPE_PRICE_ID || 'price_demo_mode',
-      demoMode: !process.env.STRIPE_SECRET_KEY || process.env.NODE_ENV === 'development'
+      stripePublishableKey: this.getEnvVar('STRIPE_PUBLISHABLE_KEY') || 'pk_test_demo_mode',
+      priceId: this.getEnvVar('STRIPE_PRICE_ID') || 'price_1RvySh0R5PD3apLx2nTyNXkw',
+      apiUrl: this.getEnvVar('API_URL') || window.location.origin
     };
+    
+    // Determine if we're in demo mode based on actual Stripe key validity
+    this.config.demoMode = this.shouldUseDemoMode();
     
     this.stripe = null;
     this.isInitialized = false;
     this.init();
+  }
+
+  // Helper to get environment variables from various sources
+  getEnvVar(name) {
+    // Try process.env first
+    if (typeof process !== 'undefined' && process.env && process.env[name]) {
+      return process.env[name];
+    }
+    
+    // Try window._env object (for runtime config)
+    if (typeof window !== 'undefined' && window._env && window._env[name]) {
+      return window._env[name];
+    }
+    
+    // Try meta tag
+    const metaTag = document.querySelector(`meta[name="env-${name.toLowerCase()}"]`);
+    if (metaTag) {
+      return metaTag.getAttribute('content');
+    }
+    
+    return null;
+  }
+
+  // Determine if we should use demo mode
+  shouldUseDemoMode() {
+    const pubKey = this.config.stripePublishableKey;
+    const secretKey = this.getEnvVar('STRIPE_SECRET_KEY');
+    
+    // If no keys provided or placeholder values, use demo mode
+    if (!pubKey || !secretKey || 
+        pubKey === 'pk_test_demo_mode' ||
+        pubKey === 'pk_test_YOUR_PUBLISHABLE_KEY_HERE' ||
+        secretKey === 'sk_test_YOUR_SECRET_KEY_HERE') {
+      return true;
+    }
+    
+    // If keys don't start with proper prefixes, use demo mode
+    const validPubKey = pubKey.startsWith('pk_live_') || pubKey.startsWith('pk_test_');
+    const validSecretKey = secretKey.startsWith('sk_live_') || secretKey.startsWith('sk_test_');
+    
+    if (!validPubKey || !validSecretKey) {
+      return true;
+    }
+    
+    // All checks passed, we can use real Stripe
+    return false;
   }
 
   async init() {
@@ -33,15 +81,47 @@ class PaymentManager {
 
   initializeStripe() {
     try {
+      // Check if we have real Stripe keys or are in demo mode
+      const hasRealStripeKeys = this.config.stripePublishableKey.startsWith('pk_live_') || 
+                                this.config.stripePublishableKey.startsWith('pk_test_');
+      
+      if (!hasRealStripeKeys) {
+        console.log('💡 No valid Stripe keys found, enabling demo mode');
+        this.config.demoMode = true;
+      }
+      
       this.stripe = Stripe(this.config.stripePublishableKey);
       this.isInitialized = true;
+      
       console.log('✅ Stripe initialized successfully');
       console.log(`💡 Demo mode: ${this.config.demoMode ? 'ON' : 'OFF'}`);
+      console.log(`💡 Environment: ${this.isProductionReady() ? 'Production Ready' : 'Development'}`);
     } catch (error) {
       console.error('Error initializing Stripe:', error);
       console.log('💡 Using demo mode due to Stripe initialization error');
       this.config.demoMode = true;
     }
+  }
+
+  // Check if the payment system is production ready
+  isProductionReady() {
+    const requiredVars = [
+      'STRIPE_PUBLISHABLE_KEY',
+      'STRIPE_SECRET_KEY',
+      'STRIPE_PRICE_ID'
+    ];
+    
+    const missingVars = requiredVars.filter(varName => !this.getEnvVar(varName));
+    
+    if (missingVars.length > 0) {
+      console.warn('⚠️ Missing environment variables for production:', missingVars);
+      return false;
+    }
+    
+    const pubKey = this.getEnvVar('STRIPE_PUBLISHABLE_KEY');
+    const isLiveMode = pubKey && pubKey.startsWith('pk_live_');
+    
+    return isLiveMode;
   }
 
   // Create checkout session for premium subscription
@@ -60,7 +140,7 @@ class PaymentManager {
       const user = window.authManager.getCurrentUser();
       
       // Call your backend API to create a Stripe checkout session
-      const response = await fetch('/api/create-checkout-session', {
+      const response = await fetch(`${this.config.apiUrl}/api/create-checkout-session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -105,11 +185,11 @@ class PaymentManager {
   // Handle successful payment (webhook would typically handle this)
   async handlePaymentSuccess(sessionId) {
     try {
-      const user = authManager.getCurrentUser();
+      const user = window.authManager.getCurrentUser();
       if (!user) return false;
 
       // Verify the payment with your backend
-      const response = await fetch('/api/verify-payment', {
+      const response = await fetch(`${this.config.apiUrl}/api/verify-payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -129,7 +209,7 @@ class PaymentManager {
       
       if (success) {
         // Update user subscription in Firebase
-        await authManager.updateSubscription('premium', 'active', null);
+        await window.authManager.updateSubscription('premium', 'active', null);
         return true;
       }
       
@@ -142,14 +222,14 @@ class PaymentManager {
 
   // Cancel subscription
   async cancelSubscription() {
-    if (!authManager.isAuthenticated()) {
+    if (!window.authManager.isAuthenticated()) {
       throw new Error('User must be authenticated');
     }
 
     try {
-      const user = authManager.getCurrentUser();
+      const user = window.authManager.getCurrentUser();
       
-      const response = await fetch('/api/cancel-subscription', {
+      const response = await fetch(`${this.config.apiUrl}/api/cancel-subscription`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -218,10 +298,11 @@ class PaymentManager {
             </button>
             
             <div class="payment-info">
-              <div class="secure-payment">🔒 Demo Mode - No actual payment required</div>
-              <div class="trial-info">For testing • Real Stripe integration ready</div>
+              <div class="secure-payment">🔒 ${this.config.demoMode ? 'Demo Mode - No actual payment required' : 'Secure Payment via Stripe'}</div>
+              <div class="trial-info">${this.config.demoMode ? 'For testing • Real Stripe integration ready' : 'Cancel anytime • Secure billing'}</div>
             </div>
             
+            ${this.config.demoMode ? `
             <div class="demo-controls" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #808080;">
               <div style="font-size: 10px; margin-bottom: 8px; color: #666;">Demo Controls:</div>
               <button class="demo-btn" id="downgrade-btn" style="background: #ff6666; color: white; border: 1px solid #ff6666; padding: 4px 8px; margin-right: 8px; font-size: 10px; cursor: pointer;">
@@ -231,6 +312,7 @@ class PaymentManager {
                 Billing Settings
               </button>
             </div>
+            ` : ''}
           </div>
         </div>
       </div>
@@ -255,8 +337,13 @@ class PaymentManager {
         modal.querySelector('#subscribe-btn').textContent = 'Processing...';
         modal.querySelector('#subscribe-btn').disabled = true;
         
-        // For demo purposes - simulate successful upgrade
-        await this.simulateSuccessfulUpgrade();
+        if (this.config.demoMode) {
+          // For demo purposes - simulate successful upgrade
+          await this.simulateSuccessfulUpgrade();
+        } else {
+          // Real checkout session
+          await this.createPremiumCheckout();
+        }
       } catch (error) {
         this.showPaymentNotification('Error processing upgrade: ' + error.message, 'error');
         modal.querySelector('#subscribe-btn').textContent = 'Subscribe Now';
@@ -264,13 +351,18 @@ class PaymentManager {
       }
     });
 
-    // Add downgrade button event listener
-    modal.querySelector('#downgrade-btn').addEventListener('click', async () => {
-      if (confirm('Downgrade to Free Plan?\n\nYou will lose Premium benefits and be limited to 3 tracks per month.')) {
-        modal.remove();
-        await this.simulateDowngrade();
+    // Add downgrade button event listener (only in demo mode)
+    if (this.config.demoMode) {
+      const downgradeBtn = modal.querySelector('#downgrade-btn');
+      if (downgradeBtn) {
+        downgradeBtn.addEventListener('click', async () => {
+          if (confirm('Downgrade to Free Plan?\n\nYou will lose Premium benefits and be limited to 3 tracks per month.')) {
+            modal.remove();
+            await this.simulateDowngrade();
+          }
+        });
       }
-    });
+    }
 
     return modal;
   }

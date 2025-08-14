@@ -1,7 +1,6 @@
-// User Dashboard Component
-import { authManager } from './auth.js';
+// User Dashboard Component - Global Window Implementation
 
-export class UserDashboard {
+class UserDashboard {
   constructor() {
     this.modal = null;
     this.createDashboard();
@@ -395,8 +394,8 @@ export class UserDashboard {
   }
 
   async loadUserData() {
-    const user = authManager.getCurrentUser();
-    const userData = await authManager.getUserData();
+    const user = window.authManager.getCurrentUser();
+    const userData = await window.authManager.getUserData();
 
     if (!user || !userData) return;
 

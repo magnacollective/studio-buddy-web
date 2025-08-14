@@ -637,11 +637,23 @@ class SessionManager {
   }
 
   showDashboard() {
-    window.userDashboard.show();
+    console.log('📊 Opening user dashboard...');
+    if (window.userDashboard && typeof window.userDashboard.show === 'function') {
+      window.userDashboard.show();
+    } else {
+      console.error('❌ User dashboard not available');
+      alert('Dashboard is loading... Please try again in a moment.');
+    }
   }
 
   showUpgradeModal() {
-    window.paymentManager.showUpgradeModal();
+    console.log('⭐ Opening upgrade modal...');
+    if (window.paymentManager && typeof window.paymentManager.showUpgradeModal === 'function') {
+      window.paymentManager.showUpgradeModal();
+    } else {
+      console.error('❌ Payment manager not available');
+      alert('Payment system is loading... Please try again in a moment.');
+    }
   }
 
   // Check if user can process audio (for monetization)
