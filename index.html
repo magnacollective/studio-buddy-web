@@ -299,6 +299,61 @@
             font-family: 'Courier New', monospace;
             font-size: 9px;
         }
+
+        /* Enhanced animations */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+        
+        @keyframes progressPulse {
+            0% { box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.3); }
+            50% { box-shadow: inset 0 0 20px rgba(0, 255, 0, 0.6); }
+            100% { box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.3); }
+        }
+        
+        @keyframes waveform {
+            0% { transform: scaleY(0.3); }
+            50% { transform: scaleY(1); }
+            100% { transform: scaleY(0.3); }
+        }
+        
+        @keyframes vizGlow {
+            0% { box-shadow: 0 0 10px rgba(0, 255, 0, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(0, 255, 0, 0.8); }
+            100% { box-shadow: 0 0 10px rgba(0, 255, 0, 0.3); }
+        }
+        
+        /* Enhanced progress bar */
+        #process-bar {
+            animation: progressPulse 2s ease-in-out infinite;
+        }
+        
+        /* Dot animation for processing */
+        #process-dots {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        /* Visualizer enhancements */
+        #visualizer {
+            animation: vizGlow 3s ease-in-out infinite;
+            transition: all 0.3s ease;
+        }
+        
+        #visualizer:hover {
+            transform: scale(1.02);
+        }
+        
+        /* Progress bar hover effects */
+        #progress-container:hover #progress-fill {
+            box-shadow: 0 0 10px rgba(0, 102, 255, 0.5);
+        }
     </style>
 </head>
 <body>
@@ -349,7 +404,27 @@
                 </div>
                 <div class="section">
                     <h3>Processing</h3>
-                    <button class="master-btn" onclick="startMastering()">🎵 Master Audio</button>
+                    <button class="master-btn" onclick="startMastering()" id="master-button">🎵 Master Audio</button>
+                    
+                    <!-- Processing Progress -->
+                    <div id="processing-progress" style="display: none; margin-top: 8px; background: white; border: 2px inset #c0c0c0; padding: 8px;">
+                        <div style="font-size: 11px; font-weight: bold; margin-bottom: 4px;">
+                            <span id="process-title">Processing Audio...</span>
+                            <span id="process-percentage" style="float: right;">0%</span>
+                        </div>
+                        <div style="width: 100%; height: 16px; background: #c0c0c0; border: 2px inset #c0c0c0;">
+                            <div id="process-bar" style="height: 100%; background: linear-gradient(to right, #00aa00, #00ff00); width: 0%; transition: width 0.3s ease;"></div>
+                        </div>
+                        <div id="process-status" style="font-size: 9px; margin-top: 4px; color: #666;">
+                            Initializing...
+                        </div>
+                        
+                        <!-- Animated processing indicator -->
+                        <div style="text-align: center; margin-top: 8px;">
+                            <div id="process-spinner" style="display: inline-block; animation: spin 1s linear infinite;">⚙️</div>
+                            <span id="process-dots" style="margin-left: 8px;">...</span>
+                        </div>
+                    </div>
                 </div>
                 <div class="section">
                     <h3>A/B Comparison</h3>
@@ -408,21 +483,67 @@
                         ⚙️ Advanced Mode (Crossfade)
                     </button>
                     
-                    <!-- Progress Bar -->
+                    <!-- Enhanced Progress Bar -->
                     <div style="position: relative; margin: 8px 0;">
-                        <div style="width: 100%; height: 16px; background: white; border: 2px inset #c0c0c0; cursor: pointer;" 
-                             onclick="seekAudio(event)">
-                            <div id="progress-fill" style="height: 100%; background: #000080; width: 0%; transition: width 0.1s ease;"></div>
+                        <div style="display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 2px;">
+                            <span id="current-time">0:00</span>
+                            <span id="track-title" style="font-weight: bold; color: #000080;">No track loaded</span>
+                            <span id="total-time">0:00</span>
                         </div>
-                        <div id="time-display" style="font-size: 10px; text-align: center; margin-top: 2px;">0:00 / 0:00</div>
+                        <div id="progress-container" style="width: 100%; height: 20px; background: white; border: 2px inset #c0c0c0; cursor: pointer; position: relative;" 
+                             onclick="seekAudio(event)" onmousemove="showSeekPreview(event)" onmouseleave="hideSeekPreview()">
+                            <div id="progress-fill" style="height: 100%; background: linear-gradient(to right, #000080, #0066ff); width: 0%; transition: width 0.1s ease; position: relative;">
+                                <div style="position: absolute; right: 0; top: 0; width: 4px; height: 100%; background: #ffffff; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>
+                            </div>
+                            <div id="seek-preview" style="position: absolute; top: -25px; background: rgba(0,0,0,0.8); color: white; padding: 2px 6px; font-size: 10px; border-radius: 3px; display: none; pointer-events: none;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: center; gap: 8px; margin-top: 4px; font-size: 9px; color: #666;">
+                            <span id="waveform-status">🎵 Ready</span>
+                            <span>•</span>
+                            <span id="playback-mode">Stereo</span>
+                        </div>
                     </div>
                 </div>
 
                 <div class="section">
                     <h3>Audio Visualizer</h3>
-                    <div style="border: 2px inset #c0c0c0; padding: 4px; background: black; text-align: center;">
-                        <canvas id="waveform" width="350" height="80" style="background: black; display: block; margin: 2px auto;"></canvas>
-                        <canvas id="spectrum" width="350" height="100" style="background: black; display: block; margin: 2px auto;"></canvas>
+                    <div style="border: 2px inset #c0c0c0; padding: 4px; background: black; text-align: center; position: relative;">
+                        <!-- Visualizer Controls -->
+                        <div style="position: absolute; top: 8px; right: 8px; z-index: 10;">
+                            <select id="viz-mode" onchange="changeVisualizerMode()" style="font-size: 9px; background: rgba(255,255,255,0.9);">
+                                <option value="spectrum">Spectrum</option>
+                                <option value="waveform">Waveform</option>
+                                <option value="circular">Circular</option>
+                                <option value="bars3d">3D Bars</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Main Visualizer Canvas -->
+                        <canvas id="visualizer" width="350" height="200" style="background: black; display: block; margin: 2px auto; border-radius: 4px;"></canvas>
+                        
+                        <!-- Frequency Labels -->
+                        <div style="display: flex; justify-content: space-between; font-size: 8px; color: #00ff00; margin-top: 2px; padding: 0 8px;">
+                            <span>20Hz</span>
+                            <span>200Hz</span>
+                            <span>2kHz</span>
+                            <span>20kHz</span>
+                        </div>
+                        
+                        <!-- VU Meters -->
+                        <div style="display: flex; gap: 4px; margin-top: 4px; justify-content: center;">
+                            <div style="display: flex; flex-direction: column; align-items: center;">
+                                <div style="font-size: 8px; color: #00ff00;">L</div>
+                                <div style="width: 8px; height: 60px; background: #333; border: 1px solid #666; position: relative;">
+                                    <div id="vu-left" style="position: absolute; bottom: 0; width: 100%; background: linear-gradient(to top, #00ff00, #ffff00, #ff0000); height: 0%; transition: height 0.1s;"></div>
+                                </div>
+                            </div>
+                            <div style="display: flex; flex-direction: column; align-items: center;">
+                                <div style="font-size: 8px; color: #00ff00;">R</div>
+                                <div style="width: 8px; height: 60px; background: #333; border: 1px solid #666; position: relative;">
+                                    <div id="vu-right" style="position: absolute; bottom: 0; width: 100%; background: linear-gradient(to top, #00ff00, #ffff00, #ff0000); height: 0%; transition: height 0.1s;"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -549,6 +670,220 @@
             vocalRemover: window.VOCAL_REMOVER_API_URL
         });
 
+        // Progress and animation functions
+        function showProcessProgress(title) {
+            document.getElementById('processing-progress').style.display = 'block';
+            document.getElementById('process-title').textContent = title;
+            document.getElementById('master-button').disabled = true;
+            document.getElementById('master-button').style.opacity = '0.5';
+        }
+
+        function hideProcessProgress() {
+            document.getElementById('processing-progress').style.display = 'none';
+            document.getElementById('master-button').disabled = false;
+            document.getElementById('master-button').style.opacity = '1';
+        }
+
+        function updateProgress(percentage, status) {
+            document.getElementById('process-percentage').textContent = percentage + '%';
+            document.getElementById('process-bar').style.width = percentage + '%';
+            document.getElementById('process-status').textContent = status;
+            
+            // Update dots animation
+            const dots = ['.', '..', '...'];
+            const dotIndex = Math.floor(Date.now() / 500) % 3;
+            document.getElementById('process-dots').textContent = dots[dotIndex];
+        }
+
+        // Enhanced progress bar functions
+        function showSeekPreview(event) {
+            const container = document.getElementById('progress-container');
+            const preview = document.getElementById('seek-preview');
+            const rect = container.getBoundingClientRect();
+            const percentage = ((event.clientX - rect.left) / rect.width) * 100;
+            
+            if (currentAudio && currentAudio.duration) {
+                const time = (percentage / 100) * currentAudio.duration;
+                const minutes = Math.floor(time / 60);
+                const seconds = Math.floor(time % 60);
+                preview.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                preview.style.left = `${percentage}%`;
+                preview.style.display = 'block';
+            }
+        }
+
+        function hideSeekPreview() {
+            document.getElementById('seek-preview').style.display = 'none';
+        }
+
+        function seekAudio(event) {
+            if (!currentAudio || !currentAudio.duration) return;
+            
+            const container = document.getElementById('progress-container');
+            const rect = container.getBoundingClientRect();
+            const percentage = ((event.clientX - rect.left) / rect.width) * 100;
+            const time = (percentage / 100) * currentAudio.duration;
+            
+            currentAudio.currentTime = time;
+            log(`⏩ Seeking to ${Math.floor(time / 60)}:${Math.floor(time % 60).toString().padStart(2, '0')}`);
+        }
+
+        // Enhanced visualizer functions
+        let visualizerMode = 'spectrum';
+        let vizAnimationFrame;
+
+        function changeVisualizerMode() {
+            visualizerMode = document.getElementById('viz-mode').value;
+            log(`🎨 Visualizer mode: ${visualizerMode}`);
+        }
+
+        function startVisualization() {
+            if (vizAnimationFrame) return;
+            
+            const canvas = document.getElementById('visualizer');
+            const ctx = canvas.getContext('2d');
+            
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Generate fake data for now (replace with real audio analysis later)
+                const dataArray = new Uint8Array(64);
+                for (let i = 0; i < dataArray.length; i++) {
+                    dataArray[i] = Math.random() * 255 * (isPlaying ? 1 : 0.1);
+                }
+                
+                drawVisualization(ctx, dataArray, canvas.width, canvas.height);
+                
+                if (isPlaying) {
+                    vizAnimationFrame = requestAnimationFrame(animate);
+                }
+            }
+            
+            animate();
+        }
+
+        function stopVisualization() {
+            if (vizAnimationFrame) {
+                cancelAnimationFrame(vizAnimationFrame);
+                vizAnimationFrame = null;
+            }
+        }
+
+        function drawVisualization(ctx, dataArray, width, height) {
+            const barWidth = width / dataArray.length;
+            
+            switch (visualizerMode) {
+                case 'spectrum':
+                    drawSpectrum(ctx, dataArray, barWidth, height);
+                    break;
+                case 'waveform':
+                    drawWaveform(ctx, dataArray, width, height);
+                    break;
+                case 'circular':
+                    drawCircular(ctx, dataArray, width, height);
+                    break;
+                case 'bars3d':
+                    draw3DBars(ctx, dataArray, barWidth, height);
+                    break;
+            }
+            
+            // Update VU meters
+            const leftLevel = Math.max(...dataArray.slice(0, dataArray.length / 2));
+            const rightLevel = Math.max(...dataArray.slice(dataArray.length / 2));
+            document.getElementById('vu-left').style.height = (leftLevel / 255 * 100) + '%';
+            document.getElementById('vu-right').style.height = (rightLevel / 255 * 100) + '%';
+        }
+
+        function drawSpectrum(ctx, dataArray, barWidth, height) {
+            for (let i = 0; i < dataArray.length; i++) {
+                const barHeight = (dataArray[i] / 255) * height * 0.8;
+                const hue = (i / dataArray.length) * 360;
+                ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                ctx.fillRect(i * barWidth, height - barHeight, barWidth - 1, barHeight);
+                
+                // Add glow effect
+                ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
+                ctx.shadowBlur = 10;
+                ctx.fillRect(i * barWidth, height - barHeight, barWidth - 1, barHeight);
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        function drawWaveform(ctx, dataArray, width, height) {
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            for (let i = 0; i < dataArray.length; i++) {
+                const x = (i / dataArray.length) * width;
+                const y = height / 2 + (dataArray[i] - 128) * height / 256;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            
+            ctx.stroke();
+        }
+
+        function drawCircular(ctx, dataArray, width, height) {
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = Math.min(width, height) / 4;
+            
+            for (let i = 0; i < dataArray.length; i++) {
+                const angle = (i / dataArray.length) * 2 * Math.PI;
+                const barLength = (dataArray[i] / 255) * radius;
+                const x1 = centerX + Math.cos(angle) * radius;
+                const y1 = centerY + Math.sin(angle) * radius;
+                const x2 = centerX + Math.cos(angle) * (radius + barLength);
+                const y2 = centerY + Math.sin(angle) * (radius + barLength);
+                
+                const hue = (i / dataArray.length) * 360;
+                ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+            }
+        }
+
+        function draw3DBars(ctx, dataArray, barWidth, height) {
+            for (let i = 0; i < dataArray.length; i++) {
+                const barHeight = (dataArray[i] / 255) * height * 0.8;
+                const x = i * barWidth;
+                const y = height - barHeight;
+                
+                // Draw 3D effect
+                const hue = (i / dataArray.length) * 360;
+                
+                // Front face
+                ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                ctx.fillRect(x, y, barWidth - 1, barHeight);
+                
+                // Top face (3D effect)
+                ctx.fillStyle = `hsl(${hue}, 100%, 70%)`;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + 3, y - 3);
+                ctx.lineTo(x + barWidth + 2, y - 3);
+                ctx.lineTo(x + barWidth - 1, y);
+                ctx.fill();
+                
+                // Side face (3D effect)
+                ctx.fillStyle = `hsl(${hue}, 100%, 30%)`;
+                ctx.beginPath();
+                ctx.moveTo(x + barWidth - 1, y);
+                ctx.lineTo(x + barWidth + 2, y - 3);
+                ctx.lineTo(x + barWidth + 2, height - 3);
+                ctx.lineTo(x + barWidth - 1, height);
+                ctx.fill();
+            }
+        }
+
         // Create Matrix rain
         function createMatrix() {
             const matrix = document.getElementById('matrix-bg');
@@ -629,6 +964,10 @@
         // Railway API integration
         async function startMastering() {
             try {
+                // Show progress animation
+                showProcessProgress('Professional Audio Mastering');
+                updateProgress(10, 'Validating audio files...');
+                
                 log('🚂 RAILWAY: Starting professional audio mastering...');
                 
                 const sourceInput = document.querySelector('#studio-buddy-window input[type="file"]');
@@ -663,6 +1002,7 @@
                 }
 
                 // Upload directly to Railway mastering service
+                updateProgress(40, 'Uploading to Railway mastering service...');
                 log('📤 Uploading directly to Railway mastering service...');
                 log(`📋 FormData contents: source=${sourceInput.files[0]?.name}, reference=${referenceInput.files[0]?.name || 'none'}`);
                 
@@ -672,6 +1012,7 @@
                     mode: 'cors'
                 });
 
+                updateProgress(60, 'Processing audio with professional algorithms...');
                 log(`📊 API Response: ${response.status} ${response.statusText}`);
                 
                 if (!response.ok) {
@@ -680,10 +1021,12 @@
                     throw new Error(`Service error: ${response.status} - ${errorText}`);
                 }
 
+                updateProgress(80, 'Downloading mastered audio...');
                 log('⚡ Processing audio with professional algorithms...');
                 
                 // Get mastered audio
                 const masteredBlob = await response.blob();
+                updateProgress(90, 'Creating audio objects...');
                 const masteredUrl = URL.createObjectURL(masteredBlob);
                 
                 // Store for playback with error handling
@@ -706,11 +1049,16 @@
                 // Auto-select source to start
                 selectTrack('source');
 
+                updateProgress(100, 'Mastering complete!');
+                setTimeout(() => hideProcessProgress(), 2000);
+
                 log('✅ Professional mastering complete!');
                 log('🎵 Ready for A/B comparison');
                 log('💡 Click the A/B buttons to compare, or use Quick A/B for instant switching!');
 
             } catch (error) {
+                hideProcessProgress();
+                
                 if (error.message.includes('CORS') || error.message.includes('Access-Control')) {
                     log(`❌ CORS Error: Railway API needs to allow requests from ${window.location.origin}`);
                     log('💡 Tell your Railway API to add these headers:');
@@ -845,6 +1193,7 @@
                 await audio.play();
                 isPlaying = true;
                 startProgressTracking();
+                startVisualization();
                 
                 log(`▶️ Playing ${type === 'source' ? 'Original' : 'Mastered'} audio`);
                 
