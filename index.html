@@ -2849,16 +2849,16 @@
             log(`[ULTRA FAST] Processing ${downsampled.length} samples at ${newSampleRate}Hz`);
             
             try {
-                // 1. Ultra-fast BPM (simplified autocorrelation)
-                const bpm = await ultraFastBPM(downsampled, newSampleRate);
+                // 1. Proper BPM detection on downsampled audio
+                const bpm = await detectBPM(downsampled, newSampleRate);
                 await new Promise(resolve => setTimeout(resolve, 1)); // Micro yield
                 
-                // 2. Ultra-fast Key (very basic frequency analysis)
-                const key = await ultraFastKey(downsampled, newSampleRate);
+                // 2. Proper Key detection on downsampled audio  
+                const key = await detectKey(downsampled, newSampleRate);
                 await new Promise(resolve => setTimeout(resolve, 1)); // Micro yield
                 
-                // 3. Ultra-fast mood (RMS + simple stats)
-                const mood = await ultraFastMood(downsampled);
+                // 3. Basic mood analysis
+                const mood = await analyzeMood(downsampled, newSampleRate);
                 
                 const processingTime = performance.now() - startTime;
                 log(`[ULTRA FAST] Complete in ${processingTime.toFixed(1)}ms`);
@@ -2892,121 +2892,178 @@
             }
         }
         
-        // Ultra-fast BPM detection - minimal processing
-        async function ultraFastBPM(samples, sampleRate) {
-            // Very simple beat detection using energy peaks
-            const hopSize = Math.floor(sampleRate * 0.1); // 100ms hops
-            const energies = [];
+        // Proper BPM detection using autocorrelation on downsampled audio
+        async function detectBPM(samples, sampleRate) {
+            const hopSize = 512;
+            const onsetStrength = [];
             
+            // Create onset strength signal
             for (let i = 0; i < samples.length - hopSize; i += hopSize) {
                 let energy = 0;
+                let prevEnergy = 0;
+                
                 for (let j = 0; j < hopSize; j++) {
                     energy += samples[i + j] * samples[i + j];
                 }
-                energies.push(energy);
-            }
-            
-            // Find peaks in energy
-            const peaks = [];
-            for (let i = 1; i < energies.length - 1; i++) {
-                if (energies[i] > energies[i-1] && energies[i] > energies[i+1] && energies[i] > 0.001) {
-                    peaks.push(i * 0.1); // time in seconds
-                }
-            }
-            
-            if (peaks.length < 4) return 120; // fallback
-            
-            // Calculate intervals between peaks
-            const intervals = [];
-            for (let i = 1; i < Math.min(peaks.length, 20); i++) { // only first 20 peaks
-                intervals.push(peaks[i] - peaks[i-1]);
-            }
-            
-            // Find most common interval (simple histogram)
-            intervals.sort((a, b) => a - b);
-            const median = intervals[Math.floor(intervals.length / 2)];
-            const bpm = 60 / median;
-            
-            // Constrain to reasonable range
-            if (bpm < 60) return Math.round(bpm * 2);
-            if (bpm > 200) return Math.round(bpm / 2);
-            return Math.round(bpm);
-        }
-        
-        // Ultra-fast key detection - very basic
-        async function ultraFastKey(samples, sampleRate) {
-            // Just find the dominant low frequency (bass notes indicate key)
-            const keys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-            const windowSize = 512;
-            const chromaCounts = new Array(12).fill(0);
-            
-            // Sample only 10 windows across the track
-            const stepSize = Math.floor(samples.length / 10);
-            
-            for (let w = 0; w < 10; w++) {
-                const start = w * stepSize;
-                if (start + windowSize >= samples.length) break;
                 
-                // Very basic frequency analysis - check for specific bass frequencies
-                for (let chroma = 0; chroma < 12; chroma++) {
-                    const freq = 82.41 * Math.pow(2, chroma / 12); // E2 and up
-                    const k = Math.round(freq * windowSize / sampleRate);
-                    
-                    if (k < windowSize / 2) {
-                        let magnitude = 0;
-                        // Sample every 8th point
-                        for (let n = 0; n < windowSize; n += 8) {
-                            const angle = -2 * Math.PI * k * n / windowSize;
-                            magnitude += samples[start + n] * Math.cos(angle);
+                if (i > 0) {
+                    for (let j = 0; j < hopSize; j++) {
+                        if (i - hopSize + j >= 0) {
+                            prevEnergy += samples[i - hopSize + j] * samples[i - hopSize + j];
                         }
-                        chromaCounts[chroma] += Math.abs(magnitude);
+                    }
+                }
+                
+                onsetStrength.push(Math.max(0, energy - prevEnergy * 1.1));
+            }
+            
+            // Autocorrelation
+            const minBPM = 60;
+            const maxBPM = 200;
+            const minLag = Math.floor(60 * sampleRate / maxBPM / hopSize);
+            const maxLag = Math.floor(60 * sampleRate / minBPM / hopSize);
+            
+            let bestBPM = 120;
+            let maxCorr = 0;
+            
+            for (let lag = minLag; lag < Math.min(maxLag, onsetStrength.length / 2); lag++) {
+                let corr = 0;
+                let count = 0;
+                
+                for (let i = 0; i < onsetStrength.length - lag; i++) {
+                    corr += onsetStrength[i] * onsetStrength[i + lag];
+                    count++;
+                }
+                
+                if (count > 0) {
+                    corr /= count;
+                    if (corr > maxCorr) {
+                        maxCorr = corr;
+                        bestBPM = 60 * sampleRate / (lag * hopSize);
                     }
                 }
             }
             
-            // Find dominant chroma
-            let maxIdx = 0;
-            for (let i = 1; i < 12; i++) {
-                if (chromaCounts[i] > chromaCounts[maxIdx]) {
-                    maxIdx = i;
+            // Handle half/double tempo
+            if (bestBPM < 80) bestBPM *= 2;
+            if (bestBPM > 160) bestBPM /= 2;
+            
+            return Math.round(bestBPM);
+        }
+        
+        // Proper key detection using chroma analysis on downsampled audio
+        async function detectKey(samples, sampleRate) {
+            const windowSize = 4096;
+            const hopSize = 2048;
+            const chromaProfile = new Array(12).fill(0);
+            
+            // Chroma extraction
+            for (let start = 0; start < samples.length - windowSize; start += hopSize) {
+                const window = samples.slice(start, start + windowSize);
+                
+                // DFT for key frequencies
+                for (let chroma = 0; chroma < 12; chroma++) {
+                    const baseFreq = 440 * Math.pow(2, (chroma - 9) / 12);
+                    
+                    for (let octave = 2; octave <= 6; octave++) {
+                        const freq = baseFreq * Math.pow(2, octave - 4);
+                        const k = Math.round(freq * windowSize / sampleRate);
+                        
+                        if (k < windowSize / 2) {
+                            let real = 0, imag = 0;
+                            const angle = -2 * Math.PI * k / windowSize;
+                            
+                            for (let n = 0; n < windowSize; n++) {
+                                real += window[n] * Math.cos(angle * n);
+                                imag += window[n] * Math.sin(angle * n);
+                            }
+                            
+                            chromaProfile[chroma] += Math.sqrt(real * real + imag * imag);
+                        }
+                    }
+                }
+                
+                // Yield occasionally
+                if ((start / hopSize) % 20 === 0) {
+                    await new Promise(resolve => setTimeout(resolve, 0));
                 }
             }
             
-            return keys[maxIdx] + ' Major';
+            // Find dominant chroma
+            let maxChroma = 0;
+            let dominantChroma = 0;
+            for (let i = 0; i < 12; i++) {
+                if (chromaProfile[i] > maxChroma) {
+                    maxChroma = chromaProfile[i];
+                    dominantChroma = i;
+                }
+            }
+            
+            const keys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            return keys[dominantChroma] + ' Major';
         }
         
-        // Ultra-fast mood analysis - just RMS and variance
-        async function ultraFastMood(samples) {
+        // Mood analysis on downsampled audio
+        async function analyzeMood(samples, sampleRate) {
             // Energy: RMS
             let rms = 0;
-            for (let i = 0; i < samples.length; i += 4) { // sample every 4th
+            for (let i = 0; i < samples.length; i++) {
                 rms += samples[i] * samples[i];
             }
-            rms = Math.sqrt(rms / (samples.length / 4));
-            const energy = Math.min(1, rms * 5);
+            rms = Math.sqrt(rms / samples.length);
+            const energy = Math.min(1, rms * 10);
             
-            // Danceability: variance (regularity)
-            let mean = 0;
-            for (let i = 0; i < samples.length; i += 10) { // sample every 10th
-                mean += Math.abs(samples[i]);
+            // Danceability: beat regularity
+            const beatStrength = [];
+            const hopSize = 2048;
+            for (let i = 0; i < samples.length - hopSize; i += hopSize) {
+                let windowEnergy = 0;
+                for (let j = 0; j < hopSize; j++) {
+                    windowEnergy += samples[i + j] * samples[i + j];
+                }
+                beatStrength.push(windowEnergy);
             }
-            mean /= (samples.length / 10);
             
-            let variance = 0;
-            for (let i = 0; i < samples.length; i += 10) {
-                variance += (Math.abs(samples[i]) - mean) * (Math.abs(samples[i]) - mean);
+            let regularity = 0;
+            if (beatStrength.length > 4) {
+                const mean = beatStrength.reduce((a, b) => a + b, 0) / beatStrength.length;
+                const variance = beatStrength.reduce((a, b) => a + (b - mean) * (b - mean), 0) / beatStrength.length;
+                regularity = Math.max(0, 1 - Math.sqrt(variance) / mean);
             }
-            variance /= (samples.length / 10);
+            const danceability = energy * 0.6 + regularity * 0.4;
             
-            const regularity = Math.max(0, 1 - variance / (mean * mean + 0.001));
-            const danceability = Math.min(1, energy * 0.7 + regularity * 0.3);
+            // Valence: spectral brightness
+            const windowSize = 2048;
+            let highFreqEnergy = 0;
+            let totalEnergy = 0;
             
-            // Valence: just energy-based
-            const valence = Math.min(1, energy * 0.8 + 0.2);
+            for (let start = 0; start < samples.length - windowSize; start += windowSize) {
+                const window = samples.slice(start, start + windowSize);
+                
+                for (let k = 0; k < windowSize / 2; k++) {
+                    const freq = k * sampleRate / windowSize;
+                    let real = 0, imag = 0;
+                    
+                    for (let n = 0; n < windowSize; n++) {
+                        const angle = -2 * Math.PI * k * n / windowSize;
+                        real += window[n] * Math.cos(angle);
+                        imag += window[n] * Math.sin(angle);
+                    }
+                    
+                    const magnitude = Math.sqrt(real * real + imag * imag);
+                    totalEnergy += magnitude;
+                    
+                    if (freq > 1000) {
+                        highFreqEnergy += magnitude;
+                    }
+                }
+            }
+            
+            const valence = totalEnergy > 0 ? Math.min(1, (highFreqEnergy / totalEnergy) * 2) : 0.5;
             
             return {
                 energy: energy,
-                danceability: danceability,
+                danceability: Math.min(1, danceability),
                 valence: valence
             };
         }
