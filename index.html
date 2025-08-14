@@ -1224,6 +1224,13 @@
             if (!audioMotion || !audioElement) return false;
             
             try {
+                // Check if this element is already connected
+                if (audioMotion.audioSource && audioMotion.audioSource.mediaElement === audioElement) {
+                    log('[VIZ] Audio already connected to audioMotion');
+                    return true;
+                }
+                
+                // Disconnect any existing input
                 if (audioMotion.audioSource) {
                     audioMotion.disconnectInput();
                 }
@@ -1232,8 +1239,14 @@
                 log('[VIZ] Audio connected to audioMotion visualizer');
                 return true;
             } catch (error) {
-                log(`[ERROR] Failed to connect audio to audioMotion: ${error.message}`);
-                return false;
+                // Handle "already connected" errors gracefully
+                if (error.message.includes('already connected')) {
+                    log('[VIZ] Audio already connected to audioMotion (recovered)');
+                    return true;
+                } else {
+                    log(`[ERROR] Failed to connect audio to audioMotion: ${error.message}`);
+                    return false;
+                }
             }
         }
 
@@ -1989,7 +2002,7 @@
         // Enhanced play/pause with A/B support
         async function playPause() {
             if (!window.sourceAudio) {
-                log('[ERROR] Please select and master audio first');
+                log('[ERROR] Please select an audio file first');
                 return;
             }
             
@@ -2113,15 +2126,14 @@
                 // Stop any playing audio
                 stopAudio();
                 
-                // Disconnect audio sources from analyser
-                if (audioSource) {
+                // Disconnect audioMotion
+                if (audioMotion && audioMotion.audioSource) {
                     try {
-                        audioSource.disconnect();
-                        log('[DISCONNECT] Disconnected audio source from analyser');
+                        audioMotion.disconnectInput();
+                        log('[DISCONNECT] Disconnected audioMotion input');
                     } catch (e) {
                         // Ignore disconnect errors
                     }
-                    audioSource = null;
                 }
                 
                 // Clean up previous audio objects and URL blobs
@@ -2289,40 +2301,7 @@
             }
         }
 
-        // Audio visualization
-        let visualizationAnimation = null;
-
-        function startVisualization() {
-            if (!analyser) return;
-            
-            stopVisualization();
-            visualizationAnimation = requestAnimationFrame(drawVisualization);
-        }
-
-        function stopVisualization() {
-            if (visualizationAnimation) {
-                cancelAnimationFrame(visualizationAnimation);
-                visualizationAnimation = null;
-            }
-        }
-
-        function drawVisualization() {
-            if (!analyser) return;
-
-            // Get audio data
-            const bufferLength = analyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
-            analyser.getByteFrequencyData(dataArray);
-
-            // Draw waveform
-            drawWaveform(dataArray);
-            
-            // Draw spectrum
-            drawSpectrum(dataArray);
-
-            // Continue animation
-            visualizationAnimation = requestAnimationFrame(drawVisualization);
-        }
+        // Audio visualization handled by audioMotion
 
         function drawWaveform(dataArray) {
             const canvas = document.getElementById('waveform');
