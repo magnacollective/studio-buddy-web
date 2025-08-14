@@ -1841,6 +1841,13 @@
                 // Store for playback with error handling
                 window.masteredAudio = new Audio(masteredUrl);
                 window.sourceAudio = new Audio(URL.createObjectURL(sourceInput.files[0]));
+                // Prepare for automatic, policy-safe autoplay (muted)
+                window.masteredAudio.muted = true;
+                window.masteredAudio.autoplay = true;
+                window.masteredAudio.setAttribute('playsinline', '');
+                window.sourceAudio.muted = true;
+                window.sourceAudio.autoplay = true;
+                window.sourceAudio.setAttribute('playsinline', '');
                 
                 // Add error handlers
                 window.masteredAudio.onerror = (e) => log(`❌ Mastered audio error: ${e.message}`);
@@ -1851,12 +1858,47 @@
                     log('✅ Mastered audio loaded');
                     // Initialize audio context when audio is ready
                     initAudioContext();
+                    // Attempt muted autoplay to feed visualizer without user gesture
+                    window.masteredAudio.play().then(() => {
+                        log('▶️ Mastered audio autoplayed (muted)');
+                    }).catch(e => {
+                        log(`🔇 Mastered autoplay blocked: ${e.message}`);
+                    });
                 };
                 window.sourceAudio.onloadeddata = () => {
                     log('✅ Source audio loaded');
                     // Initialize audio context when audio is ready
                     initAudioContext();
+                    // Attempt muted autoplay to feed visualizer without user gesture
+                    window.sourceAudio.play().then(() => {
+                        log('▶️ Source audio autoplayed (muted)');
+                    }).catch(e => {
+                        log(`🔇 Source autoplay blocked: ${e.message}`);
+                    });
                 };
+
+                // Ensure visualizer connects as soon as playback begins
+                window.masteredAudio.addEventListener('play', async () => {
+                    try {
+                        await initAudioContext();
+                        connectAudioToAnalyser(window.masteredAudio);
+                        startVisualization();
+                        log('🔗 Visualizer connected to mastered audio on play');
+                    } catch (e) {
+                        log(`❌ Visualizer hookup (mastered) failed: ${e.message}`);
+                    }
+                });
+
+                window.sourceAudio.addEventListener('play', async () => {
+                    try {
+                        await initAudioContext();
+                        connectAudioToAnalyser(window.sourceAudio);
+                        startVisualization();
+                        log('🔗 Visualizer connected to source audio on play');
+                    } catch (e) {
+                        log(`❌ Visualizer hookup (source) failed: ${e.message}`);
+                    }
+                });
                 
                 // Enable mastered button and update UI
                 const masteredBtn = document.getElementById('ab-mastered-btn');
@@ -2055,6 +2097,9 @@
                     await audioContext.resume();
                     log('🔊 Audio context resumed');
                 }
+                
+                // Unmute for user-initiated playback
+                audio.muted = false;
                 
                 // Play audio directly - simple and reliable
                 await audio.play();
@@ -2486,6 +2531,18 @@
         window.addEventListener('load', () => {
             startBootSequence();
         });
+
+        // Resume AudioContext on any user gesture (fixes autoplay policy)
+        document.addEventListener('click', async () => {
+            try {
+                if (audioContext && audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                    log('🔊 Audio context resumed by user gesture');
+                }
+            } catch (e) {
+                // Ignore if context not ready yet
+            }
+        }, { capture: true });
 
         // Vocal Remover Functions
         async function separateStems(stemType) {
