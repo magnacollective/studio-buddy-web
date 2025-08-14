@@ -301,8 +301,19 @@ class SessionManager {
       // User is signed in
       const displayName = user.displayName || user.email.split('@')[0];
       
-      // Get user data from Firestore
-      const userData = await window.authManager.getUserData();
+      // Try to get user data, but continue with UI update even if it fails
+      let userData = null;
+      try {
+        userData = await window.authManager.getUserData();
+        console.log('✅ Got user data:', userData);
+      } catch (error) {
+        console.warn('⚠️ Firestore access failed, using default data:', error.message);
+        // Use default user data structure
+        userData = {
+          subscription: { plan: 'free', status: 'active' },
+          usage: { processedTracks: 0, monthlyLimit: 3 }
+        };
+      }
       
       startText.textContent = displayName;
       userStatus.style.display = 'inline';
