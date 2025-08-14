@@ -3895,6 +3895,22 @@
                 console.log('🔍 Periodic auth check - User:', user.email, 'Authenticated:', window.authManager.isAuthenticated());
             }
         }, 5000);
+        
+        // Hotfix: Force UI update after 3 seconds if not already done
+        setTimeout(() => {
+            console.log('🔧 HOTFIX: Checking if UI needs manual update...');
+            const startText = document.getElementById('start-text');
+            const isAuthenticated = window.authManager && window.authManager.isAuthenticated();
+            const uiShowsSignedIn = startText && startText.textContent !== 'Sign In';
+            
+            console.log('👤 Is authenticated:', isAuthenticated);
+            console.log('🖥️ UI shows signed in:', uiShowsSignedIn);
+            
+            if (isAuthenticated && !uiShowsSignedIn) {
+                console.log('🚨 UI UPDATE NEEDED - Forcing update...');
+                window.forceAuthUI();
+            }
+        }, 3000);
     </script>
 </body>
 </html>

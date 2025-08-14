@@ -9,13 +9,17 @@ class SessionManager {
   }
 
   async init() {
+    console.log('🔄 SessionManager init() called');
     // Wait for dependencies to load
     const waitForDependencies = () => {
       return new Promise((resolve) => {
         const checkDependencies = () => {
+          console.log('🔍 Checking dependencies - authManager:', !!window.authManager, 'authModal:', !!window.authModal);
           if (window.authManager && window.authModal) {
+            console.log('✅ Dependencies ready, resolving...');
             resolve();
           } else {
+            console.log('⏳ Dependencies not ready, waiting...');
             setTimeout(checkDependencies, 100);
           }
         };
