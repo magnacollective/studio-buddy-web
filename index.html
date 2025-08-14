@@ -1043,14 +1043,17 @@
             currentAudio = newAudio;
             currentTrack = trackType;
             
-            // Sync position and play immediately
+            // Ensure proper audio settings and sync position
+            currentAudio.muted = false;
+            currentAudio.volume = 1.0;
             currentAudio.currentTime = abSyncedPosition;
+            
             currentAudio.play().then(() => {
                 // Connect to visualizer
                 if (audioMotion) {
                     connectAudioToAudioMotion(currentAudio);
                 }
-                log(`[A/B] Seamless switch to ${trackType} at ${abSyncedPosition.toFixed(2)}s`);
+                log(`[A/B] Seamless switch to ${trackType} at ${abSyncedPosition.toFixed(2)}s - Volume: ${currentAudio.volume}`);
             }).catch(e => {
                 log(`[ERROR] A/B switch error: ${e.message}`);
             });
@@ -1845,12 +1848,13 @@
                 if (!window.sourceAudio) {
                     window.sourceAudio = new Audio(URL.createObjectURL(sourceInput.files[0]));
                 }
-                // Prepare for automatic, policy-safe autoplay (muted)
-                window.masteredAudio.muted = true;
-                window.masteredAudio.autoplay = true;
+                
+                // Configure for proper playback (NOT muted, NOT autoplay)
+                window.masteredAudio.muted = false;
+                window.masteredAudio.autoplay = false;
                 window.masteredAudio.setAttribute('playsinline', '');
-                window.sourceAudio.muted = true;
-                window.sourceAudio.autoplay = true;
+                window.sourceAudio.muted = false;
+                window.sourceAudio.autoplay = false;
                 window.sourceAudio.setAttribute('playsinline', '');
                 
                 // Add error handlers
@@ -2025,8 +2029,14 @@
                     // Initialize audio context
                     await initAudioContext();
                     
+                    // Ensure audio is unmuted and ready for playback
+                    currentAudio.muted = false;
+                    currentAudio.volume = 1.0;
+                    
                     // Resume from synced position if available
                     currentAudio.currentTime = abSyncedPosition;
+                    
+                    log(`[PLAY] Playing ${trackType} track - Volume: ${currentAudio.volume}, Muted: ${currentAudio.muted}`);
                     
                     await currentAudio.play();
                     isPlaying = true;
@@ -2049,7 +2059,7 @@
                         startABPositionSync();
                     }
                     
-                    log(`[PLAY] Started ${trackType} track`);
+                    log(`[PLAY] Started ${trackType} track successfully`);
                 } else {
                     log('[ERROR] No audio available to play');
                 }
