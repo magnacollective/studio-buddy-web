@@ -168,9 +168,23 @@
         }
 
         .desktop-icon .icon {
-            font-size: 48px;
-            margin-bottom: 4px;
-            filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.5));
+            font-size: 64px;
+            margin-bottom: 6px;
+            color: #fff;
+            filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.6));
+        }
+        .desktop-icon .icon .material-symbols-outlined {
+            font-size: 64px;
+            color: #fff;
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 48;
+        }
+        .desktop-icon .icon img.desktop-logo {
+            width: 88px;
+            height: 88px;
+            object-fit: contain;
+            image-rendering: pixelated;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,.6));
+            display: block;
         }
 
         .desktop-icon .label {
@@ -497,7 +511,7 @@
         <!-- Desktop icons -->
         <div class="desktop-icons">
             <div class="desktop-icon" onclick="openWindow('studio-buddy')">
-                <div class="icon"><span class="material-symbols-outlined">music_note</span></div>
+                <div class="icon"><img class="desktop-logo" src="assets/studio-buddy-logo.png" alt="Studio Buddy" /></div>
                 <div class="label">Studio Buddy<br>Audio Mastering</div>
             </div>
             <div class="desktop-icon" onclick="openWindow('analyzer')">
