@@ -772,9 +772,13 @@ canvas {
     border-style: inset;
 }
 
+.start-button {
+    position: relative;
+}
+
 .start-menu {
     position: absolute;
-    bottom: 40px;
+    bottom: 100%;
     left: 0;
     background: #c0c0c0;
     border: 2px outset #c0c0c0;
@@ -784,6 +788,7 @@ canvas {
     font-size: 11px;
     z-index: 1001;
     box-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    margin-bottom: 2px;
 }
 
 .start-menu-section {

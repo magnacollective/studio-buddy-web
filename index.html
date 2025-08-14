@@ -935,6 +935,48 @@
             <div class="start-button" id="start-button">
                 <span>🪟</span>
                 <span id="start-text">Sign In</span>
+                
+                <!-- Start Menu - Hidden by default -->
+                <div class="start-menu" id="start-menu" style="display: none;">
+                    <div class="start-menu-section">
+                        <div class="start-menu-header">Account</div>
+                        <div class="start-menu-item" id="signin-item">
+                            <span class="start-menu-icon">🔑</span>
+                            Sign In
+                        </div>
+                        <div class="start-menu-item" id="signup-item">
+                            <span class="start-menu-icon">👤</span>
+                            Create Free Account
+                        </div>
+                    </div>
+                    <div class="start-menu-divider"></div>
+                    <div class="start-menu-section">
+                        <div class="start-menu-header">Features</div>
+                        <div class="start-menu-item" data-window="audio-mastering">
+                            <span class="start-menu-icon">🎛️</span>
+                            Audio Mastering
+                        </div>
+                        <div class="start-menu-item" data-window="audio-analysis">
+                            <span class="start-menu-icon">📊</span>
+                            Audio Analysis
+                        </div>
+                        <div class="start-menu-item" data-window="vocal-remover">
+                            <span class="start-menu-icon">🎤</span>
+                            Vocal Remover
+                        </div>
+                        <div class="start-menu-item" data-window="lyrics-generator">
+                            <span class="start-menu-icon">✍️</span>
+                            AI Lyrics Generator
+                        </div>
+                    </div>
+                    <div class="start-menu-divider"></div>
+                    <div class="start-menu-section">
+                        <div class="start-menu-item" id="upgrade-item">
+                            <span class="start-menu-icon">⭐</span>
+                            Upgrade to Premium
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="system-tray">
                 <div>🔊</div>
@@ -3722,40 +3764,103 @@
             sessionManager: typeof window.sessionManager
         });
         
-        // Add robust event listener for start button
+        // Simple, robust start menu handler
         setTimeout(() => {
-            console.log('🔧 DEBUG: Setting up start button click handler...');
-            console.log('🔧 DEBUG: handleStartClick exists:', typeof window.handleStartClick);
-            console.log('🔧 DEBUG: sessionManager available:', !!window.sessionManager);
+            console.log('🔧 DEBUG: Setting up production-ready start menu...');
             
             const startButton = document.getElementById('start-button');
-            if (startButton) {
-                // Remove any existing onclick attribute
-                startButton.removeAttribute('onclick');
+            const startMenu = document.getElementById('start-menu');
+            const signinItem = document.getElementById('signin-item');
+            const signupItem = document.getElementById('signup-item');
+            const upgradeItem = document.getElementById('upgrade-item');
+            
+            if (startButton && startMenu) {
+                console.log('🔧 DEBUG: Start menu elements found, setting up handlers');
                 
-                // Add robust event listener
+                // Toggle start menu on click
                 startButton.addEventListener('click', function(e) {
-                    console.log('🔧 DEBUG: Start button clicked');
-                    e.preventDefault();
+                    console.log('🔧 DEBUG: Start button clicked - toggling menu');
                     e.stopPropagation();
                     
-                    if (window.sessionManager && typeof window.sessionManager.handleStartButtonClick === 'function') {
-                        console.log('🔧 DEBUG: Calling session manager handleStartButtonClick');
-                        window.sessionManager.handleStartButtonClick();
-                    } else if (typeof window.handleStartClick === 'function') {
-                        console.log('🔧 DEBUG: Calling global handleStartClick');
-                        window.handleStartClick();
+                    if (startMenu.style.display === 'none' || startMenu.style.display === '') {
+                        startMenu.style.display = 'block';
+                        console.log('🔧 DEBUG: Start menu opened');
                     } else {
-                        console.error('🔧 DEBUG: No click handler available');
-                        alert('Authentication system not ready. Please refresh the page.');
+                        startMenu.style.display = 'none';
+                        console.log('🔧 DEBUG: Start menu closed');
                     }
                 });
                 
-                console.log('🔧 DEBUG: Start button event listener added successfully');
+                // Handle sign in click
+                if (signinItem) {
+                    signinItem.addEventListener('click', function(e) {
+                        console.log('🔧 DEBUG: Sign in clicked');
+                        e.stopPropagation();
+                        startMenu.style.display = 'none';
+                        
+                        if (window.authModal && window.authModal.show) {
+                            window.authModal.show();
+                        } else {
+                            alert('Please wait for authentication system to load...');
+                        }
+                    });
+                }
+                
+                // Handle sign up click
+                if (signupItem) {
+                    signupItem.addEventListener('click', function(e) {
+                        console.log('🔧 DEBUG: Sign up clicked');
+                        e.stopPropagation();
+                        startMenu.style.display = 'none';
+                        
+                        if (window.authModal && window.authModal.show && window.authModal.switchTab) {
+                            window.authModal.show();
+                            window.authModal.switchTab('signup');
+                        } else {
+                            alert('Please wait for authentication system to load...');
+                        }
+                    });
+                }
+                
+                // Handle upgrade click
+                if (upgradeItem) {
+                    upgradeItem.addEventListener('click', function(e) {
+                        console.log('🔧 DEBUG: Upgrade clicked');
+                        e.stopPropagation();
+                        startMenu.style.display = 'none';
+                        alert('Premium upgrade feature coming soon!');
+                    });
+                }
+                
+                // Handle feature window clicks
+                const featureItems = startMenu.querySelectorAll('[data-window]');
+                featureItems.forEach(item => {
+                    item.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const windowType = this.getAttribute('data-window');
+                        console.log('🔧 DEBUG: Opening window:', windowType);
+                        startMenu.style.display = 'none';
+                        
+                        if (window.openWindow) {
+                            window.openWindow(windowType);
+                        } else {
+                            alert(`${windowType} feature loading...`);
+                        }
+                    });
+                });
+                
+                // Close menu when clicking elsewhere
+                document.addEventListener('click', function(e) {
+                    if (!startButton.contains(e.target) && !startMenu.contains(e.target)) {
+                        startMenu.style.display = 'none';
+                    }
+                });
+                
+                console.log('✅ Production-ready start menu initialized');
             } else {
-                console.error('🔧 DEBUG: Start button element not found');
+                console.error('❌ Start menu elements not found');
             }
-        }, 2000);
+        }, 1000);
     </script>
 </body>
 </html>
