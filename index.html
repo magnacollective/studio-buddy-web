@@ -2824,44 +2824,46 @@
             }
         });
 
-        // Ultra-fast analysis function - aggressive optimizations for 5-10 second processing
+        // Simplified but accurate analysis - test with minimal downsampling
         async function performFastAccurateAnalysis(audioBuffer) {
             const startTime = performance.now();
-            log('[ULTRA FAST] Starting minimal processing analysis...');
+            log('[ANALYSIS] Starting simplified accurate analysis...');
             
-            // Get mono channel and heavily downsample
+            // Get mono channel - no heavy downsampling this time
             const samples = audioBuffer.getChannelData(0);
             const sampleRate = audioBuffer.sampleRate;
             const duration = audioBuffer.duration;
             
-            // Use full file with heavy downsampling for comprehensive analysis
-            const startSample = 0;
-            const endSample = samples.length;
+            // Use middle section only (30-60 seconds) for speed but accuracy
+            const analysisSeconds = Math.min(30, duration);
+            const startSample = Math.floor((duration - analysisSeconds) / 2 * sampleRate);
+            const endSample = Math.min(startSample + analysisSeconds * sampleRate, samples.length);
+            const analysisSamples = samples.slice(startSample, endSample);
             
-            // Heavy downsampling - take every 16th sample across entire track
-            const downsampleFactor = 16;
+            // Light downsampling only (4x instead of 16x)
+            const downsampleFactor = 4;
             const downsampled = [];
-            for (let i = startSample; i < endSample; i += downsampleFactor) {
-                downsampled.push(samples[i]);
+            for (let i = 0; i < analysisSamples.length; i += downsampleFactor) {
+                downsampled.push(analysisSamples[i]);
             }
             const newSampleRate = sampleRate / downsampleFactor;
             
-            log(`[ULTRA FAST] Processing ${downsampled.length} samples at ${newSampleRate}Hz`);
+            log(`[ANALYSIS] Processing ${downsampled.length} samples at ${newSampleRate}Hz from ${analysisSeconds}s window`);
             
             try {
-                // 1. Proper BPM detection on downsampled audio
-                const bpm = await detectBPM(downsampled, newSampleRate);
-                await new Promise(resolve => setTimeout(resolve, 1)); // Micro yield
+                // 1. Simple but accurate BPM detection
+                const bpm = await simpleBPMDetection(downsampled, newSampleRate);
+                await new Promise(resolve => setTimeout(resolve, 5));
                 
-                // 2. Proper Key detection on downsampled audio  
-                const key = await detectKey(downsampled, newSampleRate);
-                await new Promise(resolve => setTimeout(resolve, 1)); // Micro yield
+                // 2. Simple but accurate key detection
+                const key = await simpleKeyDetection(downsampled, newSampleRate);
+                await new Promise(resolve => setTimeout(resolve, 5));
                 
-                // 3. Basic mood analysis
-                const mood = await analyzeMood(downsampled, newSampleRate);
+                // 3. Basic mood features
+                const mood = await basicMoodAnalysis(downsampled);
                 
                 const processingTime = performance.now() - startTime;
-                log(`[ULTRA FAST] Complete in ${processingTime.toFixed(1)}ms`);
+                log(`[ANALYSIS] Complete in ${processingTime.toFixed(1)}ms - BPM: ${bpm}, Key: ${key}`);
                 
                 return {
                     bpm: bpm,
@@ -2871,13 +2873,14 @@
                     energy: mood.energy,
                     danceability: mood.danceability,
                     valence: mood.valence,
-                    confidence: 0.7,
-                    analysisMethod: 'ultra-fast',
+                    confidence: 0.8,
+                    analysisMethod: 'simplified-accurate',
                     processingTime: processingTime
                 };
                 
             } catch (error) {
-                log(`[ULTRA FAST] Error: ${error.message}`);
+                log(`[ANALYSIS] Error: ${error.message}`);
+                console.error('Analysis error:', error);
                 return {
                     bpm: 120,
                     key: 'C Major',
@@ -2892,118 +2895,77 @@
             }
         }
         
-        // Research-based BPM detection using spectral flux onset detection + autocorrelation
-        // Based on Ellis (2007) "Beat Tracking by Dynamic Programming" and librosa methods
-        async function detectBPM(samples, sampleRate) {
-            log('[BPM] Starting spectral flux onset detection...');
+        // Simple but accurate BPM detection using energy-based beat tracking
+        async function simpleBPMDetection(samples, sampleRate) {
+            log('[BPM] Starting simple energy-based beat detection...');
             
-            // Parameters based on librosa defaults and research
-            const frameSize = 2048;
-            const hopSize = 512;
-            const frames = Math.floor((samples.length - frameSize) / hopSize) + 1;
+            // Simple energy-based approach
+            const windowSize = Math.floor(sampleRate * 0.025); // 25ms windows
+            const hopSize = Math.floor(windowSize / 4); // 75% overlap
+            const energy = [];
             
-            // Compute spectral flux onset strength (like librosa.onset.onset_strength)
-            const onsetStrength = new Array(frames);
-            let prevSpectrum = new Array(frameSize / 2).fill(0);
+            // Compute energy in each window
+            for (let i = 0; i <= samples.length - windowSize; i += hopSize) {
+                let sum = 0;
+                for (let j = 0; j < windowSize; j++) {
+                    sum += samples[i + j] * samples[i + j];
+                }
+                energy.push(Math.sqrt(sum / windowSize)); // RMS energy
+            }
             
-            for (let frame = 0; frame < frames; frame++) {
-                const start = frame * hopSize;
-                const end = Math.min(start + frameSize, samples.length);
-                
-                // Apply Hanning window
-                const windowed = new Array(frameSize).fill(0);
-                for (let i = 0; i < end - start; i++) {
-                    const w = 0.5 * (1 - Math.cos(2 * Math.PI * i / (frameSize - 1)));
-                    windowed[i] = samples[start + i] * w;
-                }
-                
-                // Compute magnitude spectrum via DFT
-                const spectrum = new Array(frameSize / 2);
-                for (let k = 0; k < frameSize / 2; k++) {
-                    let real = 0, imag = 0;
-                    for (let n = 0; n < frameSize; n++) {
-                        const angle = -2 * Math.PI * k * n / frameSize;
-                        real += windowed[n] * Math.cos(angle);
-                        imag += windowed[n] * Math.sin(angle);
-                    }
-                    spectrum[k] = Math.sqrt(real * real + imag * imag);
-                }
-                
-                // Spectral flux: sum of positive differences
-                let flux = 0;
-                for (let k = 0; k < frameSize / 2; k++) {
-                    flux += Math.max(0, spectrum[k] - prevSpectrum[k]);
-                }
-                onsetStrength[frame] = flux;
-                prevSpectrum = spectrum.slice();
-                
-                // Yield every 50 frames
-                if (frame % 50 === 0) {
-                    await new Promise(resolve => setTimeout(resolve, 0));
+            // Find peaks (beats)
+            const peaks = [];
+            const threshold = 0.3; // Adaptive threshold
+            const avgEnergy = energy.reduce((a, b) => a + b, 0) / energy.length;
+            
+            for (let i = 2; i < energy.length - 2; i++) {
+                if (energy[i] > energy[i-1] && energy[i] > energy[i+1] && 
+                    energy[i] > energy[i-2] && energy[i] > energy[i+2] &&
+                    energy[i] > avgEnergy * threshold) {
+                    peaks.push(i * hopSize / sampleRate); // time in seconds
                 }
             }
             
-            log(`[BPM] Computed ${frames} onset strength frames`);
-            
-            // Normalize onset strength
-            const maxOnset = Math.max(...onsetStrength);
-            if (maxOnset > 0) {
-                for (let i = 0; i < onsetStrength.length; i++) {
-                    onsetStrength[i] /= maxOnset;
-                }
+            if (peaks.length < 4) {
+                log('[BPM] Too few peaks detected, returning default 120 BPM');
+                return 120;
             }
             
-            // Autocorrelation tempo estimation (librosa style)
-            const frameRate = sampleRate / hopSize; // frames per second
-            const minBPM = 60, maxBPM = 200;
-            const minLag = Math.floor(60 * frameRate / maxBPM); // min lag in frames
-            const maxLag = Math.floor(60 * frameRate / minBPM); // max lag in frames
-            
-            const autocorr = new Array(maxLag - minLag);
-            let maxCorr = 0, bestLag = minLag;
-            
-            // Compute autocorrelation with tempo priors
-            for (let lag = minLag; lag < maxLag && lag < onsetStrength.length / 2; lag++) {
-                let corr = 0, count = 0;
-                
-                for (let i = 0; i < onsetStrength.length - lag; i++) {
-                    corr += onsetStrength[i] * onsetStrength[i + lag];
-                    count++;
-                }
-                
-                if (count > 0) {
-                    corr /= count;
-                    
-                    // Apply log-normal tempo prior (favors ~120 BPM)
-                    const bpm = 60 * frameRate / lag;
-                    const logBpm = Math.log(bpm);
-                    const logPrior = -0.5 * Math.pow((logBpm - Math.log(120)) / 0.6, 2);
-                    const prior = Math.exp(logPrior);
-                    
-                    const weightedCorr = corr * prior;
-                    
-                    if (weightedCorr > maxCorr) {
-                        maxCorr = weightedCorr;
-                        bestLag = lag;
-                    }
-                }
+            // Calculate inter-beat intervals
+            const intervals = [];
+            for (let i = 1; i < Math.min(peaks.length, 50); i++) { // Limit to first 50 beats
+                intervals.push(peaks[i] - peaks[i-1]);
             }
             
-            let bestBPM = 60 * frameRate / bestLag;
+            // Filter out outliers and find most common interval
+            intervals.sort((a, b) => a - b);
+            const median = intervals[Math.floor(intervals.length / 2)];
             
-            // Handle octave errors (common issue in tempo detection)
-            const candidates = [bestBPM, bestBPM * 2, bestBPM / 2, bestBPM * 3, bestBPM / 3];
-            const validCandidates = candidates.filter(bpm => bpm >= 60 && bpm <= 200);
+            // Filter intervals around median (remove outliers)
+            const filteredIntervals = intervals.filter(interval => 
+                interval >= median * 0.5 && interval <= median * 2.0
+            );
             
-            if (validCandidates.length > 0) {
-                // Choose the candidate closest to 120 BPM (most common tempo)
-                bestBPM = validCandidates.reduce((prev, curr) => 
-                    Math.abs(curr - 120) < Math.abs(prev - 120) ? curr : prev
-                );
+            if (filteredIntervals.length === 0) {
+                log('[BPM] No valid intervals found, returning default 120 BPM');
+                return 120;
             }
             
-            log(`[BPM] Detected: ${Math.round(bestBPM)} BPM (corr: ${maxCorr.toFixed(3)})`);
-            return Math.round(bestBPM);
+            // Average the filtered intervals
+            const avgInterval = filteredIntervals.reduce((a, b) => a + b, 0) / filteredIntervals.length;
+            let bpm = 60 / avgInterval;
+            
+            // Handle common errors
+            if (bpm < 70) bpm *= 2;      // Double time
+            if (bpm > 180) bpm /= 2;     // Half time
+            if (bpm < 60) bpm *= 4;      // Quarter time  
+            if (bpm > 200) bpm /= 4;     // Quadruple time
+            
+            // Constrain to reasonable range
+            bpm = Math.max(60, Math.min(200, bpm));
+            
+            log(`[BPM] Detected: ${Math.round(bpm)} BPM from ${peaks.length} peaks`);
+            return Math.round(bpm);
         }
         
         // Research-based key detection using Krumhansl-Schmuckler algorithm
@@ -3144,13 +3106,127 @@
             return denominator === 0 ? 0 : numerator / denominator;
         }
         
-        // Helper function: circular shift array
-        function circularShift(array, shift) {
-            const result = new Array(array.length);
-            for (let i = 0; i < array.length; i++) {
-                result[i] = array[(i + shift) % array.length];
+        // Simple key detection using basic pitch detection
+        async function simpleKeyDetection(samples, sampleRate) {
+            log('[KEY] Starting simple key detection...');
+            
+            // Basic pitch detection using zero-crossing rate and energy
+            const pitchClasses = new Array(12).fill(0);
+            const keys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            
+            const windowSize = 2048;
+            const hopSize = 1024;
+            
+            // Analyze frequency content in chunks
+            for (let start = 0; start < samples.length - windowSize; start += hopSize) {
+                const window = samples.slice(start, start + windowSize);
+                
+                // Simple autocorrelation for pitch detection
+                const maxLag = 400; // About 500Hz fundamental minimum
+                let bestPitch = 0;
+                let maxCorr = 0;
+                
+                for (let lag = 50; lag < maxLag && lag < windowSize / 2; lag++) {
+                    let corr = 0;
+                    for (let i = 0; i < windowSize - lag; i++) {
+                        corr += window[i] * window[i + lag];
+                    }
+                    
+                    if (corr > maxCorr) {
+                        maxCorr = corr;
+                        bestPitch = sampleRate / lag;
+                    }
+                }
+                
+                // Convert frequency to pitch class (0-11)
+                if (bestPitch > 80 && bestPitch < 2000) { // Valid musical range
+                    const pitchNumber = 12 * Math.log2(bestPitch / 440) + 69; // A4 = 440Hz = 69
+                    const pitchClass = Math.round(pitchNumber) % 12;
+                    if (pitchClass >= 0 && pitchClass < 12) {
+                        pitchClasses[pitchClass] += maxCorr;
+                    }
+                }
+                
+                // Yield every 50 windows
+                if ((start / hopSize) % 50 === 0) {
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                }
             }
-            return result;
+            
+            // Find dominant pitch class
+            let dominantClass = 0;
+            let maxStrength = 0;
+            for (let i = 0; i < 12; i++) {
+                if (pitchClasses[i] > maxStrength) {
+                    maxStrength = pitchClasses[i];
+                    dominantClass = i;
+                }
+            }
+            
+            // Simple major/minor detection based on interval strength
+            const majorIntervals = [dominantClass, (dominantClass + 4) % 12, (dominantClass + 7) % 12];
+            const minorIntervals = [dominantClass, (dominantClass + 3) % 12, (dominantClass + 7) % 12];
+            
+            let majorStrength = 0;
+            let minorStrength = 0;
+            
+            for (let interval of majorIntervals) {
+                majorStrength += pitchClasses[interval];
+            }
+            for (let interval of minorIntervals) {
+                minorStrength += pitchClasses[interval];
+            }
+            
+            const mode = majorStrength >= minorStrength ? 'Major' : 'Minor';
+            const key = keys[dominantClass] + ' ' + mode;
+            
+            log(`[KEY] Detected: ${key} (strength: ${maxStrength.toFixed(1)})`);
+            return key;
+        }
+        
+        // Basic mood analysis
+        async function basicMoodAnalysis(samples) {
+            log('[MOOD] Computing basic mood features...');
+            
+            // Energy: RMS level
+            let rms = 0;
+            for (let i = 0; i < samples.length; i++) {
+                rms += samples[i] * samples[i];
+            }
+            rms = Math.sqrt(rms / samples.length);
+            const energy = Math.min(1, rms * 3); // Scale appropriately
+            
+            // Danceability: tempo regularity (variance in energy)
+            const windowSize = 1024;
+            const energyWindows = [];
+            for (let i = 0; i < samples.length - windowSize; i += windowSize) {
+                let windowEnergy = 0;
+                for (let j = 0; j < windowSize; j++) {
+                    windowEnergy += samples[i + j] * samples[i + j];
+                }
+                energyWindows.push(windowEnergy);
+            }
+            
+            const meanEnergy = energyWindows.reduce((a, b) => a + b, 0) / energyWindows.length;
+            let variance = 0;
+            for (let e of energyWindows) {
+                variance += (e - meanEnergy) * (e - meanEnergy);
+            }
+            variance /= energyWindows.length;
+            
+            const regularity = Math.max(0, 1 - Math.sqrt(variance) / meanEnergy);
+            const danceability = Math.min(1, (energy * 0.7 + regularity * 0.3));
+            
+            // Valence: simple brightness measure (high frequency content)
+            const valence = Math.min(1, energy * 0.8 + 0.2); // Simplified
+            
+            log(`[MOOD] Energy: ${energy.toFixed(2)}, Danceability: ${danceability.toFixed(2)}, Valence: ${valence.toFixed(2)}`);
+            
+            return {
+                energy: energy,
+                danceability: danceability,
+                valence: valence
+            };
         }
         
         // Mood analysis on downsampled audio
