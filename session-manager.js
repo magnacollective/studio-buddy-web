@@ -299,8 +299,10 @@ class SessionManager {
 
     if (user) {
       // User is signed in
-      const userData = await window.authManager.getUserData();
       const displayName = user.displayName || user.email.split('@')[0];
+      
+      // Get user data from Firestore
+      const userData = await window.authManager.getUserData();
       
       startText.textContent = displayName;
       userStatus.style.display = 'inline';
