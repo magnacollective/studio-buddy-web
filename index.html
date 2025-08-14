@@ -1247,7 +1247,7 @@
 
         <!-- Taskbar -->
         <div class="taskbar">
-            <div class="start-button" id="start-button" style="position: relative;">
+            <div class="start-button" id="start-button" style="position: relative;" onclick="console.log('CLICK TEST: Button clicked!'); document.getElementById('start-menu').style.display = document.getElementById('start-menu').style.display === 'block' ? 'none' : 'block';">
                 <span>🪟</span>
                 <span id="start-text">Sign In</span>
                 
@@ -1255,11 +1255,11 @@
                 <div class="start-menu" id="start-menu" style="display: none; position: absolute; bottom: 100%; left: 0; background: #c0c0c0; border: 2px outset #c0c0c0; min-width: 220px; font-family: 'MS Sans Serif', sans-serif; font-size: 11px; z-index: 1001; box-shadow: 2px 2px 4px rgba(0,0,0,0.3); margin-bottom: 2px;">
                     <div class="start-menu-section" style="padding: 4px 0;">
                         <div class="start-menu-header" style="background: #e0e0e0; padding: 4px 12px; font-weight: bold; color: #000080; font-size: 10px; text-transform: uppercase; border-bottom: 1px solid #808080; margin-bottom: 2px;">Account</div>
-                        <div class="start-menu-item" id="signin-item" style="display: flex; align-items: center; padding: 6px 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#0080ff'; this.style.color='white'" onmouseout="this.style.background=''; this.style.color=''">
+                        <div class="start-menu-item" id="signin-item" style="display: flex; align-items: center; padding: 6px 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#0080ff'; this.style.color='white'" onmouseout="this.style.background=''; this.style.color=''" onclick="console.log('Sign in clicked'); document.getElementById('start-menu').style.display='none'; if(window.authModal && window.authModal.show) window.authModal.show(); else alert('Auth system loading...');">
                             <span class="start-menu-icon" style="margin-right: 8px; font-size: 14px; width: 18px; text-align: center;">🔑</span>
                             Sign In
                         </div>
-                        <div class="start-menu-item" id="signup-item" style="display: flex; align-items: center; padding: 6px 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#0080ff'; this.style.color='white'" onmouseout="this.style.background=''; this.style.color=''">
+                        <div class="start-menu-item" id="signup-item" style="display: flex; align-items: center; padding: 6px 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#0080ff'; this.style.color='white'" onmouseout="this.style.background=''; this.style.color=''" onclick="console.log('Sign up clicked'); document.getElementById('start-menu').style.display='none'; if(window.authModal && window.authModal.show) { window.authModal.show(); if(window.authModal.switchTab) window.authModal.switchTab('signup'); } else alert('Auth system loading...');">
                             <span class="start-menu-icon" style="margin-right: 8px; font-size: 14px; width: 18px; text-align: center;">👤</span>
                             Create Free Account
                         </div>
@@ -2359,6 +2359,16 @@
         setTimeout(() => {
             log('🧪 Console logging test - if you see this, logging is working!');
             console.log('Browser console: Console logging test completed');
+            
+            // Verify start button exists
+            const testButton = document.getElementById('start-button');
+            if (testButton) {
+                console.log('✅ Start button found in DOM');
+                console.log('📋 Button onclick:', testButton.onclick ? 'Set' : 'Not set');
+                console.log('📋 Button inline onclick:', testButton.getAttribute('onclick') ? 'Present' : 'Missing');
+            } else {
+                console.error('❌ Start button NOT found in DOM!');
+            }
         }, 1000);
 
         // Railway API integration
