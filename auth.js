@@ -69,7 +69,12 @@ class AuthManager {
 
   // Create user document in Firestore
   async ensureUserDocument(user) {
+    console.log('🔧 Creating/checking user document for:', user.uid, user.email);
+    console.log('🔧 Firebase auth current user:', window.firebaseAuth.currentUser?.email);
+    console.log('🔧 Auth token available:', !!window.firebaseAuth.currentUser?.accessToken);
+    
     const userDoc = window.firebaseDB.collection('users').doc(user.uid);
+    console.log('🔧 Attempting Firestore read...');
     const docSnap = await userDoc.get();
     
     if (!docSnap.exists) {
@@ -150,8 +155,14 @@ class AuthManager {
   async getUserData() {
     if (!this.currentUser) return null;
     
+    console.log('🔧 Getting user data for:', this.currentUser.uid, this.currentUser.email);
+    console.log('🔧 Current auth user:', window.firebaseAuth.currentUser?.email);
+    console.log('🔧 Auth state:', window.firebaseAuth.currentUser ? 'authenticated' : 'not authenticated');
+    
     const userDoc = window.firebaseDB.collection('users').doc(this.currentUser.uid);
+    console.log('🔧 Attempting user data read...');
     const docSnap = await userDoc.get();
+    console.log('🔧 Document exists:', docSnap.exists);
     return docSnap.exists ? docSnap.data() : null;
   }
 
