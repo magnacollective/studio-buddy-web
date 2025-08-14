@@ -227,11 +227,11 @@ class SessionManager {
     startMenu.innerHTML = `
       <div class="start-menu-section">
         <div class="start-menu-header">Welcome, ${displayName}</div>
-        <div class="start-menu-item" onclick="window.sessionManager.showDashboard(); window.sessionManager.removeStartMenu();">
+        <div class="start-menu-item" id="dashboard-item-simple">
           <span class="start-menu-icon">📊</span>
           My Dashboard
         </div>
-        <div class="start-menu-item" onclick="window.sessionManager.showUpgradeModal(); window.sessionManager.removeStartMenu();">
+        <div class="start-menu-item" id="upgrade-item-simple">
           <span class="start-menu-icon">⭐</span>
           Upgrade to Premium
         </div>
@@ -239,26 +239,26 @@ class SessionManager {
       <div class="start-menu-divider"></div>
       <div class="start-menu-section">
         <div class="start-menu-header">Features</div>
-        <div class="start-menu-item" onclick="openWindow('audio-mastering'); window.sessionManager.removeStartMenu();">
+        <div class="start-menu-item" data-window="audio-mastering">
           <span class="start-menu-icon">🎛️</span>
           Audio Mastering
         </div>
-        <div class="start-menu-item" onclick="openWindow('audio-analysis'); window.sessionManager.removeStartMenu();">
+        <div class="start-menu-item" data-window="audio-analysis">
           <span class="start-menu-icon">📊</span>
           Audio Analysis
         </div>
-        <div class="start-menu-item" onclick="openWindow('vocal-remover'); window.sessionManager.removeStartMenu();">
+        <div class="start-menu-item" data-window="vocal-remover">
           <span class="start-menu-icon">🎤</span>
           Vocal Remover
         </div>
-        <div class="start-menu-item" onclick="openWindow('lyrics-generator'); window.sessionManager.removeStartMenu();">
+        <div class="start-menu-item" data-window="lyrics-generator">
           <span class="start-menu-icon">✍️</span>
           AI Lyrics Generator
         </div>
       </div>
       <div class="start-menu-divider"></div>
       <div class="start-menu-section">
-        <div class="start-menu-item" onclick="window.sessionManager.signOut(); window.sessionManager.removeStartMenu();">
+        <div class="start-menu-item" id="signout-item-simple">
           <span class="start-menu-icon">🚪</span>
           Sign Out
         </div>
@@ -267,6 +267,9 @@ class SessionManager {
     
     const startButton = document.getElementById('start-button');
     startButton.parentNode.appendChild(startMenu);
+    
+    // Attach event handlers for the simple menu
+    this.attachSimpleMenuHandlers();
     
     // Close menu when clicking elsewhere
     setTimeout(() => {
@@ -436,28 +439,110 @@ class SessionManager {
     this.attachGuestMenuHandlers();
   }
 
+  attachSimpleMenuHandlers() {
+    console.log('🔧 DEBUG: attachSimpleMenuHandlers() called');
+    const dashboardItem = document.getElementById('dashboard-item-simple');
+    const upgradeItem = document.getElementById('upgrade-item-simple');
+    const signoutItem = document.getElementById('signout-item-simple');
+    const startMenu = document.getElementById('start-menu');
+    
+    console.log('🔧 DEBUG: Found simple menu elements:', {
+      dashboardItem: !!dashboardItem,
+      upgradeItem: !!upgradeItem,
+      signoutItem: !!signoutItem,
+      startMenu: !!startMenu
+    });
+
+    if (dashboardItem) {
+      console.log('🔧 DEBUG: Adding simple dashboard click handler');
+      dashboardItem.addEventListener('click', (e) => {
+        console.log('🔧 DEBUG: Simple Dashboard clicked');
+        e.stopPropagation();
+        this.removeStartMenu();
+        this.showDashboard();
+      });
+    } else {
+      console.error('❌ Simple dashboard item not found!');
+    }
+
+    if (upgradeItem) {
+      console.log('🔧 DEBUG: Adding simple upgrade click handler');
+      upgradeItem.addEventListener('click', (e) => {
+        console.log('🔧 DEBUG: Simple Upgrade clicked');
+        e.stopPropagation();
+        this.removeStartMenu();
+        this.showUpgradeModal();
+      });
+    } else {
+      console.error('❌ Simple upgrade item not found!');
+    }
+
+    if (signoutItem) {
+      console.log('🔧 DEBUG: Adding simple signout click handler');
+      signoutItem.addEventListener('click', (e) => {
+        console.log('🔧 DEBUG: Simple Sign out clicked');
+        e.stopPropagation();
+        this.removeStartMenu();
+        this.signOut();
+      });
+    } else {
+      console.error('❌ Simple signout item not found!');
+    }
+
+    // Handle feature window clicks
+    const featureItems = startMenu.querySelectorAll('[data-window]');
+    featureItems.forEach(item => {
+      item.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const windowType = this.getAttribute('data-window');
+        console.log('🔧 DEBUG: Simple opening window:', windowType);
+        this.removeStartMenu();
+        
+        if (window.openWindow) {
+          window.openWindow(windowType);
+        } else {
+          alert(`${windowType} feature loading...`);
+        }
+      }.bind(this));
+    });
+  }
+
   attachUserMenuHandlers() {
+    console.log('🔧 DEBUG: attachUserMenuHandlers() called');
     const dashboardItem = document.getElementById('dashboard-item');
     const upgradeItem = document.getElementById('upgrade-item');
     const signoutItem = document.getElementById('signout-item');
     const startMenu = document.getElementById('start-menu');
+    
+    console.log('🔧 DEBUG: Found elements:', {
+      dashboardItem: !!dashboardItem,
+      upgradeItem: !!upgradeItem,
+      signoutItem: !!signoutItem,
+      startMenu: !!startMenu
+    });
 
     if (dashboardItem) {
+      console.log('🔧 DEBUG: Adding dashboard click handler');
       dashboardItem.addEventListener('click', (e) => {
         console.log('🔧 DEBUG: Dashboard clicked');
         e.stopPropagation();
         startMenu.style.display = 'none';
         this.showDashboard();
       });
+    } else {
+      console.error('❌ Dashboard item not found!');
     }
 
     if (upgradeItem) {
+      console.log('🔧 DEBUG: Adding upgrade click handler');
       upgradeItem.addEventListener('click', (e) => {
         console.log('🔧 DEBUG: Upgrade clicked');
         e.stopPropagation();
         startMenu.style.display = 'none';
         this.showUpgradeModal();
       });
+    } else {
+      console.error('❌ Upgrade item not found!');
     }
 
     if (signoutItem) {
