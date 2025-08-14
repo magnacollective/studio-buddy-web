@@ -353,25 +353,60 @@
                 </div>
                 <div class="section">
                     <h3>A/B Comparison</h3>
+                    
+                    <!-- Main A/B Toggle - Big and Intuitive -->
+                    <div style="background: white; border: 2px inset #c0c0c0; padding: 8px; margin: 8px 0;">
+                        <div style="display: flex; gap: 0; margin-bottom: 8px;">
+                            <button onclick="selectTrack('source')" id="btn-source" 
+                                    style="flex: 1; padding: 12px; font-size: 14px; font-weight: bold; 
+                                           background: linear-gradient(to bottom, #0080ff, #0060dd); 
+                                           color: white; border: 2px outset #0080ff;">
+                                🎵 A: Original
+                            </button>
+                            <button onclick="selectTrack('mastered')" id="btn-mastered" 
+                                    style="flex: 1; padding: 12px; font-size: 14px; font-weight: bold;
+                                           background: #c0c0c0; border: 2px outset #c0c0c0;">
+                                ✨ B: Mastered
+                            </button>
+                        </div>
+                        
+                        <!-- Status Display -->
+                        <div id="track-status" style="text-align: center; font-size: 12px; padding: 4px; 
+                                                      background: #f0f0f0; border: 1px inset #c0c0c0;">
+                            Now Playing: <strong id="current-track-label">Original</strong>
+                        </div>
+                    </div>
+                    
+                    <!-- Playback Controls -->
                     <div style="display: flex; gap: 4px; margin-bottom: 8px;">
-                        <button onclick="playAudio('source')" id="play-source">▶️ A: Source</button>
-                        <button onclick="playAudio('mastered')" id="play-mastered">▶️ B: Mastered</button>
-                        <button onclick="toggleAB()" id="toggle-ab">🔄 Toggle A/B</button>
-                        <button onclick="stopAudio()">⏹️ Stop</button>
-                        <button onclick="downloadMastered()">💾 Download</button>
+                        <button onclick="playPause()" id="play-pause-btn" 
+                                style="flex: 1; padding: 8px; font-size: 13px; font-weight: bold;">
+                            ▶️ Play
+                        </button>
+                        <button onclick="stopAudio()" style="padding: 8px;">⏹️ Stop</button>
+                        <button onclick="toggleAB()" id="toggle-ab" 
+                                style="padding: 8px; background: linear-gradient(to bottom, #44ff44, #33cc33);">
+                            🔄 Quick A/B
+                        </button>
+                        <button onclick="downloadMastered()" style="padding: 8px;">💾 Download</button>
                     </div>
                     
-                    <!-- Crossfade Control -->
-                    <div style="display: flex; align-items: center; gap: 8px; margin: 8px 0;">
-                        <label style="font-size: 10px;">A</label>
-                        <input type="range" id="crossfade" min="0" max="100" value="50" 
-                               oninput="updateCrossfade(this.value)" style="flex: 1;">
-                        <label style="font-size: 10px;">B</label>
-                        <span id="crossfade-value" style="font-size: 10px; min-width: 40px;">50/50</span>
+                    <!-- Crossfade Control (Hidden by default, shown in sync mode) -->
+                    <div id="crossfade-control" style="display: none; background: #f0f0f0; border: 2px inset #c0c0c0; padding: 8px; margin: 8px 0;">
+                        <div style="font-size: 11px; margin-bottom: 4px;">Crossfade Mix:</div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-size: 11px; font-weight: bold;">Original</label>
+                            <input type="range" id="crossfade" min="0" max="100" value="0" 
+                                   oninput="updateCrossfade(this.value)" style="flex: 1;">
+                            <label style="font-size: 11px; font-weight: bold;">Mastered</label>
+                            <span id="crossfade-value" style="font-size: 10px; min-width: 50px;">100/0</span>
+                        </div>
                     </div>
                     
-                    <!-- Sync Playback -->
-                    <button onclick="syncPlayback()" style="width: 100%; margin: 4px 0;">🔗 Sync A/B Playback</button>
+                    <!-- Advanced Mode Toggle -->
+                    <button onclick="toggleAdvancedMode()" style="width: 100%; margin: 4px 0; font-size: 11px;">
+                        ⚙️ Advanced Mode (Crossfade)
+                    </button>
                     
                     <!-- Progress Bar -->
                     <div style="position: relative; margin: 8px 0;">
@@ -654,9 +689,18 @@
                 // Store for playback
                 window.masteredAudio = new Audio(masteredUrl);
                 window.sourceAudio = new Audio(URL.createObjectURL(sourceInput.files[0]));
+                
+                // Enable A/B comparison buttons
+                document.getElementById('btn-mastered').disabled = false;
+                document.getElementById('btn-mastered').style.background = 'linear-gradient(to bottom, #ff8800, #dd6600)';
+                document.getElementById('btn-mastered').style.color = 'white';
+                
+                // Auto-select source to start
+                selectTrack('source');
 
                 log('✅ Professional mastering complete!');
                 log('🎵 Ready for A/B comparison');
+                log('💡 Click the A/B buttons to compare, or use Quick A/B for instant switching!');
 
             } catch (error) {
                 if (error.message.includes('CORS') || error.message.includes('Access-Control')) {
@@ -679,6 +723,8 @@
         let progressInterval = null;
         let isABMode = false;
         let currentTrack = 'source';
+        let isPlaying = false;
+        let advancedMode = false;
 
         async function initAudioContext() {
             if (!audioContext) {
@@ -686,6 +732,71 @@
                 analyser = audioContext.createAnalyser();
                 analyser.fftSize = 256;
                 log('🎵 Audio context initialized');
+            }
+        }
+
+        // New intuitive track selection
+        function selectTrack(type) {
+            currentTrack = type;
+            
+            // Update button styles
+            const sourceBtn = document.getElementById('btn-source');
+            const masteredBtn = document.getElementById('btn-mastered');
+            const statusLabel = document.getElementById('current-track-label');
+            
+            if (type === 'source') {
+                sourceBtn.style.background = 'linear-gradient(to bottom, #0080ff, #0060dd)';
+                sourceBtn.style.color = 'white';
+                sourceBtn.style.border = '2px outset #0080ff';
+                
+                masteredBtn.style.background = '#c0c0c0';
+                masteredBtn.style.color = 'black';
+                masteredBtn.style.border = '2px outset #c0c0c0';
+                
+                statusLabel.textContent = 'Original';
+                document.getElementById('track-status').style.background = '#e6f2ff';
+            } else {
+                masteredBtn.style.background = 'linear-gradient(to bottom, #ff8800, #dd6600)';
+                masteredBtn.style.color = 'white';
+                masteredBtn.style.border = '2px outset #ff8800';
+                
+                sourceBtn.style.background = '#c0c0c0';
+                sourceBtn.style.color = 'black';
+                sourceBtn.style.border = '2px outset #c0c0c0';
+                
+                statusLabel.textContent = 'Mastered';
+                document.getElementById('track-status').style.background = '#fff0e6';
+            }
+            
+            // If playing, switch to new track maintaining position
+            if (isPlaying && currentAudio) {
+                const position = currentAudio.currentTime;
+                playAudio(type).then(() => {
+                    if (currentAudio) currentAudio.currentTime = position;
+                });
+            }
+        }
+
+        // New play/pause toggle
+        async function playPause() {
+            if (!window.sourceAudio || !window.masteredAudio) {
+                log('❌ Please master audio first before playing');
+                return;
+            }
+            
+            if (isPlaying) {
+                if (currentAudio) {
+                    currentAudio.pause();
+                    isPlaying = false;
+                    document.getElementById('play-pause-btn').innerHTML = '▶️ Play';
+                    stopProgressTracking();
+                    stopVisualization();
+                    log('⏸️ Paused');
+                }
+            } else {
+                await playAudio(currentTrack);
+                isPlaying = true;
+                document.getElementById('play-pause-btn').innerHTML = '⏸️ Pause';
             }
         }
 
@@ -700,12 +811,16 @@
                 }
 
                 // Stop current playback
-                if (currentAudio) {
+                if (currentAudio && currentAudio !== audio) {
                     currentAudio.pause();
-                    currentAudio.currentTime = 0;
+                    const oldTime = currentAudio.currentTime;
+                    currentAudio = audio;
+                    // Sync position when switching
+                    audio.currentTime = oldTime;
+                } else {
+                    currentAudio = audio;
                 }
-
-                currentAudio = audio;
+                
                 currentTrack = type;
                 
                 // Set up audio visualization
@@ -716,14 +831,43 @@
                 }
 
                 await audio.play();
+                isPlaying = true;
                 startProgressTracking();
                 startVisualization();
                 
-                log(`▶️ Playing ${type} audio`);
-                updatePlaybackButtons(type);
+                log(`▶️ Playing ${type === 'source' ? 'Original' : 'Mastered'} audio`);
+                selectTrack(type);
 
             } catch (error) {
                 log(`❌ Playback error: ${error.message}`);
+            }
+        }
+
+        // Toggle advanced mode (crossfade)
+        function toggleAdvancedMode() {
+            advancedMode = !advancedMode;
+            const crossfadeControl = document.getElementById('crossfade-control');
+            
+            if (advancedMode) {
+                crossfadeControl.style.display = 'block';
+                log('🎛️ Advanced mode enabled - use crossfade to mix tracks');
+                
+                // Start sync playback if audio is loaded
+                if (window.sourceAudio && window.masteredAudio) {
+                    syncPlayback();
+                }
+            } else {
+                crossfadeControl.style.display = 'none';
+                log('🎵 Simple mode - click A/B buttons to switch');
+                
+                // Stop sync mode
+                if (isABMode) {
+                    isABMode = false;
+                    if (window.sourceAudio && window.masteredAudio) {
+                        window.sourceAudio.pause();
+                        window.masteredAudio.pause();
+                    }
+                }
             }
         }
 
@@ -731,12 +875,22 @@
             if (currentAudio) {
                 currentAudio.pause();
                 currentAudio.currentTime = 0;
-                currentAudio = null;
-                stopProgressTracking();
-                stopVisualization();
-                log('⏹️ Audio stopped');
-                updatePlaybackButtons(null);
             }
+            if (window.sourceAudio) window.sourceAudio.currentTime = 0;
+            if (window.masteredAudio) window.masteredAudio.currentTime = 0;
+            
+            currentAudio = null;
+            isPlaying = false;
+            isABMode = false;
+            
+            stopProgressTracking();
+            stopVisualization();
+            
+            document.getElementById('play-pause-btn').innerHTML = '▶️ Play';
+            document.getElementById('progress-fill').style.width = '0%';
+            document.getElementById('time-display').textContent = '0:00 / 0:00';
+            
+            log('⏹️ Audio stopped');
         }
 
         async function toggleAB() {
@@ -746,21 +900,32 @@
             }
 
             const currentTime = currentAudio ? currentAudio.currentTime : 0;
-            const wasPlaying = currentAudio && !currentAudio.paused;
+            const wasPlaying = isPlaying;
             
-            // Switch track
+            // Switch track instantly
             const newTrack = currentTrack === 'source' ? 'mastered' : 'source';
             
-            if (wasPlaying) {
-                stopAudio();
-                await playAudio(newTrack);
-                currentAudio.currentTime = currentTime; // Sync position
-            } else {
-                currentTrack = newTrack;
-                updatePlaybackButtons(newTrack);
-            }
+            selectTrack(newTrack);
             
-            log(`🔄 Switched to ${newTrack} audio`);
+            if (wasPlaying) {
+                // Quick switch while maintaining playback position
+                const oldAudio = currentAudio;
+                const newAudio = newTrack === 'source' ? window.sourceAudio : window.masteredAudio;
+                
+                // Pause old, set new, sync time, play new
+                if (oldAudio) oldAudio.pause();
+                currentAudio = newAudio;
+                currentAudio.currentTime = currentTime;
+                
+                try {
+                    await currentAudio.play();
+                    log(`🔄 Quick switched to ${newTrack === 'source' ? 'Original' : 'Mastered'}`);
+                } catch (error) {
+                    log(`❌ Quick switch error: ${error.message}`);
+                }
+            } else {
+                log(`🔄 Selected ${newTrack === 'source' ? 'Original' : 'Mastered'} (press Play to start)`);
+            }
         }
 
         async function syncPlayback() {
@@ -816,23 +981,6 @@
             }
         }
 
-        function updatePlaybackButtons(activeType) {
-            const sourceBtn = document.getElementById('play-source');
-            const masteredBtn = document.getElementById('play-mastered');
-            
-            // Reset button styles
-            sourceBtn.style.background = '';
-            masteredBtn.style.background = '';
-            
-            // Highlight active button
-            if (activeType === 'source') {
-                sourceBtn.style.background = 'linear-gradient(to bottom, #4CAF50, #45a049)';
-                sourceBtn.style.color = 'white';
-            } else if (activeType === 'mastered') {
-                masteredBtn.style.background = 'linear-gradient(to bottom, #4CAF50, #45a049)';
-                masteredBtn.style.color = 'white';
-            }
-        }
 
         // Progress tracking
         function startProgressTracking() {
