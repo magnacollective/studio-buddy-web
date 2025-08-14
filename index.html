@@ -427,61 +427,38 @@
                     </div>
                 </div>
                 <div class="section">
-                    <h3>A/B Comparison</h3>
+                    <h3>Playback & A/B Comparison</h3>
                     
-                    <!-- Main A/B Toggle - Big and Intuitive -->
-                    <div style="background: white; border: 2px inset #c0c0c0; padding: 8px; margin: 8px 0;">
-                        <div style="display: flex; gap: 0; margin-bottom: 8px;">
-                            <button onclick="selectAndPlay('source')" id="btn-source" 
-                                    style="flex: 1; padding: 12px; font-size: 14px; font-weight: bold; 
-                                           background: linear-gradient(to bottom, #0080ff, #0060dd); 
-                                           color: white; border: 2px outset #0080ff;">
-                                🎵 A: Original
-                            </button>
-                            <button onclick="selectAndPlay('mastered')" id="btn-mastered" 
-                                    style="flex: 1; padding: 12px; font-size: 14px; font-weight: bold;
-                                           background: #c0c0c0; border: 2px outset #c0c0c0;">
-                                ✨ B: Mastered
-                            </button>
-                        </div>
-                        
-                        <!-- Status Display -->
-                        <div id="track-status" style="text-align: center; font-size: 12px; padding: 4px; 
-                                                      background: #f0f0f0; border: 1px inset #c0c0c0;">
-                            Now Playing: <strong id="current-track-label">Original</strong>
-                        </div>
-                    </div>
-                    
-                    <!-- Playback Controls -->
-                    <div style="display: flex; gap: 4px; margin-bottom: 8px;">
+                    <!-- Simple Playback Controls -->
+                    <div style="display: flex; gap: 4px; margin-bottom: 12px;">
                         <button onclick="playPause()" id="play-pause-btn" 
-                                style="flex: 1; padding: 8px; font-size: 13px; font-weight: bold;">
+                                style="flex: 1; padding: 10px; font-size: 14px; font-weight: bold;">
                             ▶️ Play
                         </button>
-                        <button onclick="stopAudio()" style="padding: 8px;">⏹️ Stop</button>
-                        <button onclick="toggleAB()" id="toggle-ab" 
-                                style="padding: 8px; background: linear-gradient(to bottom, #44ff44, #33cc33);">
-                            🔄 Quick A/B
-                        </button>
-                        <button onclick="downloadMastered()" style="padding: 8px;">💾 Download</button>
+                        <button onclick="stopAudio()" style="padding: 10px;">⏹️ Stop</button>
+                        <button onclick="downloadMastered()" style="padding: 10px;">💾 Download</button>
                     </div>
                     
-                    <!-- Crossfade Control (Hidden by default, shown in sync mode) -->
-                    <div id="crossfade-control" style="display: none; background: #f0f0f0; border: 2px inset #c0c0c0; padding: 8px; margin: 8px 0;">
-                        <div style="font-size: 11px; margin-bottom: 4px;">Crossfade Mix:</div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <label style="font-size: 11px; font-weight: bold;">Original</label>
-                            <input type="range" id="crossfade" min="0" max="100" value="0" 
-                                   oninput="updateCrossfade(this.value)" style="flex: 1;">
-                            <label style="font-size: 11px; font-weight: bold;">Mastered</label>
-                            <span id="crossfade-value" style="font-size: 10px; min-width: 50px;">100/0</span>
+                    <!-- A/B Comparison Slider -->
+                    <div style="background: white; border: 2px inset #c0c0c0; padding: 12px; margin: 8px 0;">
+                        <div style="font-size: 11px; font-weight: bold; margin-bottom: 8px; text-align: center;">
+                            A/B Comparison
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="font-size: 10px; font-weight: bold; color: #0080ff; min-width: 50px;">
+                                🎵 Original
+                            </div>
+                            <input type="range" id="ab-slider" min="0" max="100" value="0" 
+                                   oninput="updateABSlider(this.value)" 
+                                   style="flex: 1; height: 20px; background: linear-gradient(to right, #0080ff, #ff8800);">
+                            <div style="font-size: 10px; font-weight: bold; color: #ff8800; min-width: 50px; text-align: right;">
+                                ✨ Mastered
+                            </div>
+                        </div>
+                        <div id="ab-status" style="text-align: center; font-size: 10px; margin-top: 8px; color: #666;">
+                            Move slider to compare Original ↔ Mastered
                         </div>
                     </div>
-                    
-                    <!-- Advanced Mode Toggle -->
-                    <button onclick="toggleAdvancedMode()" style="width: 100%; margin: 4px 0; font-size: 11px;">
-                        ⚙️ Advanced Mode (Crossfade)
-                    </button>
                     
                     <!-- Enhanced Progress Bar -->
                     <div style="position: relative; margin: 8px 0;">
@@ -684,8 +661,13 @@
             document.getElementById('master-button').style.opacity = '1';
         }
 
+        // Progress timing system
+        let progressTimer = null;
+        let progressStartTime = 0;
+        const TOTAL_PROCESS_TIME = 78000; // 1.3 minutes in milliseconds
+
         function updateProgress(percentage, status) {
-            document.getElementById('process-percentage').textContent = percentage + '%';
+            document.getElementById('process-percentage').textContent = Math.round(percentage) + '%';
             document.getElementById('process-bar').style.width = percentage + '%';
             document.getElementById('process-status').textContent = status;
             
@@ -693,6 +675,54 @@
             const dots = ['.', '..', '...'];
             const dotIndex = Math.floor(Date.now() / 500) % 3;
             document.getElementById('process-dots').textContent = dots[dotIndex];
+        }
+
+        function startRealisticProgress() {
+            if (progressTimer) clearInterval(progressTimer);
+            
+            progressStartTime = Date.now();
+            showProcessProgress('Professional Audio Mastering');
+            
+            // Progress phases with realistic timing
+            const phases = [
+                { percentage: 5, status: 'Initializing mastering engine...', delay: 2000 },
+                { percentage: 15, status: 'Analyzing audio characteristics...', delay: 8000 },
+                { percentage: 25, status: 'Computing frequency response...', delay: 12000 },
+                { percentage: 35, status: 'Uploading to processing server...', delay: 18000 },
+                { percentage: 45, status: 'Applying dynamic range compression...', delay: 28000 },
+                { percentage: 55, status: 'Equalizing frequency spectrum...', delay: 38000 },
+                { percentage: 65, status: 'Processing stereo imaging...', delay: 48000 },
+                { percentage: 75, status: 'Applying limiting and loudness...', delay: 58000 },
+                { percentage: 85, status: 'Rendering final output...', delay: 68000 },
+                { percentage: 95, status: 'Downloading mastered audio...', delay: 73000 },
+                { percentage: 100, status: 'Mastering complete!', delay: 78000 }
+            ];
+            
+            phases.forEach(phase => {
+                setTimeout(() => {
+                    updateProgress(phase.percentage, phase.status);
+                    if (phase.percentage === 100) {
+                        setTimeout(() => hideProcessProgress(), 2000);
+                    }
+                }, phase.delay);
+            });
+            
+            // Smooth progress animation between phases
+            progressTimer = setInterval(() => {
+                const elapsed = Date.now() - progressStartTime;
+                const totalProgress = Math.min((elapsed / TOTAL_PROCESS_TIME) * 100, 100);
+                
+                // Only update if we're between major phases
+                const currentPhase = phases.find(p => elapsed < p.delay);
+                if (currentPhase) {
+                    const smoothProgress = Math.min(totalProgress, currentPhase.percentage - 1);
+                    document.getElementById('process-bar').style.width = smoothProgress + '%';
+                }
+                
+                if (elapsed >= TOTAL_PROCESS_TIME) {
+                    clearInterval(progressTimer);
+                }
+            }, 200);
         }
 
         // Enhanced progress bar functions
@@ -726,6 +756,50 @@
             
             currentAudio.currentTime = time;
             log(`⏩ Seeking to ${Math.floor(time / 60)}:${Math.floor(time % 60).toString().padStart(2, '0')}`);
+        }
+
+        // A/B Slider functionality
+        function updateABSlider(value) {
+            const percentage = parseInt(value);
+            const abStatus = document.getElementById('ab-status');
+            
+            if (percentage === 0) {
+                abStatus.textContent = '🎵 Playing Original';
+                abStatus.style.color = '#0080ff';
+                if (isPlaying) switchToTrack('source');
+            } else if (percentage === 100) {
+                abStatus.textContent = '✨ Playing Mastered';
+                abStatus.style.color = '#ff8800';
+                if (isPlaying) switchToTrack('mastered');
+            } else {
+                abStatus.textContent = `Mix: ${100-percentage}% Original | ${percentage}% Mastered`;
+                abStatus.style.color = '#666';
+                // For now, just switch to the dominant track
+                if (percentage < 50 && currentTrack !== 'source') {
+                    if (isPlaying) switchToTrack('source');
+                } else if (percentage >= 50 && currentTrack !== 'mastered') {
+                    if (isPlaying) switchToTrack('mastered');
+                }
+            }
+        }
+
+        function switchToTrack(trackType) {
+            if (!window.sourceAudio || !window.masteredAudio) return;
+            
+            const newAudio = trackType === 'source' ? window.sourceAudio : window.masteredAudio;
+            const currentTime = currentAudio ? currentAudio.currentTime : 0;
+            
+            if (currentAudio && currentAudio !== newAudio) {
+                currentAudio.pause();
+            }
+            
+            currentAudio = newAudio;
+            currentTrack = trackType;
+            
+            if (isPlaying) {
+                currentAudio.currentTime = currentTime;
+                currentAudio.play().catch(e => log(`❌ Switch error: ${e.message}`));
+            }
         }
 
         // Enhanced visualizer functions
@@ -964,9 +1038,8 @@
         // Railway API integration
         async function startMastering() {
             try {
-                // Show progress animation
-                showProcessProgress('Professional Audio Mastering');
-                updateProgress(10, 'Validating audio files...');
+                // Start realistic progress animation
+                startRealisticProgress();
                 
                 log('🚂 RAILWAY: Starting professional audio mastering...');
                 
@@ -1002,7 +1075,6 @@
                 }
 
                 // Upload directly to Railway mastering service
-                updateProgress(40, 'Uploading to Railway mastering service...');
                 log('📤 Uploading directly to Railway mastering service...');
                 log(`📋 FormData contents: source=${sourceInput.files[0]?.name}, reference=${referenceInput.files[0]?.name || 'none'}`);
                 
@@ -1012,7 +1084,6 @@
                     mode: 'cors'
                 });
 
-                updateProgress(60, 'Processing audio with professional algorithms...');
                 log(`📊 API Response: ${response.status} ${response.statusText}`);
                 
                 if (!response.ok) {
@@ -1021,12 +1092,10 @@
                     throw new Error(`Service error: ${response.status} - ${errorText}`);
                 }
 
-                updateProgress(80, 'Downloading mastered audio...');
                 log('⚡ Processing audio with professional algorithms...');
                 
                 // Get mastered audio
                 const masteredBlob = await response.blob();
-                updateProgress(90, 'Creating audio objects...');
                 const masteredUrl = URL.createObjectURL(masteredBlob);
                 
                 // Store for playback with error handling
@@ -1041,16 +1110,12 @@
                 window.masteredAudio.onloadeddata = () => log('✅ Mastered audio loaded');
                 window.sourceAudio.onloadeddata = () => log('✅ Source audio loaded');
                 
-                // Enable A/B comparison buttons
-                document.getElementById('btn-mastered').disabled = false;
-                document.getElementById('btn-mastered').style.background = 'linear-gradient(to bottom, #ff8800, #dd6600)';
-                document.getElementById('btn-mastered').style.color = 'white';
+                // Enable A/B slider
+                document.getElementById('ab-slider').disabled = false;
+                document.getElementById('ab-status').textContent = '🎵 Ready for A/B comparison';
                 
-                // Auto-select source to start
-                selectTrack('source');
-
-                updateProgress(100, 'Mastering complete!');
-                setTimeout(() => hideProcessProgress(), 2000);
+                // Set slider to original by default
+                document.getElementById('ab-slider').value = 0;
 
                 log('✅ Professional mastering complete!');
                 log('🎵 Ready for A/B comparison');
@@ -1091,64 +1156,11 @@
             }
         }
 
-        // New intuitive track selection
-        function selectTrack(type, forcePlay = false) {
-            currentTrack = type;
-            
-            // Update button styles
-            const sourceBtn = document.getElementById('btn-source');
-            const masteredBtn = document.getElementById('btn-mastered');
-            const statusLabel = document.getElementById('current-track-label');
-            
-            if (type === 'source') {
-                sourceBtn.style.background = 'linear-gradient(to bottom, #0080ff, #0060dd)';
-                sourceBtn.style.color = 'white';
-                sourceBtn.style.border = '2px outset #0080ff';
-                
-                masteredBtn.style.background = '#c0c0c0';
-                masteredBtn.style.color = 'black';
-                masteredBtn.style.border = '2px outset #c0c0c0';
-                
-                statusLabel.textContent = 'Original';
-                document.getElementById('track-status').style.background = '#e6f2ff';
-            } else {
-                masteredBtn.style.background = 'linear-gradient(to bottom, #ff8800, #dd6600)';
-                masteredBtn.style.color = 'white';
-                masteredBtn.style.border = '2px outset #ff8800';
-                
-                sourceBtn.style.background = '#c0c0c0';
-                sourceBtn.style.color = 'black';
-                sourceBtn.style.border = '2px outset #c0c0c0';
-                
-                statusLabel.textContent = 'Mastered';
-                document.getElementById('track-status').style.background = '#fff0e6';
-            }
-            
-            // Only switch playback if explicitly requested or if user clicked the button
-            if (forcePlay && isPlaying && currentAudio) {
-                const position = currentAudio.currentTime;
-                playAudio(type).then(() => {
-                    if (currentAudio) currentAudio.currentTime = position;
-                });
-            }
-        }
-        
-        // Separate function for button clicks
-        function selectAndPlay(type) {
-            if (isPlaying) {
-                const position = currentAudio ? currentAudio.currentTime : 0;
-                playAudio(type).then(() => {
-                    if (currentAudio && position > 0) currentAudio.currentTime = position;
-                });
-            } else {
-                selectTrack(type);
-            }
-        }
 
-        // New play/pause toggle
+        // Simplified play/pause toggle
         async function playPause() {
-            if (!window.sourceAudio || !window.masteredAudio) {
-                log('❌ Please master audio first before playing');
+            if (!window.sourceAudio) {
+                log('❌ Please select and master audio first');
                 return;
             }
             
@@ -1162,7 +1174,11 @@
                     log('⏸️ Paused');
                 }
             } else {
-                await playAudio(currentTrack);
+                // Determine which track to play based on slider
+                const sliderValue = document.getElementById('ab-slider').value;
+                const trackType = sliderValue < 50 ? 'source' : (window.masteredAudio ? 'mastered' : 'source');
+                
+                await playAudio(trackType);
                 isPlaying = true;
                 document.getElementById('play-pause-btn').innerHTML = '⏸️ Pause';
             }
@@ -1258,38 +1274,6 @@
             log('⏹️ Audio stopped');
         }
 
-        async function toggleAB() {
-            if (!window.sourceAudio || !window.masteredAudio) {
-                log('❌ Need both source and mastered audio for A/B comparison');
-                return;
-            }
-
-            const currentTime = currentAudio ? currentAudio.currentTime : 0;
-            const wasPlaying = isPlaying;
-            
-            // Switch track
-            const newTrack = currentTrack === 'source' ? 'mastered' : 'source';
-            
-            if (wasPlaying) {
-                // Stop current, switch track, and play new
-                if (currentAudio) {
-                    currentAudio.pause();
-                }
-                
-                await playAudio(newTrack);
-                
-                // Sync position
-                if (currentAudio && currentTime > 0) {
-                    currentAudio.currentTime = currentTime;
-                }
-                
-                log(`🔄 Quick switched to ${newTrack === 'source' ? 'Original' : 'Mastered'}`);
-            } else {
-                // Just select the track without playing
-                selectTrack(newTrack);
-                log(`🔄 Selected ${newTrack === 'source' ? 'Original' : 'Mastered'} (press Play to start)`);
-            }
-        }
 
         async function syncPlayback() {
             if (!window.sourceAudio || !window.masteredAudio) {
