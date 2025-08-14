@@ -395,6 +395,102 @@ canvas {
     color: var(--win95-selection);
 }
 
+/* Enhanced Analysis Results */
+.enhanced-results {
+    margin-top: 16px;
+    padding: 8px;
+    border: 2px inset var(--win95-window-gray);
+    background: white;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.enhanced-results h3 {
+    margin-bottom: 8px;
+    color: var(--win95-selection);
+    font-size: 12px;
+}
+
+.analysis-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 10px;
+    color: #666;
+}
+
+.candidates {
+    margin: 8px 0;
+    font-size: 10px;
+}
+
+.candidate {
+    display: inline-block;
+    margin: 2px 4px 2px 0;
+    padding: 2px 4px;
+    background: #e0e0e0;
+    border: 1px solid #ccc;
+    border-radius: 2px;
+    font-size: 9px;
+}
+
+.mood-features {
+    margin: 12px 0;
+}
+
+.mood-features h4 {
+    margin-bottom: 8px;
+    font-size: 11px;
+    color: var(--win95-selection);
+}
+
+.feature-bar {
+    display: flex;
+    align-items: center;
+    margin: 6px 0;
+    font-size: 10px;
+}
+
+.feature-bar label {
+    width: 80px;
+    margin-right: 8px;
+    font-weight: bold;
+}
+
+.bar {
+    flex: 1;
+    height: 12px;
+    background: #f0f0f0;
+    border: 1px inset var(--win95-window-gray);
+    margin: 0 8px;
+    position: relative;
+}
+
+.bar .fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00aa00, #88ff88);
+    transition: width 0.3s ease;
+}
+
+.feature-bar span {
+    width: 35px;
+    text-align: right;
+    font-weight: bold;
+    color: var(--win95-selection);
+}
+
+.additional-features {
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid #ddd;
+}
+
+.additional-features .feature {
+    margin: 4px 0;
+    font-size: 10px;
+    color: #666;
+}
+
 /* Settings */
 .setting-item {
     margin: 8px 0;

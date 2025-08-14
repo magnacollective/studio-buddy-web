@@ -18,13 +18,17 @@ class StudioBuddyApp {
             // Initialize Web Audio API
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
             this.audioProcessor = new AudioProcessor(this.audioContext);
-            this.audioAnalyzer = new AudioAnalyzer(this.audioContext);
+            
+            // Use Enhanced Audio Manager with TuneBat-style analysis
+            this.audioAnalyzer = new EnhancedAudioManager(this.audioContext);
+            this.audioAnalyzer.setServerFallback(true); // Enable server fallback
+            this.audioAnalyzer.setConfidenceThreshold(0.7); // Set confidence threshold
             
             this.setupEventListeners();
             this.setupMatrixBackground();
             this.updateClock();
             
-            console.log('Studio Buddy Web initialized successfully');
+            console.log('Studio Buddy Web initialized with TuneBat-style analysis');
         } catch (error) {
             console.error('Failed to initialize Studio Buddy:', error);
             alert('Failed to initialize audio system. Please check browser compatibility.');
@@ -238,17 +242,23 @@ class StudioBuddyApp {
         }
 
         try {
-            this.showProgress('Analyzing audio...');
+            this.showProgress('Analyzing audio with TuneBat-style algorithms...');
             
             const analysis = await this.audioAnalyzer.analyzeAudio(this.analyzeBuffer);
             
+            // Update main results
             document.getElementById('bpm-result').textContent = Math.round(analysis.bpm) + ' BPM';
             document.getElementById('key-result').textContent = analysis.key;
             document.getElementById('duration-result').textContent = this.formatDuration(this.analyzeBuffer.duration);
             document.getElementById('samplerate-result').textContent = this.analyzeBuffer.sampleRate + ' Hz';
             
+            // Display enhanced features if available
+            this.displayEnhancedResults(analysis);
+            
             this.drawSpectrum(analysis.spectrum);
             this.hideProgress();
+            
+            console.log('Analysis complete:', analysis.analysisMethod, 'confidence:', analysis.confidence);
         } catch (error) {
             console.error('Error analyzing audio:', error);
             alert('Error during audio analysis.');
@@ -575,6 +585,97 @@ class StudioBuddyApp {
         const mins = Math.floor(seconds / 60);
         const secs = Math.floor(seconds % 60);
         return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    displayEnhancedResults(analysis) {
+        // Create or update enhanced results display
+        let enhancedDiv = document.getElementById('enhanced-results');
+        if (!enhancedDiv) {
+            enhancedDiv = document.createElement('div');
+            enhancedDiv.id = 'enhanced-results';
+            enhancedDiv.className = 'enhanced-results';
+            
+            const analyzerContent = document.querySelector('#analyzer-window .window-content');
+            if (analyzerContent) {
+                analyzerContent.appendChild(enhancedDiv);
+            }
+        }
+
+        // Build enhanced results HTML
+        let html = '<h3>🎯 Enhanced Analysis</h3>';
+        
+        // Analysis method and confidence
+        html += `<div class="analysis-meta">
+            <span class="method">Method: ${analysis.analysisMethod || 'client-side'}</span>
+            <span class="confidence">Confidence: ${((analysis.confidence || 0.5) * 100).toFixed(1)}%</span>
+        </div>`;
+
+        // BPM candidates if available
+        if (analysis.bpmCandidates && analysis.bpmCandidates.length > 1) {
+            html += '<div class="candidates"><strong>BPM Candidates:</strong><br>';
+            analysis.bpmCandidates.slice(0, 3).forEach(candidate => {
+                html += `<span class="candidate">${Math.round(candidate.bpm)} BPM (${(candidate.confidence * 100).toFixed(1)}%)</span> `;
+            });
+            html += '</div>';
+        }
+
+        // Key candidates if available
+        if (analysis.keyCandidates && analysis.keyCandidates.length > 1) {
+            html += '<div class="candidates"><strong>Key Candidates:</strong><br>';
+            analysis.keyCandidates.slice(0, 3).forEach(candidate => {
+                html += `<span class="candidate">${candidate.key} (${(candidate.confidence * 100).toFixed(1)}%)</span> `;
+            });
+            html += '</div>';
+        }
+
+        // Mood features (TuneBat-style)
+        if (analysis.energy !== undefined || analysis.danceability !== undefined || analysis.valence !== undefined) {
+            html += '<div class="mood-features"><h4>🎭 Mood Analysis</h4>';
+            
+            if (analysis.energy !== undefined) {
+                html += `<div class="feature-bar">
+                    <label>Energy:</label>
+                    <div class="bar"><div class="fill" style="width: ${analysis.energy * 100}%"></div></div>
+                    <span>${(analysis.energy * 100).toFixed(0)}%</span>
+                </div>`;
+            }
+            
+            if (analysis.danceability !== undefined) {
+                html += `<div class="feature-bar">
+                    <label>Danceability:</label>
+                    <div class="bar"><div class="fill" style="width: ${analysis.danceability * 100}%"></div></div>
+                    <span>${(analysis.danceability * 100).toFixed(0)}%</span>
+                </div>`;
+            }
+            
+            if (analysis.valence !== undefined) {
+                html += `<div class="feature-bar">
+                    <label>Positivity:</label>
+                    <div class="bar"><div class="fill" style="width: ${analysis.valence * 100}%"></div></div>
+                    <span>${(analysis.valence * 100).toFixed(0)}%</span>
+                </div>`;
+            }
+            
+            html += '</div>';
+        }
+
+        // Additional features if available
+        if (analysis.tempoStability !== undefined) {
+            html += `<div class="additional-features">
+                <div class="feature">Tempo Stability: ${(analysis.tempoStability * 100).toFixed(0)}%</div>`;
+            
+            if (analysis.rhythmComplexity !== undefined) {
+                html += `<div class="feature">Rhythm Complexity: ${(analysis.rhythmComplexity * 100).toFixed(0)}%</div>`;
+            }
+            
+            if (analysis.harmonicComplexity !== undefined) {
+                html += `<div class="feature">Harmonic Complexity: ${(analysis.harmonicComplexity * 100).toFixed(0)}%</div>`;
+            }
+            
+            html += '</div>';
+        }
+
+        enhancedDiv.innerHTML = html;
     }
     
     bringToFront(windowElement) {
