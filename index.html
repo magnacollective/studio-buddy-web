@@ -3122,13 +3122,24 @@
                     log('[ERROR] Please select an audio file first');
                     return;
                 }
-
-                // Check file size (limit to 25MB)
-                const maxSize = 25 * 1024 * 1024;
-                if (vocalInput.files[0].size > maxSize) {
-                    log(`[ERROR] File too large: ${Math.round(vocalInput.files[0].size/1024/1024)}MB. Please use files under 25MB.`);
+                
+                // Check file size to prevent timeouts
+                const file = vocalInput.files[0];
+                const fileSizeMB = file.size / (1024 * 1024);
+                log(`[FILE] Selected: ${file.name} (${fileSizeMB.toFixed(2)} MB)`);
+                
+                if (fileSizeMB > 50) {
+                    log('[ERROR] File too large! Please use files under 50MB for vocal separation.');
+                    log('[TIP] For best performance, use files under 20MB (about 3-4 minutes at standard quality).');
+                    alert('File too large! Please use audio files under 50MB for vocal separation.\n\nFor best results, use files under 20MB.');
                     return;
                 }
+                
+                if (fileSizeMB > 20) {
+                    log('[WARN] Large file detected. Processing may take 3-5 minutes...');
+                }
+
+                // File size validation done above
 
                 // Show progress
                 const progressContainer = document.getElementById('vocal-progress-container');
@@ -3143,19 +3154,21 @@
                 const formData = new FormData();
                 formData.append('audio', vocalInput.files[0]);
 
-                log(`[UPLOAD] Uploading to vocal-remover service...`);
+                log(`[UPLOAD] Preparing to upload to vocal-remover service...`);
 
-                // Optional reachability check for clearer errors
-                try {
-                    const health = await fetch(`${VOCAL_API_URL}/health`, { mode: 'cors', cache: 'no-store' });
-                    log(`[HEALTH] Vocal API: ${health.status}`);
-                } catch (e) {
-                    log('[WARN] Health check failed (continuing): ' + e.message);
-                }
+                // Skip health check to avoid timeout issues - go straight to processing
+                log(`[INFO] Skipping health check to speed up processing...`);
 
-                // Robust fetch with timeout
+                // Robust fetch with extended timeout for vocal separation
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for large uploads
+                const timeoutId = setTimeout(() => {
+                    console.error('⏱️ Vocal separation timeout after 5 minutes');
+                    controller.abort();
+                }, 300000); // 5 minute timeout for vocal separation (was 60s)
+                
+                log(`[UPLOAD] Starting upload, this may take 2-3 minutes for processing...`);
+                progressFill.style.width = '20%';
+                progressText.textContent = 'Uploading audio file...';
 
                 const response = await fetch(`${VOCAL_API_URL}/separate?stem_type=${encodeURIComponent(stemType)}`, {
                     method: 'POST',
@@ -3175,11 +3188,23 @@
                     throw new Error(`Separation failed: ${response.status} - ${errorText}`);
                 }
 
-                progressFill.style.width = '80%';
-                progressText.textContent = 'Processing stems...';
+                // Add progress simulation during processing
+                let progressValue = 30;
+                const progressInterval = setInterval(() => {
+                    if (progressValue < 75) {
+                        progressValue += 5;
+                        progressFill.style.width = progressValue + '%';
+                        progressText.textContent = `Processing ${stemType} separation... (${Math.floor(progressValue)}%)`;
+                    }
+                }, 2000);
 
                 // Get the separated audio
                 const separatedBlob = await response.blob();
+                clearInterval(progressInterval);
+                
+                progressFill.style.width = '90%';
+                progressText.textContent = 'Finalizing separated audio...';
+                
                 const separatedUrl = URL.createObjectURL(separatedBlob);
                 
                 // Create download link
@@ -3205,8 +3230,35 @@
                 log(`[DOWNLOAD] Download ready: ${downloadLink.download}`);
 
             } catch (error) {
-                log(`[ERROR] Vocal Separation Error: ${error.message}`);
-                document.getElementById('vocal-progress-container').style.display = 'none';
+                console.error('Vocal separation error:', error);
+                
+                // Clear any progress intervals
+                if (typeof progressInterval !== 'undefined') {
+                    clearInterval(progressInterval);
+                }
+                
+                // Provide helpful error message based on error type
+                let errorMessage = error.message;
+                if (error.name === 'AbortError' || error.message.includes('aborted')) {
+                    errorMessage = 'Processing timeout - the file may be too large or the server is busy. Please try with a smaller file (under 20MB) or try again later.';
+                    log(`[ERROR] ${errorMessage}`);
+                    log(`[TIP] For best results, use files under 15MB and 3-4 minutes in length.`);
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorMessage = 'Could not connect to vocal separation service. Please check your internet connection.';
+                    log(`[ERROR] ${errorMessage}`);
+                } else {
+                    log(`[ERROR] Vocal Separation Error: ${error.message}`);
+                }
+                
+                // Update progress bar to show error
+                progressFill.style.background = 'linear-gradient(90deg, #ff0000, #cc0000)';
+                progressText.textContent = 'Error: ' + errorMessage;
+                
+                // Hide progress bar after delay
+                setTimeout(() => {
+                    document.getElementById('vocal-progress-container').style.display = 'none';
+                    progressFill.style.background = ''; // Reset color
+                }, 5000);
             }
         }
 
