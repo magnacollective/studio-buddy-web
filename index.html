@@ -108,7 +108,7 @@
             width: 100%;
             height: 100%;
             z-index: 1;
-            background: rgba(0, 0, 0, 0.7);
+            background: black;
             overflow: hidden;
             pointer-events: none;
         }
@@ -500,15 +500,15 @@
                 <div class="label">Studio Buddy<br>Audio Mastering</div>
             </div>
             <div class="desktop-icon" onclick="openWindow('analyzer')">
-                <div class="icon">📊</div>
+                <div class="icon"></div>
                 <div class="label">Key/BPM<br>Analyzer</div>
             </div>
             <div class="desktop-icon" onclick="openWindow('vocal-remover')">
-                <div class="icon">🎤</div>
+                <div class="icon"></div>
                 <div class="label">Vocal<br>Remover</div>
             </div>
             <div class="desktop-icon" onclick="openWindow('settings')">
-                <div class="icon">⚙️</div>
+                <div class="icon"></div>
                 <div class="label">System<br>Settings</div>
             </div>
         </div>
@@ -535,8 +535,9 @@
                             <input type="file" accept="audio/*" style="width: 100%; margin: 4px 0;">
                             <div style="font-size: 9px; color: #666; margin-top: 2px;">Optional - style reference</div>
                         </div>
-                        <div style="display: flex; flex-direction: column; justify-content: end;">
-                            <button class="master-btn" onclick="startMastering()" id="master-button" style="margin: 4px 0; height: 40px;">🎵 Master Audio</button>
+                        <div style="display: flex; flex-direction: column; justify-content: end; gap: 4px;">
+                            <button class="master-btn" onclick="startMastering()" id="master-button" style="height: 40px;">🎵 Master Audio</button>
+                            <button class="master-btn" onclick="resetForNewSong()" id="new-song-button" style="height: 32px; background: #c04000; font-size: 11px;" title="Clear cache and reset for new song">🔄 Master New Song</button>
                         </div>
                     </div>
                 </div>
@@ -572,8 +573,8 @@
                                 style="flex: 2; padding: 10px; font-size: 14px; font-weight: bold;">
                             ▶️ Play
                         </button>
-                        <button onclick="stopAudio()" style="flex: 1; padding: 10px; font-size: 12px;">⏹️ Stop</button>
-                        <button onclick="downloadMastered()" style="flex: 1; padding: 10px; font-size: 12px;">💾 Download</button>
+                        <button onclick="stopAudio()" style="flex: 1; padding: 10px; font-size: 12px;">Stop</button>
+                        <button onclick="downloadMastered()" style="flex: 1; padding: 10px; font-size: 12px;">Download</button>
                     </div>
                     
                     <!-- A/B Comparison Toggle -->
@@ -623,12 +624,9 @@
                     <div style="border: 2px inset #c0c0c0; padding: 4px; background: black; text-align: center; position: relative;">
                         <!-- Visualizer Controls -->
                         <div style="position: absolute; top: 8px; right: 8px; z-index: 10; display: flex; gap: 4px;">
-                            <select id="viz-mode" onchange="changeVisualizerMode()" style="font-size: 9px; background: rgba(255,255,255,0.9);">
-                                <option value="spectrum">Spectrum</option>
-                                <option value="waveform">Waveform</option>
-                                <option value="circular">Circular</option>
-                                <option value="bars3d">3D Bars</option>
-                            </select>
+                            <span style="font-size: 9px; background: rgba(255,255,255,0.9); padding: 2px 6px; border: 1px inset #c0c0c0;">
+                                Spectrum
+                            </span>
                             <button onclick="enableVisualizer()" style="font-size: 8px; padding: 2px 4px; background: #0080ff; color: white; border: 1px outset #0080ff;">
                                 🔊
                             </button>
@@ -780,8 +778,8 @@
         window.STUDIOBUDDY_API_URL = '{{STUDIOBUDDY_API_URL}}';
         window.VOCAL_REMOVER_API_URL = '{{VOCAL_REMOVER_API_URL}}';
         
-        console.log('🚀 Studio Buddy Web Loading...');
-        console.log('🔧 API URLs:', {
+        console.log('[INIT] Studio Buddy Web Loading...');
+        console.log('[CONFIG] API URLs:', {
             studiobuddy: window.STUDIOBUDDY_API_URL,
             vocalRemover: window.VOCAL_REMOVER_API_URL
         });
@@ -931,7 +929,7 @@
         // A/B Toggle functionality
         function switchToOriginal() {
             if (!window.sourceAudio) {
-                log('❌ No original audio loaded');
+                log('[ERROR] No original audio loaded');
                 return;
             }
             
@@ -948,19 +946,19 @@
             masteredBtn.style.color = 'black';
             masteredBtn.style.border = '2px outset #c0c0c0';
             
-            abStatus.textContent = '🎵 Playing Original Track';
+            abStatus.textContent = '[PLAYING] Original Track';
             abStatus.style.color = '#0080ff';
             
             if (isPlaying) {
                 switchToTrack('source');
             }
             
-            log('🎵 Switched to Original track');
+            log('[AUDIO] Switched to Original track');
         }
         
         function switchToMastered() {
             if (!window.masteredAudio) {
-                log('❌ No mastered audio available. Run mastering first.');
+                log('[ERROR] No mastered audio available. Run mastering first.');
                 return;
             }
             
@@ -977,7 +975,7 @@
             masteredBtn.style.color = 'white';
             masteredBtn.style.border = '2px inset #ff8800';
             
-            abStatus.textContent = '✨ Playing Mastered Track';
+            abStatus.textContent = '[PLAYING] Mastered Track';
             abStatus.style.color = '#ff8800';
             
             if (isPlaying) {
@@ -1002,35 +1000,29 @@
             
             if (isPlaying) {
                 currentAudio.currentTime = currentTime;
-                currentAudio.play().catch(e => log(`❌ Switch error: ${e.message}`));
+                currentAudio.play().catch(e => log(`[ERROR] Switch error: ${e.message}`));
             }
         }
 
-        // Enhanced visualizer functions
-        let visualizerMode = 'spectrum';
+        // Simple visualizer functions
         let vizAnimationFrame;
-
-        function changeVisualizerMode() {
-            visualizerMode = document.getElementById('viz-mode').value;
-            log(`🎨 Visualizer mode: ${visualizerMode}`);
-        }
 
         async function enableVisualizer() {
             try {
-                log('🔊 Manual visualizer activation...');
+                log('[AUDIO] Manual visualizer activation...');
                 
                 // Initialize audio context with user gesture
                 await initAudioContext();
                 
                 if (audioContext && audioContext.state === 'suspended') {
                     await audioContext.resume();
-                    log('🔊 Audio context activated');
+                    log('[AUDIO] Audio context activated');
                 }
                 
                 // If audio is currently playing, reconnect it
                 if (currentAudio && isPlaying) {
                     connectAudioToAnalyser(currentAudio);
-                    log('🔗 Reconnected current audio to visualizer');
+                    log('[VIZ] Reconnected current audio to visualizer');
                 }
                 
                 // Start visualization if not already running
@@ -1038,17 +1030,17 @@
                     startVisualization();
                 }
                 
-                log('✅ Visualizer manually enabled');
+                log('[SUCCESS] Visualizer manually enabled');
                 
             } catch (error) {
-                log(`❌ Failed to enable visualizer: ${error.message}`);
+                log(`[ERROR] Failed to enable visualizer: ${error.message}`);
             }
         }
 
         function startVisualization() {
             const canvas = document.getElementById('visualizer');
             if (!canvas) {
-                log('❌ Visualizer canvas not found');
+                log('[ERROR] Visualizer canvas not found');
                 return;
             }
             
@@ -1072,8 +1064,8 @@
                     const dataSum = rawData.reduce((sum, val) => sum + val, 0);
                     const maxValue = Math.max(...rawData);
                     
-                    // Lower threshold for detection and add more debugging
-                    if (dataSum > 10 || maxValue > 10) { // Lower threshold for real audio activity
+                    // Very low threshold for detection and add more debugging  
+                    if (dataSum > 5 || maxValue > 5) { // Very low threshold for real audio activity
                         usingRealData = true;
                         
                         // Reduce to 64 bars for visualization
@@ -1089,7 +1081,7 @@
                         
                         // Log real data usage occasionally
                         if (frameCount % 120 === 0) {
-                            log(`🎨 Using real audio data (sum: ${dataSum}, max: ${maxValue})`);
+                            log(`[VIZ] Using real audio data (sum: ${dataSum}, max: ${maxValue})`);
                         }
                     }
                 }
@@ -1102,7 +1094,7 @@
                         analyser.getByteFrequencyData(testData);
                         const testSum = testData.reduce((sum, val) => sum + val, 0);
                         const testMax = Math.max(...testData);
-                        log(`🔍 No real data: sum=${testSum}, max=${testMax}, playing=${isPlaying}, analyser=${!!analyser}, audioSource=${!!audioSource}`);
+                        log(`[DEBUG] No real data: sum=${testSum}, max=${testMax}, playing=${isPlaying}, analyser=${!!analyser}, audioSource=${!!audioSource}`);
                     }
                     
                     // Fallback to simulated visualization
@@ -1126,7 +1118,7 @@
                     
                     // Log fallback usage occasionally
                     if (frameCount % 120 === 0 && isPlaying) {
-                        log('🎨 Using fallback visualization (no real audio data)');
+                        log('[VIZ] Using fallback visualization (no real audio data)');
                     }
                 }
                 
@@ -1137,7 +1129,7 @@
             }
             
             if (!vizAnimationFrame) {
-                log('🎨 Starting visualizer animation');
+                log('[VIZ] Starting visualizer animation');
                 animate();
             }
         }
@@ -1150,22 +1142,7 @@
         }
 
         function drawVisualization(ctx, dataArray, width, height) {
-            const barWidth = width / dataArray.length;
-            
-            switch (visualizerMode) {
-                case 'spectrum':
-                    drawSpectrum(ctx, dataArray, barWidth, height);
-                    break;
-                case 'waveform':
-                    drawWaveform(ctx, dataArray, width, height);
-                    break;
-                case 'circular':
-                    drawCircular(ctx, dataArray, width, height);
-                    break;
-                case 'bars3d':
-                    draw3DBars(ctx, dataArray, barWidth, height);
-                    break;
-            }
+            drawSimpleSpectrum(ctx, dataArray, width, height);
             
             // Update VU meters
             const leftLevel = Math.max(...dataArray.slice(0, dataArray.length / 2));
@@ -1174,93 +1151,29 @@
             document.getElementById('vu-right').style.height = (rightLevel / 255 * 100) + '%';
         }
 
-        function drawSpectrum(ctx, dataArray, barWidth, height) {
-            for (let i = 0; i < dataArray.length; i++) {
-                const barHeight = (dataArray[i] / 255) * height * 0.8;
-                const hue = (i / dataArray.length) * 360;
-                ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
-                ctx.fillRect(i * barWidth, height - barHeight, barWidth - 1, barHeight);
-                
-                // Add glow effect
-                ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
-                ctx.shadowBlur = 10;
-                ctx.fillRect(i * barWidth, height - barHeight, barWidth - 1, barHeight);
-                ctx.shadowBlur = 0;
-            }
-        }
-
-        function drawWaveform(ctx, dataArray, width, height) {
-            ctx.strokeStyle = '#00ff00';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
+        function drawSimpleSpectrum(ctx, dataArray, width, height) {
+            const barCount = 64; // Reduced for cleaner look
+            const barWidth = width / barCount;
+            const step = Math.floor(dataArray.length / barCount);
             
-            for (let i = 0; i < dataArray.length; i++) {
-                const x = (i / dataArray.length) * width;
-                const y = height / 2 + (dataArray[i] - 128) * height / 256;
-                
-                if (i === 0) {
-                    ctx.moveTo(x, y);
-                } else {
-                    ctx.lineTo(x, y);
-                }
-            }
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
             
-            ctx.stroke();
-        }
-
-        function drawCircular(ctx, dataArray, width, height) {
-            const centerX = width / 2;
-            const centerY = height / 2;
-            const radius = Math.min(width, height) / 4;
-            
-            for (let i = 0; i < dataArray.length; i++) {
-                const angle = (i / dataArray.length) * 2 * Math.PI;
-                const barLength = (dataArray[i] / 255) * radius;
-                const x1 = centerX + Math.cos(angle) * radius;
-                const y1 = centerY + Math.sin(angle) * radius;
-                const x2 = centerX + Math.cos(angle) * (radius + barLength);
-                const y2 = centerY + Math.sin(angle) * (radius + barLength);
-                
-                const hue = (i / dataArray.length) * 360;
-                ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.moveTo(x1, y1);
-                ctx.lineTo(x2, y2);
-                ctx.stroke();
-            }
-        }
-
-        function draw3DBars(ctx, dataArray, barWidth, height) {
-            for (let i = 0; i < dataArray.length; i++) {
-                const barHeight = (dataArray[i] / 255) * height * 0.8;
+            for (let i = 0; i < barCount; i++) {
+                const dataIndex = i * step;
+                const barHeight = (dataArray[dataIndex] / 255) * height * 0.85;
                 const x = i * barWidth;
                 const y = height - barHeight;
                 
-                // Draw 3D effect
-                const hue = (i / dataArray.length) * 360;
+                // Simple gradient from blue to white based on frequency
+                const intensity = dataArray[dataIndex] / 255;
+                const blue = Math.floor(100 + intensity * 155);
+                const green = Math.floor(intensity * 200);
+                const red = Math.floor(intensity * 100);
                 
-                // Front face
-                ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
-                ctx.fillRect(x, y, barWidth - 1, barHeight);
-                
-                // Top face (3D effect)
-                ctx.fillStyle = `hsl(${hue}, 100%, 70%)`;
-                ctx.beginPath();
-                ctx.moveTo(x, y);
-                ctx.lineTo(x + 3, y - 3);
-                ctx.lineTo(x + barWidth + 2, y - 3);
-                ctx.lineTo(x + barWidth - 1, y);
-                ctx.fill();
-                
-                // Side face (3D effect)
-                ctx.fillStyle = `hsl(${hue}, 100%, 30%)`;
-                ctx.beginPath();
-                ctx.moveTo(x + barWidth - 1, y);
-                ctx.lineTo(x + barWidth + 2, y - 3);
-                ctx.lineTo(x + barWidth + 2, height - 3);
-                ctx.lineTo(x + barWidth - 1, height);
-                ctx.fill();
+                ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
+                ctx.fillRect(x + 1, y, barWidth - 2, barHeight);
             }
         }
 
@@ -1274,7 +1187,7 @@
                     await audioContext.resume();
                 }
                 
-                log('🔊 Playing DOS boot beeps...');
+                log('[AUDIO] Playing DOS boot beeps...');
                 
                 const now = audioContext.currentTime;
                 
@@ -1324,10 +1237,10 @@
                     oscillator.stop(startTime + beep.duration);
                 });
                 
-                log('✅ DOS boot beeps scheduled and playing');
+                log('[SUCCESS] DOS boot beeps scheduled and playing');
                 return true;
             } catch (error) {
-                log(`🔇 Boot beeps failed: ${error.message}`);
+                log(`[WARN] Boot beeps failed: ${error.message}`);
                 return false;
             }
         }
@@ -1395,7 +1308,7 @@
 
         async function compressAudioFile(file, targetSizeMB = 20) {
             return new Promise((resolve, reject) => {
-                log(`🗜️ Compressing ${file.name} to approximately ${targetSizeMB}MB...`);
+                log(`[COMPRESS] Compressing ${file.name} to approximately ${targetSizeMB}MB...`);
                 
                 const audio = new Audio();
                 const canvas = document.createElement('canvas');
@@ -1412,7 +1325,7 @@
                         const compressionRatio = targetSizeMB / currentSizeMB;
                         const targetQuality = Math.max(0.3, Math.min(0.9, compressionRatio));
                         
-                        log(`📊 Compression ratio: ${(compressionRatio * 100).toFixed(1)}%, Quality: ${(targetQuality * 100).toFixed(1)}%`);
+                        log(`[DATA] Compression ratio: ${(compressionRatio * 100).toFixed(1)}%, Quality: ${(targetQuality * 100).toFixed(1)}%`);
                         
                         // For now, we'll create a Blob with reduced quality metadata
                         // This is a simplified approach - real compression would require Web Audio API processing
@@ -1426,17 +1339,17 @@
                             { type: 'audio/mpeg' }
                         );
                         
-                        log(`✅ Compression complete: ${Math.round(compressedFile.size / 1024 / 1024)}MB`);
+                        log(`[SUCCESS] Compression complete: ${Math.round(compressedFile.size / 1024 / 1024)}MB`);
                         resolve(compressedFile);
                         
                     } catch (error) {
-                        log(`❌ Compression failed: ${error.message}`);
+                        log(`[ERROR] Compression failed: ${error.message}`);
                         reject(error);
                     }
                 };
                 
                 reader.onerror = () => {
-                    log('❌ Failed to read file for compression');
+                    log('[ERROR] Failed to read file for compression');
                     reject(new Error('File reading failed'));
                 };
                 
@@ -1466,9 +1379,9 @@
                 oscillator.start(audioContext.currentTime);
                 oscillator.stop(audioContext.currentTime + 0.4);
                 
-                log('🔔 Completion sound played');
+                log('[AUDIO] Completion sound played');
             } catch (error) {
-                log('🔇 Could not play completion sound');
+                log('[WARN] Could not play completion sound');
             }
         }
         
@@ -1572,7 +1485,7 @@
                 ensureWindowVisible(window);
                 
                 bringToFront(window);
-                log(`✅ Opened ${windowId} window`);
+                log(`[SUCCESS] Opened ${windowId} window`);
             }
         }
         
@@ -1600,7 +1513,7 @@
             const window = document.getElementById(windowId);
             if (window) {
                 window.style.display = 'none';
-                log(`🗝️ Closed ${windowId}`);
+                log(`[WINDOW] Closed ${windowId}`);
             }
         }
 
@@ -1670,7 +1583,7 @@
                     document.body.style.cursor = 'grabbing';
                     document.body.style.userSelect = 'none';
                     
-                    log(`🖱️ Started dragging ${windowElement.id} at (${clientX}, ${clientY})`);
+                    log(`[DRAG] Started dragging ${windowElement.id} at (${clientX}, ${clientY})`);
                     log(`📍 Window initial position: (${startLeft}, ${startTop})`);
                     log(`🔧 Event type: ${e.type}, has touches: ${!!e.touches}`);
                 }
@@ -1710,7 +1623,7 @@
             
             // Debug logging (remove this once working)
             if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
-                console.log(`🔄 Dragging: delta(${deltaX}, ${deltaY}) -> position(${newLeft}, ${newTop})`);
+                console.log(`[DRAG] Dragging: delta(${deltaX}, ${deltaY}) -> position(${newLeft}, ${newTop})`);
             }
         }
 
@@ -1723,7 +1636,7 @@
                 document.body.style.cursor = 'default';
                 document.body.style.userSelect = 'auto';
                 
-                log(`✅ Finished dragging ${currentDragWindow.id}`);
+                log(`[SUCCESS] Finished dragging ${currentDragWindow.id}`);
             }
             
             isDragging = false;
@@ -1751,16 +1664,24 @@
         // Railway API integration
         async function startMastering() {
             try {
+                // Reset previous audio session to prevent conflicts
+                if (window.sourceAudio || window.masteredAudio) {
+                    log('[RESET] Auto-resetting previous session...');
+                    resetForNewSong();
+                    // Wait a moment for cleanup to complete
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                
                 // Start realistic progress animation
                 startRealisticProgress();
                 
-                log('🚂 RAILWAY: Starting professional audio mastering...');
+                log('[RAILWAY] RAILWAY: Starting professional audio mastering...');
                 
                 const sourceInput = document.querySelector('#studio-buddy-window input[type="file"]');
                 const referenceInput = document.querySelectorAll('#studio-buddy-window input[type="file"]')[1];
                 
                 if (!sourceInput.files[0]) {
-                    log('❌ Please select a source audio file first');
+                    log('[ERROR] Please select a source audio file first');
                     return;
                 }
 
@@ -1771,18 +1692,18 @@
                 const compressionThreshold = 25 * 1024 * 1024; // 25MB compression threshold
                 
                 if (fileSize > maxSize) {
-                    log(`❌ File too large: ${fileSizeMB}MB. Maximum supported size is 100MB.`);
+                    log(`[ERROR] File too large: ${fileSizeMB}MB. Maximum supported size is 100MB.`);
                     return;
                 }
                 
                 if (fileSize > compressionThreshold) {
-                    log(`⚠️ Large file detected: ${fileSizeMB}MB. Options will be presented...`);
+                    log(`[WARN] Large file detected: ${fileSizeMB}MB. Options will be presented...`);
                 }
 
                 // Check file type
                 const allowedTypes = ['audio/mp3', 'audio/mpeg', 'audio/wav', 'audio/wave', 'audio/x-wav', 'audio/flac', 'audio/ogg'];
                 if (!allowedTypes.includes(sourceInput.files[0].type) && !sourceInput.files[0].name.match(/\.(mp3|wav|flac|ogg)$/i)) {
-                    log(`❌ Unsupported file type: ${sourceInput.files[0].type}. Please use MP3, WAV, FLAC, or OGG files.`);
+                    log(`[ERROR] Unsupported file type: ${sourceInput.files[0].type}. Please use MP3, WAV, FLAC, or OGG files.`);
                     return;
                 }
 
@@ -1798,7 +1719,7 @@
                             audioFile = await compressAudioFile(audioFile, 20);
                             log(`📦 Using compressed file: ${Math.round(audioFile.size / 1024 / 1024)}MB`);
                         } catch (error) {
-                            log(`❌ Compression failed, using original file: ${error.message}`);
+                            log(`[ERROR] Compression failed, using original file: ${error.message}`);
                         }
                     } else {
                         log(`⚡ Using original file at user's request: ${fileSizeMB}MB`);
@@ -1811,11 +1732,11 @@
                 
                 if (referenceInput.files[0]) {
                     formData.append('reference', referenceInput.files[0]);
-                    log('🎯 Using reference track for style matching');
+                    log('[INFO] Using reference track for style matching');
                 }
 
                 // Upload directly to Railway mastering service
-                log('📤 Uploading directly to Railway mastering service...');
+                log('[UPLOAD] Uploading directly to Railway mastering service...');
                 log(`📋 FormData contents: source=${sourceInput.files[0]?.name}, reference=${referenceInput.files[0]?.name || 'none'}`);
                 
                 const response = await fetch(`${API_BASE_URL}/master`, {
@@ -1824,11 +1745,11 @@
                     mode: 'cors'
                 });
 
-                log(`📊 API Response: ${response.status} ${response.statusText}`);
+                log(`[DATA] API Response: ${response.status} ${response.statusText}`);
                 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    log(`❌ API Error Details: ${errorText}`);
+                    log(`[ERROR] API Error Details: ${errorText}`);
                     throw new Error(`Service error: ${response.status} - ${errorText}`);
                 }
 
@@ -1850,30 +1771,30 @@
                 window.sourceAudio.setAttribute('playsinline', '');
                 
                 // Add error handlers
-                window.masteredAudio.onerror = (e) => log(`❌ Mastered audio error: ${e.message}`);
-                window.sourceAudio.onerror = (e) => log(`❌ Source audio error: ${e.message}`);
+                window.masteredAudio.onerror = (e) => log(`[ERROR] Mastered audio error: ${e.message}`);
+                window.sourceAudio.onerror = (e) => log(`[ERROR] Source audio error: ${e.message}`);
                 
                 // Add load handlers to ensure audio is ready
                 window.masteredAudio.onloadeddata = () => {
-                    log('✅ Mastered audio loaded');
+                    log('[SUCCESS] Mastered audio loaded');
                     // Initialize audio context when audio is ready
                     initAudioContext();
                     // Attempt muted autoplay to feed visualizer without user gesture
                     window.masteredAudio.play().then(() => {
-                        log('▶️ Mastered audio autoplayed (muted)');
+                        log('[PLAY] Mastered audio autoplayed (muted)');
                     }).catch(e => {
-                        log(`🔇 Mastered autoplay blocked: ${e.message}`);
+                        log(`[WARN] Mastered autoplay blocked: ${e.message}`);
                     });
                 };
                 window.sourceAudio.onloadeddata = () => {
-                    log('✅ Source audio loaded');
+                    log('[SUCCESS] Source audio loaded');
                     // Initialize audio context when audio is ready
                     initAudioContext();
                     // Attempt muted autoplay to feed visualizer without user gesture
                     window.sourceAudio.play().then(() => {
-                        log('▶️ Source audio autoplayed (muted)');
+                        log('[PLAY] Source audio autoplayed (muted)');
                     }).catch(e => {
-                        log(`🔇 Source autoplay blocked: ${e.message}`);
+                        log(`[WARN] Source autoplay blocked: ${e.message}`);
                     });
                 };
 
@@ -1883,9 +1804,9 @@
                         await initAudioContext();
                         connectAudioToAnalyser(window.masteredAudio);
                         startVisualization();
-                        log('🔗 Visualizer connected to mastered audio on play');
+                        log('[VIZ] Visualizer connected to mastered audio on play');
                     } catch (e) {
-                        log(`❌ Visualizer hookup (mastered) failed: ${e.message}`);
+                        log(`[ERROR] Visualizer hookup (mastered) failed: ${e.message}`);
                     }
                 });
 
@@ -1894,9 +1815,9 @@
                         await initAudioContext();
                         connectAudioToAnalyser(window.sourceAudio);
                         startVisualization();
-                        log('🔗 Visualizer connected to source audio on play');
+                        log('[VIZ] Visualizer connected to source audio on play');
                     } catch (e) {
-                        log(`❌ Visualizer hookup (source) failed: ${e.message}`);
+                        log(`[ERROR] Visualizer hookup (source) failed: ${e.message}`);
                     }
                 });
                 
@@ -1907,7 +1828,7 @@
                 masteredBtn.style.color = 'black';
                 masteredBtn.style.border = '2px outset #c0c0c0';
                 
-                document.getElementById('ab-status').textContent = '🎵 Ready for A/B comparison - Click buttons to switch';
+                document.getElementById('ab-status').textContent = '[READY] A/B comparison ready - Click buttons to switch';
                 
                 // Complete progress and create completion notification
                 updateProcessProgress(100, 'Mastering complete!');
@@ -1921,9 +1842,9 @@
                     hideProcessProgress();
                 }, 3000);
                 
-                log('✅ Professional mastering complete!');
-                log('🎵 Ready for A/B comparison');
-                log('💡 Click the A/B buttons to compare Original ↔ Mastered!');
+                log('[SUCCESS] Professional mastering complete!');
+                log('[AUDIO] Ready for A/B comparison');
+                log('[TIP] Click the A/B buttons to compare Original ↔ Mastered!');
 
             } catch (error) {
                 // Clear progress timer and hide progress bar on error
@@ -1934,15 +1855,15 @@
                 hideProcessProgress();
                 
                 if (error.message.includes('CORS') || error.message.includes('Access-Control')) {
-                    log(`❌ CORS Error: Railway API needs to allow requests from ${window.location.origin}`);
-                    log('💡 Tell your Railway API to add these headers:');
+                    log(`[ERROR] CORS Error: Railway API needs to allow requests from ${window.location.origin}`);
+                    log('[TIP] Tell your Railway API to add these headers:');
                     log(`   Access-Control-Allow-Origin: ${window.location.origin}`);
                     log('   Access-Control-Allow-Methods: POST');
                     log('   Access-Control-Allow-Headers: Content-Type');
                 } else {
-                    log(`❌ Railway Error: ${error.message}`);
+                    log(`[ERROR] Railway Error: ${error.message}`);
                 }
-                log('🔄 Using fallback processing...');
+                log('[RESET] Using fallback processing...');
             }
         }
 
@@ -1963,18 +1884,24 @@
                 analyser = audioContext.createAnalyser();
                 analyser.fftSize = 512; // Increased for better resolution
                 analyser.smoothingTimeConstant = 0.8;
-                log('🎵 Audio context initialized');
+                log('[AUDIO] Audio context initialized');
             }
             
             // Resume context if suspended (required by some browsers)
             if (audioContext.state === 'suspended') {
                 await audioContext.resume();
+                log('[AUDIO] Audio context resumed');
+            }
+            
+            // Verify analyser is working
+            if (analyser) {
+                log(`[AUDIO] Analyser ready: FFT=${analyser.fftSize}, bins=${analyser.frequencyBinCount}`);
             }
         }
 
         function connectAudioToAnalyser(audio) {
             if (!audioContext || !analyser) {
-                log('❌ No audio context or analyser available');
+                log('[ERROR] No audio context or analyser available');
                 return;
             }
             
@@ -1982,7 +1909,7 @@
                 // Check if this audio element already has a source connected
                 if (audio._connectedSource) {
                     audioSource = audio._connectedSource;
-                    log('🔗 Using existing audio connection');
+                    log('[VIZ] Using existing audio connection');
                     return;
                 }
                 
@@ -2005,9 +1932,9 @@
                 audioSource.connect(analyser);
                 audioSource.connect(audioContext.destination);
                 
-                log('🔗 Audio connected to visualizer successfully');
-                log(`🎛️ Analyser settings: FFT=${analyser.fftSize}, Smoothing=${analyser.smoothingTimeConstant}`);
-                log(`🎵 Audio duration: ${audio.duration}s, current time: ${audio.currentTime}s`);
+                log('[VIZ] Audio connected to visualizer successfully');
+                log(`[AUDIO] Analyser settings: FFT=${analyser.fftSize}, Smoothing=${analyser.smoothingTimeConstant}`);
+                log(`[AUDIO] Audio duration: ${audio.duration}s, current time: ${audio.currentTime}s`);
                 
                 // Force a test to see if we're getting data
                 setTimeout(() => {
@@ -2015,14 +1942,14 @@
                     analyser.getByteFrequencyData(dataArray);
                     const hasData = dataArray.some(value => value > 0);
                     const maxValue = Math.max(...dataArray);
-                    log(`📊 Visualizer data test: ${hasData ? 'RECEIVING DATA ✅' : 'NO DATA ❌'} (max: ${maxValue})`);
+                    log(`[DATA] Visualizer data test: ${hasData ? 'RECEIVING DATA [OK]' : 'NO DATA [FAIL]'} (max: ${maxValue})`);
                 }, 500);
                 
             } catch (error) {
                 if (error.message.includes('already connected')) {
-                    log('🔗 Audio already connected to visualizer');
+                    log('[VIZ] Audio already connected to visualizer');
                 } else {
-                    log(`❌ Visualizer connection error: ${error.message}`);
+                    log(`[ERROR] Visualizer connection error: ${error.message}`);
                     console.error('Full error:', error);
                 }
             }
@@ -2032,7 +1959,7 @@
         // Simplified play/pause toggle
         async function playPause() {
             if (!window.sourceAudio) {
-                log('❌ Please select and master audio first');
+                log('[ERROR] Please select and master audio first');
                 return;
             }
             
@@ -2043,7 +1970,7 @@
                     document.getElementById('play-pause-btn').innerHTML = '▶️ Play';
                     stopProgressTracking();
                     stopVisualization();
-                    log('⏸️ Paused');
+                    log('[PAUSE] Paused');
                 }
             } else {
                 // Determine which track to play based on button states
@@ -2053,7 +1980,7 @@
                 
                 await playAudio(trackType);
                 isPlaying = true;
-                document.getElementById('play-pause-btn').innerHTML = '⏸️ Pause';
+                document.getElementById('play-pause-btn').innerHTML = '⏸ Pause';
             }
         }
 
@@ -2061,17 +1988,17 @@
             try {
                 const audio = type === 'source' ? window.sourceAudio : window.masteredAudio;
                 if (!audio) {
-                    log(`❌ No ${type} audio available. Run mastering first.`);
+                    log(`[ERROR] No ${type} audio available. Run mastering first.`);
                     return;
                 }
 
-                log(`🎵 Initializing playback for ${type} audio...`);
+                log(`[AUDIO] Initializing playback for ${type} audio...`);
 
                 // Initialize audio context first
                 await initAudioContext();
                 
                 if (!audioContext) {
-                    log('❌ Failed to initialize audio context');
+                    log('[ERROR] Failed to initialize audio context');
                     return;
                 }
 
@@ -2082,7 +2009,7 @@
                     currentAudio = audio;
                     // Sync position when switching
                     audio.currentTime = oldTime;
-                    log(`🔄 Switched from ${currentTrack} to ${type} at ${oldTime.toFixed(1)}s`);
+                    log(`[RESET] Switched from ${currentTrack} to ${type} at ${oldTime.toFixed(1)}s`);
                 } else {
                     currentAudio = audio;
                 }
@@ -2095,7 +2022,7 @@
                 // Ensure audio context is resumed (required by browsers)
                 if (audioContext.state === 'suspended') {
                     await audioContext.resume();
-                    log('🔊 Audio context resumed');
+                    log('[AUDIO] Audio context resumed');
                 }
                 
                 // Unmute for user-initiated playback
@@ -2107,8 +2034,8 @@
                 startProgressTracking();
                 startVisualization();
                 
-                log(`▶️ Playing ${type === 'source' ? 'Original' : 'Mastered'} audio`);
-                log(`🎨 Visualizer should now show real frequency data`);
+                log(`[PLAY] Playing ${type === 'source' ? 'Original' : 'Mastered'} audio`);
+                log(`[VIZ] Visualizer should now show real frequency data`);
                 
                 // Verify connection
                 setTimeout(() => {
@@ -2116,12 +2043,12 @@
                         const testData = new Uint8Array(analyser.frequencyBinCount);
                         analyser.getByteFrequencyData(testData);
                         const activity = testData.reduce((sum, val) => sum + val, 0);
-                        log(`🔍 Audio analysis activity level: ${activity}`);
+                        log(`[DEBUG] Audio analysis activity level: ${activity}`);
                     }
                 }, 1000);
 
             } catch (error) {
-                log(`❌ Playback error: ${error.message}`);
+                log(`[ERROR] Playback error: ${error.message}`);
                 console.error('Full playback error:', error);
                 // Try to recover
                 currentAudio = null;
@@ -2136,7 +2063,7 @@
             
             if (advancedMode) {
                 crossfadeControl.style.display = 'block';
-                log('🎛️ Advanced mode enabled - use crossfade to mix tracks');
+                log('[AUDIO] Advanced mode enabled - use crossfade to mix tracks');
                 
                 // Start sync playback if audio is loaded
                 if (window.sourceAudio && window.masteredAudio) {
@@ -2144,7 +2071,7 @@
                 }
             } else {
                 crossfadeControl.style.display = 'none';
-                log('🎵 Simple mode - click A/B buttons to switch');
+                log('[AUDIO] Simple mode - click A/B buttons to switch');
                 
                 // Stop sync mode
                 if (isABMode) {
@@ -2177,13 +2104,102 @@
             document.getElementById('current-time').textContent = '0:00';
             document.getElementById('total-time').textContent = '0:00';
             
-            log('⏹️ Audio stopped');
+            log('[STOP] Audio stopped');
         }
 
+        function resetForNewSong() {
+            try {
+                log('[RESET] Resetting for new song...');
+                
+                // Stop any playing audio
+                stopAudio();
+                
+                // Disconnect audio sources from analyser
+                if (audioSource) {
+                    try {
+                        audioSource.disconnect();
+                        log('[DISCONNECT] Disconnected audio source from analyser');
+                    } catch (e) {
+                        // Ignore disconnect errors
+                    }
+                    audioSource = null;
+                }
+                
+                // Clean up previous audio objects and URL blobs
+                if (window.sourceAudio) {
+                    window.sourceAudio.pause();
+                    if (window.sourceAudio.src && window.sourceAudio.src.startsWith('blob:')) {
+                        URL.revokeObjectURL(window.sourceAudio.src);
+                        log('[CLEANUP] Revoked source audio blob URL');
+                    }
+                    // Remove any connected source reference
+                    if (window.sourceAudio._connectedSource) {
+                        window.sourceAudio._connectedSource = null;
+                    }
+                    window.sourceAudio = null;
+                }
+                
+                if (window.masteredAudio) {
+                    window.masteredAudio.pause();
+                    if (window.masteredAudio.src && window.masteredAudio.src.startsWith('blob:')) {
+                        URL.revokeObjectURL(window.masteredAudio.src);
+                        log('[CLEANUP] Revoked mastered audio blob URL');
+                    }
+                    // Remove any connected source reference
+                    if (window.masteredAudio._connectedSource) {
+                        window.masteredAudio._connectedSource = null;
+                    }
+                    window.masteredAudio = null;
+                }
+                
+                // Reset UI state
+                isABMode = false;
+                currentTrack = null;
+                
+                // Reset A/B buttons to default state
+                const originalBtn = document.getElementById('ab-original-btn');
+                const masteredBtn = document.getElementById('ab-mastered-btn');
+                if (originalBtn) {
+                    originalBtn.style.background = 'linear-gradient(145deg, #c0c0c0, #808080)';
+                    originalBtn.style.color = '#000';
+                }
+                if (masteredBtn) {
+                    masteredBtn.style.background = 'linear-gradient(145deg, #c0c0c0, #808080)';
+                    masteredBtn.style.color = '#000';
+                }
+                
+                // Reset crossfade slider
+                const crossfade = document.getElementById('crossfade');
+                if (crossfade) {
+                    crossfade.value = 50;
+                    document.getElementById('crossfade-value').textContent = '50/50';
+                }
+                
+                // Clear file inputs
+                const sourceInput = document.getElementById('source-input');
+                const referenceInput = sourceInput?.parentElement?.querySelector('input[type="file"]:not(#source-input)');
+                if (sourceInput) sourceInput.value = '';
+                if (referenceInput) referenceInput.value = '';
+                
+                // Reset mastering progress
+                const progressContainer = document.getElementById('progress-container');
+                if (progressContainer) progressContainer.style.display = 'none';
+                
+                // Force garbage collection hint
+                if (window.gc) {
+                    window.gc();
+                }
+                
+                log('[SUCCESS] Reset complete - ready for new song');
+                
+            } catch (error) {
+                log(`[ERROR] Reset error: ${error.message}`);
+            }
+        }
 
         async function syncPlayback() {
             if (!window.sourceAudio || !window.masteredAudio) {
-                log('❌ Need both source and mastered audio for sync playback');
+                log('[ERROR] Need both source and mastered audio for sync playback');
                 return;
             }
 
@@ -2213,10 +2229,10 @@
                 startProgressTracking();
                 startVisualization();
                 
-                log('🔗 Synchronized A/B playback started - use crossfade slider');
+                log('[VIZ] Synchronized A/B playback started - use crossfade slider');
                 
             } catch (error) {
-                log(`❌ Sync error: ${error.message}`);
+                log(`[ERROR] Sync error: ${error.message}`);
             }
         }
 
@@ -2230,7 +2246,7 @@
             document.getElementById('crossfade-value').textContent = `${Math.round(volumeA*100)}/${Math.round(volumeB*100)}`;
             
             if (isABMode) {
-                log(`🎚️ Crossfade: ${Math.round(volumeA*100)}% A / ${Math.round(volumeB*100)}% B`);
+                log(`[AUDIO] Crossfade: ${Math.round(volumeA*100)}% A / ${Math.round(volumeB*100)}% B`);
             }
         }
 
@@ -2287,13 +2303,13 @@
                 window.masteredAudio.currentTime = newTime;
             }
             
-            log(`⏯️ Seek to ${formatTime(newTime)}`);
+            log(`[SEEK] Seek to ${formatTime(newTime)}`);
         }
 
         // Download mastered audio
         function downloadMastered() {
             if (!window.masteredAudio) {
-                log('❌ No mastered audio available. Run mastering first.');
+                log('[ERROR] No mastered audio available. Run mastering first.');
                 return;
             }
 
@@ -2304,9 +2320,9 @@
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-                log('💾 Downloading mastered audio file...');
+                log('[DOWNLOAD] Downloading mastered audio file...');
             } catch (error) {
-                log(`❌ Download error: ${error.message}`);
+                log(`[ERROR] Download error: ${error.message}`);
             }
         }
 
@@ -2405,11 +2421,11 @@
 
         async function analyzeAudio() {
             try {
-                log('🚂 RAILWAY: Starting professional audio analysis...');
+                log('[RAILWAY] RAILWAY: Starting professional audio analysis...');
                 
                 const analyzeInput = document.querySelector('#analyzer-window input[type="file"]');
                 if (!analyzeInput.files[0]) {
-                    log('❌ Please select an audio file to analyze');
+                    log('[ERROR] Please select an audio file to analyze');
                     return;
                 }
 
@@ -2418,20 +2434,21 @@
                 formData.append('audio', analyzeInput.files[0]);
 
                 // Upload to vocal-remover Railway service for analysis  
-                log('📤 Uploading to vocal-remover Railway service for analysis...');
+                log('[UPLOAD] Uploading to vocal-remover Railway service for analysis...');
                 log(`📋 Analysis FormData: audio=${analyzeInput.files[0]?.name}`);
                 
-                const response = await fetch(`${VOCAL_API_URL}/analyze`, {
+                const params = new URLSearchParams({ profile: 'fast', window_sec: '45' });
+                const response = await fetch(`${VOCAL_API_URL}/analyze?${params.toString()}`, {
                     method: 'POST',
                     body: formData,
                     mode: 'cors'
                 });
 
-                log(`📊 Analysis Response: ${response.status} ${response.statusText}`);
+                log(`[DATA] Analysis Response: ${response.status} ${response.statusText}`);
                 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    log(`❌ Analysis Error Details: ${errorText}`);
+                    log(`[ERROR] Analysis Error Details: ${errorText}`);
                     throw new Error(`Analysis service error: ${response.status} - ${errorText}`);
                 }
 
@@ -2444,15 +2461,15 @@
                 document.getElementById('bpm-result').textContent = `${results.bpm} BPM`;
                 document.getElementById('key-result').textContent = results.key || 'Unknown';
                 
-                log(`✅ Analysis complete: ${results.bpm} BPM, ${results.key} key`);
-                log(`🎵 Duration: ${results.duration}, Sample rate: ${results.sample_rate}Hz`);
+                log(`[SUCCESS] Analysis complete: ${results.bpm} BPM, ${results.key} key`);
+                log(`[AUDIO] Duration: ${results.duration}, Sample rate: ${results.sample_rate}Hz`);
 
             } catch (error) {
-                log(`❌ Railway Analysis Error: ${error.message}`);
+                log(`[ERROR] Railway Analysis Error: ${error.message}`);
                 // Fallback to mock results
                 document.getElementById('bpm-result').textContent = 'Analysis Failed';
                 document.getElementById('key-result').textContent = 'Service Offline';
-                log('🔄 Analysis service unavailable');
+                log('[RESET] Analysis service unavailable');
             }
         }
 
@@ -2518,13 +2535,13 @@
             // Start visualizer animation immediately
             startVisualization();
             
-            log('🚀 Studio Buddy Web initialized');
-            log('🎯 Click desktop icons to open windows');
-            log('🖱️ Windows are draggable by their title bars');
-            log('💡 Drag by clicking and holding the blue title bar');
-            log(`🌐 Browser: ${navigator.userAgent.includes('Safari') ? 'Safari' : 'Other'}`);
-            log(`📱 Touch support: ${('ontouchstart' in window) ? 'Yes' : 'No'}`);
-            log(`🔗 URL: ${window.location.hostname}`);
+            log('[INIT] Studio Buddy Web initialized');
+            log('[INFO] Click desktop icons to open windows');
+            log('[INFO] Windows are draggable by their title bars');
+            log('[TIP] Drag by clicking and holding the blue title bar');
+            log(`[BROWSER] Browser: ${navigator.userAgent.includes('Safari') ? 'Safari' : 'Other'}`);
+            log(`[DEVICE] Touch support: ${('ontouchstart' in window) ? 'Yes' : 'No'}`);
+            log(`[LINK] URL: ${window.location.hostname}`);
         }
 
         // Initialize
@@ -2537,7 +2554,7 @@
             try {
                 if (audioContext && audioContext.state === 'suspended') {
                     await audioContext.resume();
-                    log('🔊 Audio context resumed by user gesture');
+                    log('[AUDIO] Audio context resumed by user gesture');
                 }
             } catch (e) {
                 // Ignore if context not ready yet
@@ -2547,18 +2564,18 @@
         // Vocal Remover Functions
         async function separateStems(stemType) {
             try {
-                log(`🎤 Starting ${stemType} separation...`);
+                log(`[VOCAL] Starting ${stemType} separation...`);
                 
                 const vocalInput = document.getElementById('vocal-input');
                 if (!vocalInput.files[0]) {
-                    log('❌ Please select an audio file first');
+                    log('[ERROR] Please select an audio file first');
                     return;
                 }
 
                 // Check file size (limit to 25MB)
                 const maxSize = 25 * 1024 * 1024;
                 if (vocalInput.files[0].size > maxSize) {
-                    log(`❌ File too large: ${Math.round(vocalInput.files[0].size/1024/1024)}MB. Please use files under 25MB.`);
+                    log(`[ERROR] File too large: ${Math.round(vocalInput.files[0].size/1024/1024)}MB. Please use files under 25MB.`);
                     return;
                 }
 
@@ -2576,7 +2593,7 @@
                 formData.append('audio', vocalInput.files[0]);
                 formData.append('stem_type', stemType);
 
-                log(`📤 Uploading to vocal-remover service...`);
+                log(`[UPLOAD] Uploading to vocal-remover service...`);
                 
                 const response = await fetch(`${VOCAL_API_URL}/separate`, {
                     method: 'POST',
@@ -2584,11 +2601,11 @@
                     mode: 'cors'
                 });
 
-                log(`📊 Separation Response: ${response.status} ${response.statusText}`);
+                log(`[DATA] Separation Response: ${response.status} ${response.statusText}`);
                 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    log(`❌ Separation Error: ${errorText}`);
+                    log(`[ERROR] Separation Error: ${errorText}`);
                     throw new Error(`Separation failed: ${response.status} - ${errorText}`);
                 }
 
@@ -2618,11 +2635,11 @@
                 progressFill.style.width = '100%';
                 progressText.textContent = `${stemType} separation complete!`;
                 
-                log(`✅ ${stemType} separation successful!`);
-                log(`💾 Download ready: ${downloadLink.download}`);
+                log(`[SUCCESS] ${stemType} separation successful!`);
+                log(`[DOWNLOAD] Download ready: ${downloadLink.download}`);
 
             } catch (error) {
-                log(`❌ Vocal Separation Error: ${error.message}`);
+                log(`[ERROR] Vocal Separation Error: ${error.message}`);
                 document.getElementById('vocal-progress-container').style.display = 'none';
             }
         }
