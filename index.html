@@ -2892,43 +2892,79 @@
             }
         }
         
-        // Proper BPM detection using autocorrelation on downsampled audio
+        // Research-based BPM detection using spectral flux onset detection + autocorrelation
+        // Based on Ellis (2007) "Beat Tracking by Dynamic Programming" and librosa methods
         async function detectBPM(samples, sampleRate) {
-            const hopSize = 512;
-            const onsetStrength = [];
+            log('[BPM] Starting spectral flux onset detection...');
             
-            // Create onset strength signal
-            for (let i = 0; i < samples.length - hopSize; i += hopSize) {
-                let energy = 0;
-                let prevEnergy = 0;
+            // Parameters based on librosa defaults and research
+            const frameSize = 2048;
+            const hopSize = 512;
+            const frames = Math.floor((samples.length - frameSize) / hopSize) + 1;
+            
+            // Compute spectral flux onset strength (like librosa.onset.onset_strength)
+            const onsetStrength = new Array(frames);
+            let prevSpectrum = new Array(frameSize / 2).fill(0);
+            
+            for (let frame = 0; frame < frames; frame++) {
+                const start = frame * hopSize;
+                const end = Math.min(start + frameSize, samples.length);
                 
-                for (let j = 0; j < hopSize; j++) {
-                    energy += samples[i + j] * samples[i + j];
+                // Apply Hanning window
+                const windowed = new Array(frameSize).fill(0);
+                for (let i = 0; i < end - start; i++) {
+                    const w = 0.5 * (1 - Math.cos(2 * Math.PI * i / (frameSize - 1)));
+                    windowed[i] = samples[start + i] * w;
                 }
                 
-                if (i > 0) {
-                    for (let j = 0; j < hopSize; j++) {
-                        if (i - hopSize + j >= 0) {
-                            prevEnergy += samples[i - hopSize + j] * samples[i - hopSize + j];
-                        }
+                // Compute magnitude spectrum via DFT
+                const spectrum = new Array(frameSize / 2);
+                for (let k = 0; k < frameSize / 2; k++) {
+                    let real = 0, imag = 0;
+                    for (let n = 0; n < frameSize; n++) {
+                        const angle = -2 * Math.PI * k * n / frameSize;
+                        real += windowed[n] * Math.cos(angle);
+                        imag += windowed[n] * Math.sin(angle);
                     }
+                    spectrum[k] = Math.sqrt(real * real + imag * imag);
                 }
                 
-                onsetStrength.push(Math.max(0, energy - prevEnergy * 1.1));
+                // Spectral flux: sum of positive differences
+                let flux = 0;
+                for (let k = 0; k < frameSize / 2; k++) {
+                    flux += Math.max(0, spectrum[k] - prevSpectrum[k]);
+                }
+                onsetStrength[frame] = flux;
+                prevSpectrum = spectrum.slice();
+                
+                // Yield every 50 frames
+                if (frame % 50 === 0) {
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                }
             }
             
-            // Autocorrelation
-            const minBPM = 60;
-            const maxBPM = 200;
-            const minLag = Math.floor(60 * sampleRate / maxBPM / hopSize);
-            const maxLag = Math.floor(60 * sampleRate / minBPM / hopSize);
+            log(`[BPM] Computed ${frames} onset strength frames`);
             
-            let bestBPM = 120;
-            let maxCorr = 0;
+            // Normalize onset strength
+            const maxOnset = Math.max(...onsetStrength);
+            if (maxOnset > 0) {
+                for (let i = 0; i < onsetStrength.length; i++) {
+                    onsetStrength[i] /= maxOnset;
+                }
+            }
             
-            for (let lag = minLag; lag < Math.min(maxLag, onsetStrength.length / 2); lag++) {
-                let corr = 0;
-                let count = 0;
+            // Autocorrelation tempo estimation (librosa style)
+            const frameRate = sampleRate / hopSize; // frames per second
+            const minBPM = 60, maxBPM = 200;
+            const minLag = Math.floor(60 * frameRate / maxBPM); // min lag in frames
+            const maxLag = Math.floor(60 * frameRate / minBPM); // max lag in frames
+            
+            const autocorr = new Array(maxLag - minLag);
+            let maxCorr = 0, bestLag = minLag;
+            
+            // Compute autocorrelation with tempo priors
+            for (let lag = minLag; lag < maxLag && lag < onsetStrength.length / 2; lag++) {
+                let corr = 0, count = 0;
                 
                 for (let i = 0; i < onsetStrength.length - lag; i++) {
                     corr += onsetStrength[i] * onsetStrength[i + lag];
@@ -2937,70 +2973,184 @@
                 
                 if (count > 0) {
                     corr /= count;
-                    if (corr > maxCorr) {
-                        maxCorr = corr;
-                        bestBPM = 60 * sampleRate / (lag * hopSize);
+                    
+                    // Apply log-normal tempo prior (favors ~120 BPM)
+                    const bpm = 60 * frameRate / lag;
+                    const logBpm = Math.log(bpm);
+                    const logPrior = -0.5 * Math.pow((logBpm - Math.log(120)) / 0.6, 2);
+                    const prior = Math.exp(logPrior);
+                    
+                    const weightedCorr = corr * prior;
+                    
+                    if (weightedCorr > maxCorr) {
+                        maxCorr = weightedCorr;
+                        bestLag = lag;
                     }
                 }
             }
             
-            // Handle half/double tempo
-            if (bestBPM < 80) bestBPM *= 2;
-            if (bestBPM > 160) bestBPM /= 2;
+            let bestBPM = 60 * frameRate / bestLag;
             
+            // Handle octave errors (common issue in tempo detection)
+            const candidates = [bestBPM, bestBPM * 2, bestBPM / 2, bestBPM * 3, bestBPM / 3];
+            const validCandidates = candidates.filter(bpm => bpm >= 60 && bpm <= 200);
+            
+            if (validCandidates.length > 0) {
+                // Choose the candidate closest to 120 BPM (most common tempo)
+                bestBPM = validCandidates.reduce((prev, curr) => 
+                    Math.abs(curr - 120) < Math.abs(prev - 120) ? curr : prev
+                );
+            }
+            
+            log(`[BPM] Detected: ${Math.round(bestBPM)} BPM (corr: ${maxCorr.toFixed(3)})`);
             return Math.round(bestBPM);
         }
         
-        // Proper key detection using chroma analysis on downsampled audio
+        // Research-based key detection using Krumhansl-Schmuckler algorithm
+        // Based on librosa chroma features and K-S key profiles
         async function detectKey(samples, sampleRate) {
-            const windowSize = 4096;
+            log('[KEY] Starting chroma-based key detection...');
+            
+            // Parameters for chroma analysis
+            const frameSize = 4096;
             const hopSize = 2048;
+            const frames = Math.floor((samples.length - frameSize) / hopSize) + 1;
+            
+            // 12-dimensional chroma accumulator
             const chromaProfile = new Array(12).fill(0);
             
-            // Chroma extraction
-            for (let start = 0; start < samples.length - windowSize; start += hopSize) {
-                const window = samples.slice(start, start + windowSize);
+            // CQT-like chroma extraction (Constant-Q Transform approach)
+            for (let frame = 0; frame < frames; frame++) {
+                const start = frame * hopSize;
+                const end = Math.min(start + frameSize, samples.length);
                 
-                // DFT for key frequencies
+                // Apply Hanning window
+                const windowed = new Array(frameSize).fill(0);
+                for (let i = 0; i < end - start; i++) {
+                    const w = 0.5 * (1 - Math.cos(2 * Math.PI * i / (frameSize - 1)));
+                    windowed[i] = samples[start + i] * w;
+                }
+                
+                // Extract chroma from multiple octaves (like librosa.feature.chroma_cqt)
+                const frameChroma = new Array(12).fill(0);
+                
+                // Check frequencies from C2 to B7 (multiple octaves)
                 for (let chroma = 0; chroma < 12; chroma++) {
-                    const baseFreq = 440 * Math.pow(2, (chroma - 9) / 12);
+                    // Base frequency for this chroma (C = 0, C# = 1, etc.)
+                    const baseFreq = 261.63 * Math.pow(2, chroma / 12); // C4 = 261.63 Hz
                     
-                    for (let octave = 2; octave <= 6; octave++) {
-                        const freq = baseFreq * Math.pow(2, octave - 4);
-                        const k = Math.round(freq * windowSize / sampleRate);
+                    // Sum across multiple octaves
+                    for (let octave = -2; octave <= 3; octave++) {
+                        const freq = baseFreq * Math.pow(2, octave);
                         
-                        if (k < windowSize / 2) {
-                            let real = 0, imag = 0;
-                            const angle = -2 * Math.PI * k / windowSize;
+                        if (freq > 80 && freq < sampleRate / 2) { // Valid frequency range
+                            const k = Math.round(freq * frameSize / sampleRate);
                             
-                            for (let n = 0; n < windowSize; n++) {
-                                real += window[n] * Math.cos(angle * n);
-                                imag += window[n] * Math.sin(angle * n);
+                            if (k < frameSize / 2) {
+                                // DFT at specific frequency bin
+                                let real = 0, imag = 0;
+                                const angle = -2 * Math.PI * k / frameSize;
+                                
+                                for (let n = 0; n < frameSize; n++) {
+                                    real += windowed[n] * Math.cos(angle * n);
+                                    imag += windowed[n] * Math.sin(angle * n);
+                                }
+                                
+                                const magnitude = Math.sqrt(real * real + imag * imag);
+                                frameChroma[chroma] += magnitude;
                             }
-                            
-                            chromaProfile[chroma] += Math.sqrt(real * real + imag * imag);
                         }
                     }
                 }
                 
-                // Yield occasionally
-                if ((start / hopSize) % 20 === 0) {
+                // Accumulate frame chroma to global profile
+                for (let i = 0; i < 12; i++) {
+                    chromaProfile[i] += frameChroma[i];
+                }
+                
+                // Yield every 20 frames
+                if (frame % 20 === 0) {
                     await new Promise(resolve => setTimeout(resolve, 0));
                 }
             }
             
-            // Find dominant chroma
-            let maxChroma = 0;
-            let dominantChroma = 0;
-            for (let i = 0; i < 12; i++) {
-                if (chromaProfile[i] > maxChroma) {
-                    maxChroma = chromaProfile[i];
-                    dominantChroma = i;
+            log(`[KEY] Computed chroma from ${frames} frames`);
+            
+            // Normalize chroma profile
+            const chromaSum = chromaProfile.reduce((sum, val) => sum + val, 0);
+            if (chromaSum > 0) {
+                for (let i = 0; i < 12; i++) {
+                    chromaProfile[i] /= chromaSum;
                 }
             }
             
-            const keys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-            return keys[dominantChroma] + ' Major';
+            // Krumhansl-Schmuckler key profiles (research-based weights)
+            const majorProfile = [
+                6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88
+            ];
+            const minorProfile = [
+                6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17
+            ];
+            
+            // Normalize profiles
+            const majorSum = majorProfile.reduce((sum, val) => sum + val, 0);
+            const minorSum = minorProfile.reduce((sum, val) => sum + val, 0);
+            for (let i = 0; i < 12; i++) {
+                majorProfile[i] /= majorSum;
+                minorProfile[i] /= minorSum;
+            }
+            
+            // Test all 24 keys (12 major + 12 minor)
+            const keyNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            let bestKey = 'C Major';
+            let maxCorrelation = -1;
+            
+            for (let root = 0; root < 12; root++) {
+                // Test major key
+                const majorCorr = pearsonCorrelation(chromaProfile, circularShift(majorProfile, root));
+                if (majorCorr > maxCorrelation) {
+                    maxCorrelation = majorCorr;
+                    bestKey = keyNames[root] + ' Major';
+                }
+                
+                // Test minor key
+                const minorCorr = pearsonCorrelation(chromaProfile, circularShift(minorProfile, root));
+                if (minorCorr > maxCorrelation) {
+                    maxCorrelation = minorCorr;
+                    bestKey = keyNames[root] + ' Minor';
+                }
+            }
+            
+            log(`[KEY] Detected: ${bestKey} (corr: ${maxCorrelation.toFixed(3)})`);
+            return bestKey;
+        }
+        
+        // Helper function: Pearson correlation coefficient
+        function pearsonCorrelation(x, y) {
+            const n = x.length;
+            if (n !== y.length) return 0;
+            
+            const sumX = x.reduce((sum, val) => sum + val, 0);
+            const sumY = y.reduce((sum, val) => sum + val, 0);
+            const sumXY = x.reduce((sum, val, i) => sum + val * y[i], 0);
+            const sumXX = x.reduce((sum, val) => sum + val * val, 0);
+            const sumYY = y.reduce((sum, val) => sum + val * val, 0);
+            
+            const numerator = n * sumXY - sumX * sumY;
+            const denominatorX = n * sumXX - sumX * sumX;
+            const denominatorY = n * sumYY - sumY * sumY;
+            const denominator = Math.sqrt(denominatorX * denominatorY);
+            
+            return denominator === 0 ? 0 : numerator / denominator;
+        }
+        
+        // Helper function: circular shift array
+        function circularShift(array, shift) {
+            const result = new Array(array.length);
+            for (let i = 0; i < array.length; i++) {
+                result[i] = array[(i + shift) % array.length];
+            }
+            return result;
         }
         
         // Mood analysis on downsampled audio
