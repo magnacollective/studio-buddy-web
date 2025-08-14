@@ -2273,13 +2273,15 @@
         document.addEventListener('touchend', handleDragEnd, { passive: false });
         document.addEventListener('touchcancel', handleDragEnd, { passive: false });
 
-        // API Configuration - unified Railway API for both analysis and vocal separation
-        const RAILWAY_API_URL = 'https://vocal-remover-production-1bbc.up.railway.app';
-        const API_BASE_URL = RAILWAY_API_URL;  // Analysis API (BPM/Key detection)
-        const VOCAL_API_URL = RAILWAY_API_URL; // Vocal separation API
+        // API Configuration - separate APIs for different services
+        const MASTERING_API_URL = 'https://studiobuddy-production.up.railway.app';  // Studio Buddy mastering API
+        const VOCAL_RAILWAY_API_URL = 'https://vocal-remover-production-1bbc.up.railway.app'; // Vocal remover with analysis
+        const API_BASE_URL = VOCAL_RAILWAY_API_URL;  // Analysis API (BPM/Key detection) - uses vocal remover's analyze endpoint
+        const VOCAL_API_URL = VOCAL_RAILWAY_API_URL; // Vocal separation API
             
         // Debug API URLs
         console.log('🔗 API Configuration:');
+        console.log('🎵 Mastering API:', MASTERING_API_URL);
         console.log('📊 Analysis API (API_BASE_URL):', API_BASE_URL);
         console.log('🎤 Vocal API (VOCAL_API_URL):', VOCAL_API_URL);
         console.log('🌐 Current hostname:', window.location.hostname);
@@ -2445,7 +2447,7 @@
                 log('[UPLOAD] Uploading directly to Railway mastering service...');
                 log(`📋 FormData contents: source=${sourceInput.files[0]?.name}, reference=${referenceInput.files[0]?.name || 'none'}`);
                 
-                const response = await fetch(`${API_BASE_URL}/master`, {
+                const response = await fetch(`${MASTERING_API_URL}/master`, {
                     method: 'POST',
                     body: formData,
                     mode: 'cors'
@@ -4549,7 +4551,7 @@
             }, { once: true, passive: true });
         }
         
-        }, 3000);
+    }, 3000);
     </script>
 </body>
 </html>
