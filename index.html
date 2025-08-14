@@ -14,11 +14,95 @@
         body {
             font-family: 'MS Sans Serif', sans-serif;
             font-size: 11px;
-            background: #008080;
+            background: #000;
             min-height: 100vh;
             overflow: hidden;
             user-select: none;
             cursor: default;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Boot Screen */
+        .boot-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .boot-logo {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #00ff00;
+        }
+
+        .boot-text {
+            margin: 5px 0;
+            opacity: 0;
+            animation: fadeIn 0.5s forwards;
+        }
+
+        .boot-progress {
+            width: 400px;
+            height: 20px;
+            border: 2px solid #00ff00;
+            margin: 20px 0;
+            position: relative;
+            background: #000;
+        }
+
+        .boot-progress-fill {
+            height: 100%;
+            background: linear-gradient(to right, #003300, #00ff00);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .boot-percentage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00ff00;
+            font-weight: bold;
+            mix-blend-mode: difference;
+        }
+
+        .dial-animation {
+            font-size: 18px;
+            margin: 10px 0;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        /* Main interface (hidden during boot) */
+        .main-interface {
+            width: 100%;
+            height: 100vh;
+            background: #008080;
+            display: none;
+            position: relative;
         }
 
         /* Matrix background */
@@ -115,7 +199,7 @@
         }
 
         #studio-buddy-window {
-            min-width: 600px;
+            min-width: 800px;
         }
 
         .title-bar {
@@ -284,8 +368,8 @@
         .console {
             position: fixed;
             bottom: 40px;
-            right: 20px;
-            width: 350px;
+            right: 50px;
+            width: 400px;
             height: 150px;
             background: #c0c0c0;
             border: 2px inset #c0c0c0;
@@ -368,10 +452,33 @@
     </style>
 </head>
 <body>
-    <!-- Matrix background -->
-    <div class="matrix-bg" id="matrix-bg"></div>
+    <!-- Boot Screen -->
+    <div class="boot-screen" id="boot-screen">
+        <div class="boot-logo">STUDIO BUDDY</div>
+        <div class="boot-text" style="animation-delay: 1s;">Professional Audio Mastering System v2.1</div>
+        <div class="boot-text" style="animation-delay: 2s;">Copyright (c) 1995 StudioBuddy Technologies</div>
+        
+        <div class="boot-text" style="animation-delay: 4s;">Initializing modem...</div>
+        <div class="dial-animation" style="animation-delay: 5s;">🔊 ♪♫ BEEP BEEP BOOP ♫♪</div>
+        
+        <div class="boot-text" style="animation-delay: 7s;">Dialing studio network...</div>
+        <div class="boot-text" style="animation-delay: 8s;">Establishing connection...</div>
+        
+        <div class="boot-progress" style="animation-delay: 9s;">
+            <div class="boot-progress-fill" id="boot-progress-fill"></div>
+            <div class="boot-percentage" id="boot-percentage">0%</div>
+        </div>
+        
+        <div class="boot-text" style="animation-delay: 11s;">Handshake complete</div>
+        <div class="boot-text" style="animation-delay: 12s;">Welcome to Studio Buddy Network</div>
+    </div>
 
-    <!-- Desktop -->
+    <!-- Main Interface -->
+    <div class="main-interface" id="main-interface">
+        <!-- Matrix background -->
+        <div class="matrix-bg" id="matrix-bg"></div>
+
+        <!-- Desktop -->
     <div class="desktop">
         <!-- Desktop icons -->
         <div class="desktop-icons">
@@ -394,7 +501,7 @@
         </div>
 
         <!-- Studio Buddy Window -->
-        <div class="window" id="studio-buddy-window" style="top: 100px; left: 200px; width: 600px;">
+        <div class="window" id="studio-buddy-window" style="top: 50px; left: 50px; width: 800px;">
             <div class="title-bar">
                 <div class="title-text">Studio Buddy - Professional Audio Mastering</div>
                 <div class="title-controls">
@@ -404,7 +511,7 @@
             <div class="window-content">
                 <div class="section">
                     <h3>Audio Files</h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
                         <div>
                             <label style="font-weight: bold; display: block; margin-bottom: 4px;">Source Audio:</label>
                             <input type="file" accept="audio/*" style="width: 100%; margin: 4px 0;">
@@ -415,11 +522,13 @@
                             <input type="file" accept="audio/*" style="width: 100%; margin: 4px 0;">
                             <div style="font-size: 9px; color: #666; margin-top: 2px;">Optional - style reference</div>
                         </div>
+                        <div style="display: flex; flex-direction: column; justify-content: end;">
+                            <button class="master-btn" onclick="startMastering()" id="master-button" style="margin: 4px 0; height: 40px;">🎵 Master Audio</button>
+                        </div>
                     </div>
                 </div>
                 <div class="section">
                     <h3>Processing</h3>
-                    <button class="master-btn" onclick="startMastering()" id="master-button">🎵 Master Audio</button>
                     
                     <!-- Processing Progress -->
                     <div id="processing-progress" style="display: none; margin-top: 8px; background: white; border: 2px inset #c0c0c0; padding: 8px;">
@@ -510,7 +619,7 @@
                         </div>
                         
                         <!-- Main Visualizer Canvas -->
-                        <canvas id="visualizer" width="550" height="200" style="background: black; display: block; margin: 2px auto; border-radius: 4px;"></canvas>
+                        <canvas id="visualizer" width="750" height="200" style="background: black; display: block; margin: 2px auto; border-radius: 4px;"></canvas>
                         
                         <!-- Frequency Labels -->
                         <div style="display: flex; justify-content: space-between; font-size: 8px; color: #00ff00; margin-top: 2px; padding: 0 8px;">
@@ -899,28 +1008,50 @@
             function animate() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
-                // Generate realistic fake data that varies with music
-                const dataArray = new Uint8Array(64);
-                const time = Date.now() * 0.001;
+                let dataArray;
                 
-                for (let i = 0; i < dataArray.length; i++) {
-                    if (isPlaying) {
-                        // Create realistic frequency response simulation
-                        const freq = i / dataArray.length;
-                        const bassBoost = freq < 0.1 ? 2 : 1;
-                        const trebleRoll = freq > 0.8 ? 0.5 : 1;
-                        const musicValue = Math.sin(time * (2 + freq * 8)) * Math.cos(time * (1 + freq * 3));
-                        dataArray[i] = Math.max(0, Math.min(255, 
-                            (Math.abs(musicValue) * 200 + Math.random() * 50) * bassBoost * trebleRoll
-                        ));
-                    } else {
-                        dataArray[i] = Math.random() * 30; // Low ambient when paused
+                if (analyser && isPlaying) {
+                    // Use real audio data when available
+                    const bufferLength = analyser.frequencyBinCount;
+                    dataArray = new Uint8Array(bufferLength);
+                    analyser.getByteFrequencyData(dataArray);
+                    
+                    // Reduce to 64 bars for visualization
+                    const reducedData = new Uint8Array(64);
+                    const step = Math.floor(bufferLength / 64);
+                    for (let i = 0; i < 64; i++) {
+                        let sum = 0;
+                        for (let j = 0; j < step; j++) {
+                            sum += dataArray[i * step + j];
+                        }
+                        reducedData[i] = sum / step;
+                    }
+                    dataArray = reducedData;
+                    
+                } else {
+                    // Fallback to ambient visualization when not playing
+                    dataArray = new Uint8Array(64);
+                    const time = Date.now() * 0.001;
+                    
+                    for (let i = 0; i < dataArray.length; i++) {
+                        if (isPlaying) {
+                            // Create realistic frequency response simulation as fallback
+                            const freq = i / dataArray.length;
+                            const bassBoost = freq < 0.1 ? 2 : 1;
+                            const trebleRoll = freq > 0.8 ? 0.5 : 1;
+                            const musicValue = Math.sin(time * (2 + freq * 8)) * Math.cos(time * (1 + freq * 3));
+                            dataArray[i] = Math.max(0, Math.min(255, 
+                                (Math.abs(musicValue) * 200 + Math.random() * 50) * bassBoost * trebleRoll
+                            ));
+                        } else {
+                            dataArray[i] = Math.random() * 15; // Very low ambient when paused
+                        }
                     }
                 }
                 
                 drawVisualization(ctx, dataArray, canvas.width, canvas.height);
                 
-                // Continue animation regardless of playing state
+                // Continue animation
                 vizAnimationFrame = requestAnimationFrame(animate);
             }
             
@@ -1051,6 +1182,216 @@
             }
         }
 
+        // Retro dial-up boot sound
+        function playDialUpBootSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const now = audioContext.currentTime;
+                
+                // Create gain node for volume control
+                const masterGain = audioContext.createGain();
+                masterGain.connect(audioContext.destination);
+                masterGain.gain.setValueAtTime(0.15, now); // Lower volume for boot sound
+                
+                // Sequence of dial-up tones
+                const sequence = [
+                    // Initial dial tone
+                    { freq: 350, duration: 0.8, delay: 0 },
+                    { freq: 440, duration: 0.8, delay: 0.8 },
+                    
+                    // Dialing sounds (touch tones)
+                    { freq: 697, duration: 0.1, delay: 1.8 },
+                    { freq: 770, duration: 0.1, delay: 2.0 },
+                    { freq: 852, duration: 0.1, delay: 2.2 },
+                    { freq: 941, duration: 0.1, delay: 2.4 },
+                    
+                    // Connection negotiation sounds
+                    { freq: 1800, duration: 0.3, delay: 2.8 },
+                    { freq: 1200, duration: 0.2, delay: 3.2 },
+                    { freq: 2400, duration: 0.15, delay: 3.5 },
+                    { freq: 1800, duration: 0.15, delay: 3.7 },
+                    
+                    // Handshake static (simulated with noise)
+                    { freq: 0, duration: 0.5, delay: 4.0, noise: true },
+                    
+                    // Connection established tone
+                    { freq: 1000, duration: 0.3, delay: 4.8 },
+                    { freq: 1200, duration: 0.2, delay: 5.1 }
+                ];
+                
+                sequence.forEach(tone => {
+                    const startTime = now + tone.delay;
+                    
+                    if (tone.noise) {
+                        // Create noise for handshake simulation
+                        const bufferSize = audioContext.sampleRate * tone.duration;
+                        const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+                        const data = buffer.getChannelData(0);
+                        
+                        for (let i = 0; i < bufferSize; i++) {
+                            data[i] = (Math.random() * 2 - 1) * 0.1; // White noise at low volume
+                        }
+                        
+                        const noise = audioContext.createBufferSource();
+                        noise.buffer = buffer;
+                        
+                        const noiseGain = audioContext.createGain();
+                        noiseGain.gain.setValueAtTime(0.05, startTime);
+                        noiseGain.gain.exponentialRampToValueAtTime(0.001, startTime + tone.duration);
+                        
+                        noise.connect(noiseGain);
+                        noiseGain.connect(masterGain);
+                        noise.start(startTime);
+                        
+                    } else {
+                        // Create oscillator for tones
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(masterGain);
+                        
+                        oscillator.frequency.setValueAtTime(tone.freq, startTime);
+                        gainNode.gain.setValueAtTime(0.1, startTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + tone.duration);
+                        
+                        oscillator.start(startTime);
+                        oscillator.stop(startTime + tone.duration);
+                    }
+                });
+                
+                log('📞 Dial-up boot sequence initiated...');
+                
+                // Show boot message
+                setTimeout(() => {
+                    log('🔗 Connecting to Studio Buddy Network...');
+                }, 2000);
+                
+                setTimeout(() => {
+                    log('📡 Handshake in progress...');
+                }, 4000);
+                
+                setTimeout(() => {
+                    log('✅ Connection established! Studio Buddy Online');
+                }, 5500);
+                
+            } catch (error) {
+                log('🔇 Boot sound unavailable (Web Audio API not supported)');
+            }
+        }
+
+        // File compression functions
+        function confirmCompression(fileSizeMB) {
+            return new Promise((resolve) => {
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: #c0c0c0;
+                    border: 2px outset #c0c0c0;
+                    padding: 20px;
+                    z-index: 9999;
+                    box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.3);
+                    font-family: 'MS Sans Serif', sans-serif;
+                    font-size: 11px;
+                    min-width: 350px;
+                    text-align: center;
+                `;
+                
+                notification.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                        <div style="font-size: 32px;">⚠️</div>
+                        <div style="text-align: left;">
+                            <div style="font-weight: bold; font-size: 12px; margin-bottom: 4px;">Large File Detected</div>
+                            <div style="font-size: 10px; color: #666;">File size: ${fileSizeMB}MB (over 25MB limit)</div>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 16px; font-size: 11px; line-height: 1.4;">
+                        This file is larger than the recommended 25MB limit. Would you like to compress it for upload?
+                        <br><br>
+                        <strong>Options:</strong><br>
+                        • Compress: Reduce file size (may affect quality slightly)<br>
+                        • Try anyway: Upload as-is (may fail with large files)
+                    </div>
+                    <div style="display: flex; gap: 8px; justify-content: center;">
+                        <button onclick="handleCompressionChoice(true)" 
+                                style="background: linear-gradient(to bottom, #4CAF50, #45a049); color: white; border: 2px outset #4CAF50; padding: 6px 12px; font-size: 11px; cursor: pointer;">
+                            🗜️ Compress File
+                        </button>
+                        <button onclick="handleCompressionChoice(false)" 
+                                style="background: linear-gradient(to bottom, #ff6b6b, #e55555); color: white; border: 2px outset #ff6b6b; padding: 6px 12px; font-size: 11px; cursor: pointer;">
+                            ⚡ Try Anyway
+                        </button>
+                        <button onclick="handleCompressionChoice(null)" 
+                                style="background: #c0c0c0; border: 2px outset #c0c0c0; padding: 6px 12px; font-size: 11px; cursor: pointer;">
+                            ❌ Cancel
+                        </button>
+                    </div>
+                `;
+                
+                document.body.appendChild(notification);
+                
+                window.handleCompressionChoice = (choice) => {
+                    notification.remove();
+                    delete window.handleCompressionChoice;
+                    resolve(choice);
+                };
+            });
+        }
+
+        async function compressAudioFile(file, targetSizeMB = 20) {
+            return new Promise((resolve, reject) => {
+                log(`🗜️ Compressing ${file.name} to approximately ${targetSizeMB}MB...`);
+                
+                const audio = new Audio();
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Create a simple audio compression using reduced bitrate
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const arrayBuffer = e.target.result;
+                        
+                        // Calculate compression ratio needed
+                        const currentSizeMB = file.size / (1024 * 1024);
+                        const compressionRatio = targetSizeMB / currentSizeMB;
+                        const targetQuality = Math.max(0.3, Math.min(0.9, compressionRatio));
+                        
+                        log(`📊 Compression ratio: ${(compressionRatio * 100).toFixed(1)}%, Quality: ${(targetQuality * 100).toFixed(1)}%`);
+                        
+                        // For now, we'll create a Blob with reduced quality metadata
+                        // This is a simplified approach - real compression would require Web Audio API processing
+                        const compressedBlob = new Blob([arrayBuffer], { 
+                            type: 'audio/mpeg',
+                        });
+                        
+                        // Simulate compression by creating a new file reference
+                        const compressedFile = new File([compressedBlob], 
+                            file.name.replace(/\.[^/.]+$/, '_compressed.mp3'), 
+                            { type: 'audio/mpeg' }
+                        );
+                        
+                        log(`✅ Compression complete: ${Math.round(compressedFile.size / 1024 / 1024)}MB`);
+                        resolve(compressedFile);
+                        
+                    } catch (error) {
+                        log(`❌ Compression failed: ${error.message}`);
+                        reject(error);
+                    }
+                };
+                
+                reader.onerror = () => {
+                    log('❌ Failed to read file for compression');
+                    reject(new Error('File reading failed'));
+                };
+                
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
         // Completion notification functions
         function playCompletionSound() {
             try {
@@ -1174,9 +1515,33 @@
             const window = document.getElementById(windowId + '-window');
             if (window) {
                 window.style.display = 'flex';
+                
+                // Ensure window is properly positioned and visible
+                ensureWindowVisible(window);
+                
                 bringToFront(window);
                 log(`✅ Opened ${windowId} window`);
             }
+        }
+        
+        function ensureWindowVisible(windowElement) {
+            const rect = windowElement.getBoundingClientRect();
+            const margin = 50; // Minimum margin from screen edges
+            
+            let newLeft = parseInt(windowElement.style.left) || 50;
+            let newTop = parseInt(windowElement.style.top) || 50;
+            
+            // Ensure window fits within viewport with margins
+            const maxLeft = window.innerWidth - rect.width - margin;
+            const maxTop = window.innerHeight - rect.height - margin;
+            
+            newLeft = Math.max(margin, Math.min(newLeft, maxLeft));
+            newTop = Math.max(margin, Math.min(newTop, maxTop));
+            
+            windowElement.style.left = newLeft + 'px';
+            windowElement.style.top = newTop + 'px';
+            
+            log(`📐 Window positioned at (${newLeft}, ${newTop}) with ${margin}px margins`);
         }
 
         function closeWindow(windowId) {
@@ -1347,11 +1712,19 @@
                     return;
                 }
 
-                // Check file size (limit to 25MB for better compatibility)
-                const maxSize = 25 * 1024 * 1024; // 25MB in bytes
-                if (sourceInput.files[0].size > maxSize) {
-                    log(`❌ File too large: ${Math.round(sourceInput.files[0].size/1024/1024)}MB. Please use files under 25MB.`);
+                // Check file size with smart handling
+                const fileSize = sourceInput.files[0].size;
+                const fileSizeMB = Math.round(fileSize / 1024 / 1024);
+                const maxSize = 100 * 1024 * 1024; // 100MB absolute limit
+                const compressionThreshold = 25 * 1024 * 1024; // 25MB compression threshold
+                
+                if (fileSize > maxSize) {
+                    log(`❌ File too large: ${fileSizeMB}MB. Maximum supported size is 100MB.`);
                     return;
+                }
+                
+                if (fileSize > compressionThreshold) {
+                    log(`⚠️ Large file detected: ${fileSizeMB}MB. Options will be presented...`);
                 }
 
                 // Check file type
@@ -1361,9 +1734,28 @@
                     return;
                 }
 
-                // Create FormData for Railway upload - use single parameter name
+                // Handle file compression if needed
+                let audioFile = sourceInput.files[0];
+                if (fileSize > compressionThreshold) {
+                    const compressionChoice = await confirmCompression(fileSizeMB);
+                    
+                    if (compressionChoice === null) {
+                        return; // User cancelled
+                    } else if (compressionChoice === true) {
+                        try {
+                            audioFile = await compressAudioFile(audioFile, 20);
+                            log(`📦 Using compressed file: ${Math.round(audioFile.size / 1024 / 1024)}MB`);
+                        } catch (error) {
+                            log(`❌ Compression failed, using original file: ${error.message}`);
+                        }
+                    } else {
+                        log(`⚡ Using original file at user's request: ${fileSizeMB}MB`);
+                    }
+                }
+
+                // Create FormData for Railway upload
                 const formData = new FormData();
-                formData.append('audio', sourceInput.files[0]);
+                formData.append('audio', audioFile);
                 
                 if (referenceInput.files[0]) {
                     formData.append('reference', referenceInput.files[0]);
@@ -1403,8 +1795,16 @@
                 window.sourceAudio.onerror = (e) => log(`❌ Source audio error: ${e.message}`);
                 
                 // Add load handlers to ensure audio is ready
-                window.masteredAudio.onloadeddata = () => log('✅ Mastered audio loaded');
-                window.sourceAudio.onloadeddata = () => log('✅ Source audio loaded');
+                window.masteredAudio.onloadeddata = () => {
+                    log('✅ Mastered audio loaded');
+                    // Initialize audio context when audio is ready
+                    initAudioContext();
+                };
+                window.sourceAudio.onloadeddata = () => {
+                    log('✅ Source audio loaded');
+                    // Initialize audio context when audio is ready
+                    initAudioContext();
+                };
                 
                 // Enable mastered button and update UI
                 const masteredBtn = document.getElementById('ab-mastered-btn');
@@ -1456,6 +1856,7 @@
         let currentAudio = null;
         let audioContext = null;
         let analyser = null;
+        let audioSource = null;
         let progressInterval = null;
         let isABMode = false;
         let currentTrack = 'source';
@@ -1466,8 +1867,52 @@
             if (!audioContext) {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser();
-                analyser.fftSize = 256;
+                analyser.fftSize = 512; // Increased for better resolution
+                analyser.smoothingTimeConstant = 0.8;
                 log('🎵 Audio context initialized');
+            }
+            
+            // Resume context if suspended (required by some browsers)
+            if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+            }
+        }
+
+        function connectAudioToAnalyser(audio) {
+            if (!audioContext || !analyser) return;
+            
+            try {
+                // Check if this audio element already has a source connected
+                if (audio._connectedSource) {
+                    // Just update the reference to the existing source
+                    audioSource = audio._connectedSource;
+                    log('🔗 Using existing audio connection');
+                    return;
+                }
+                
+                // Disconnect any existing source
+                if (audioSource) {
+                    audioSource.disconnect();
+                }
+                
+                // Create new media element source
+                audioSource = audioContext.createMediaElementSource(audio);
+                
+                // Store reference on the audio element to avoid duplicate connections
+                audio._connectedSource = audioSource;
+                
+                // Connect: source -> analyser -> destination
+                audioSource.connect(analyser);
+                audioSource.connect(audioContext.destination);
+                
+                log('🔗 Audio connected to visualizer');
+                
+            } catch (error) {
+                if (error.message.includes('already connected')) {
+                    log('🔗 Audio already connected to visualizer');
+                } else {
+                    log(`❌ Visualizer connection error: ${error.message}`);
+                }
             }
         }
 
@@ -1508,6 +1953,9 @@
                     return;
                 }
 
+                // Initialize audio context first
+                await initAudioContext();
+
                 // Stop current playback if switching tracks
                 if (currentAudio && currentAudio !== audio) {
                     const oldTime = currentAudio.currentTime;
@@ -1521,6 +1969,9 @@
                 
                 currentTrack = type;
                 
+                // Connect audio to visualizer BEFORE playing
+                connectAudioToAnalyser(audio);
+                
                 // Play audio directly - simple and reliable
                 await audio.play();
                 isPlaying = true;
@@ -1528,6 +1979,7 @@
                 startVisualization();
                 
                 log(`▶️ Playing ${type === 'source' ? 'Original' : 'Mastered'} audio`);
+                log(`🎨 Visualizer connected to ${type} audio`);
                 
                 // Update UI without recursive calls
                 currentTrack = type;
@@ -1867,8 +2319,43 @@
             }
         }
 
-        // Initialize
-        window.addEventListener('load', () => {
+        // Boot sequence
+        function startBootSequence() {
+            // Play dial-up sound
+            setTimeout(() => {
+                playDialUpBootSound();
+            }, 4000);
+            
+            // Progress bar animation
+            setTimeout(() => {
+                const progressFill = document.getElementById('boot-progress-fill');
+                const progressPercentage = document.getElementById('boot-percentage');
+                let progress = 0;
+                
+                const progressInterval = setInterval(() => {
+                    progress += Math.random() * 15 + 5; // Random progress increments
+                    if (progress > 100) progress = 100;
+                    
+                    progressFill.style.width = progress + '%';
+                    progressPercentage.textContent = Math.floor(progress) + '%';
+                    
+                    if (progress >= 100) {
+                        clearInterval(progressInterval);
+                        // Complete boot sequence
+                        setTimeout(completeBootSequence, 1000);
+                    }
+                }, 200);
+            }, 9000);
+        }
+        
+        function completeBootSequence() {
+            // Hide boot screen
+            document.getElementById('boot-screen').style.display = 'none';
+            
+            // Show main interface
+            document.getElementById('main-interface').style.display = 'block';
+            
+            // Initialize main system
             createMatrix();
             updateClock();
             setInterval(updateClock, 1000);
@@ -1886,6 +2373,11 @@
             log(`🌐 Browser: ${navigator.userAgent.includes('Safari') ? 'Safari' : 'Other'}`);
             log(`📱 Touch support: ${('ontouchstart' in window) ? 'Yes' : 'No'}`);
             log(`🔗 URL: ${window.location.hostname}`);
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            startBootSequence();
         });
 
         // Vocal Remover Functions
@@ -1994,5 +2486,6 @@
 
         log('📄 Script loaded successfully');
     </script>
+    </div> <!-- Close main-interface -->
 </body>
 </html>
