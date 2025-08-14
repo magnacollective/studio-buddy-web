@@ -2273,14 +2273,10 @@
         document.addEventListener('touchend', handleDragEnd, { passive: false });
         document.addEventListener('touchcancel', handleDragEnd, { passive: false });
 
-        // API Configuration - uses environment variables in production
-        const API_BASE_URL = window.location.hostname === 'localhost' 
-            ? 'https://vocal-remover-production-1bbc.up.railway.app'
-            : (window.STUDIOBUDDY_API_URL || 'https://vocal-remover-production-1bbc.up.railway.app');
-            
-        const VOCAL_API_URL = window.location.hostname === 'localhost'
-            ? 'https://vocal-remover-production-1bbc.up.railway.app' 
-            : (window.VOCAL_REMOVER_API_URL || 'https://vocal-remover-production-1bbc.up.railway.app');
+        // API Configuration - unified Railway API for both analysis and vocal separation
+        const RAILWAY_API_URL = 'https://vocal-remover-production-1bbc.up.railway.app';
+        const API_BASE_URL = RAILWAY_API_URL;  // Analysis API (BPM/Key detection)
+        const VOCAL_API_URL = RAILWAY_API_URL; // Vocal separation API
             
         // Debug API URLs
         console.log('🔗 API Configuration:');
