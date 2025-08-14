@@ -609,6 +609,10 @@
                 <div class="icon"><span class="material-symbols-outlined">mic_off</span></div>
                 <div class="label">Vocal<br>Remover</div>
             </div>
+            <div class="desktop-icon" onclick="openWindow('lyrics-generator')">
+                <div class="icon"><span class="material-symbols-outlined">lyrics</span></div>
+                <div class="label">AI Lyrics<br>Generator</div>
+            </div>
             <div class="desktop-icon" onclick="openWindow('settings')">
                 <div class="icon"><span class="material-symbols-outlined">settings</span></div>
                 <div class="label">System<br>Settings</div>
@@ -836,6 +840,75 @@
             </div>
         </div>
 
+        <!-- AI Lyrics Generator Window -->
+        <div class="window" id="lyrics-generator-window" style="top: 150px; left: 250px; width: 600px;">
+            <div class="title-bar">
+                <div class="title-text">AI Lyrics Generator</div>
+                <div class="title-controls">
+                    <div class="title-btn" onclick="closeWindow('lyrics-generator-window')">×</div>
+                </div>
+            </div>
+            <div class="window-content">
+                <div class="section">
+                    <h3>Generate Rap Lyrics</h3>
+                    <div class="form-group">
+                        <label for="lyrics-prompt">Prompt/Theme:</label>
+                        <input type="text" id="lyrics-prompt" placeholder="Enter a theme or starting phrase..." style="width: 100%; padding: 8px; margin: 5px 0;">
+                    </div>
+                    <div class="form-group">
+                        <label for="lyrics-length">Number of Lines:</label>
+                        <select id="lyrics-length" style="padding: 5px; margin: 5px 0;">
+                            <option value="4">4 lines</option>
+                            <option value="8" selected>8 lines</option>
+                            <option value="12">12 lines</option>
+                            <option value="16">16 lines</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="lyrics-style">Style:</label>
+                        <select id="lyrics-style" style="padding: 5px; margin: 5px 0;">
+                            <option value="rap" selected>Rap</option>
+                            <option value="trap">Trap</option>
+                            <option value="conscious">Conscious</option>
+                            <option value="party">Party</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="lyrics-mood">Mood:</label>
+                        <select id="lyrics-mood" style="padding: 5px; margin: 5px 0;">
+                            <option value="confident" selected>Confident</option>
+                            <option value="motivational">Motivational</option>
+                            <option value="introspective">Introspective</option>
+                            <option value="aggressive">Aggressive</option>
+                            <option value="smooth">Smooth</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="lyrics-structure">Structure:</label>
+                        <select id="lyrics-structure" style="padding: 5px; margin: 5px 0;">
+                            <option value="verse" selected>Verse</option>
+                            <option value="hook">Hook/Chorus</option>
+                            <option value="bridge">Bridge</option>
+                        </select>
+                    </div>
+                    <div style="margin: 15px 0;">
+                        <button onclick="generateLyrics()" style="background: #0078d4; color: white; padding: 10px 20px; border: none; cursor: pointer; margin-right: 10px;">Generate Lyrics</button>
+                        <button onclick="generateFullSong()" style="background: #107c10; color: white; padding: 10px 20px; border: none; cursor: pointer;">Generate Full Song</button>
+                        <span id="lyrics-status" style="margin-left: 15px; font-size: 12px; color: #666;"></span>
+                    </div>
+                    <div class="section">
+                        <h4>Generated Content:</h4>
+                        <div id="lyrics-output" style="background: #f0f0f0; padding: 15px; min-height: 200px; white-space: pre-wrap; font-family: 'Courier New', monospace; border: 1px inset #c0c0c0; overflow-y: auto; max-height: 300px;">
+                            Click "Generate Lyrics" to create AI-powered rap lyrics...
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 11px; color: #666;">
+                        <div id="ai-status">🔗 Checking AI API connection...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Settings Window -->
         <div class="window" id="settings-window" style="top: 200px; left: 300px;">
             <div class="title-bar">
@@ -859,13 +932,14 @@
 
         <!-- Taskbar -->
         <div class="taskbar">
-            <div class="start-button">
+            <div class="start-button" id="start-button" onclick="handleStartClick()">
                 <span>🪟</span>
-                <span>Start</span>
+                <span id="start-text">Sign In</span>
             </div>
             <div class="system-tray">
                 <div>🔊</div>
                 <div id="clock"></div>
+                <div id="user-status" style="display: none;">👤</div>
             </div>
         </div>
 
@@ -3621,6 +3695,21 @@
     <!-- Railway API Integration - Server-Side Analysis Only -->
     <script src="railway-api-manager.js"></script>
     <script src="audio-processor.js"></script>
+    <script src="lyrics-generator.js"></script>
+    <script src="ai-lyrics-generator.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    
+    <!-- Firebase Authentication -->
+    <script src="firebase-config.js"></script>
+    <script src="auth.js"></script>
+    <script src="auth-modal.js"></script>
+    <script src="dashboard.js"></script>
+    <script src="payment-manager.js"></script>
+    <script src="session-manager.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

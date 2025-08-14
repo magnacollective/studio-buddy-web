@@ -4,7 +4,7 @@
 class RailwayAPIManager {
     constructor() {
         // Railway production API endpoint
-        this.baseURL = 'https://vocal-remover-production.up.railway.app';
+        this.baseURL = 'https://vocal-remover-production-1bbc.up.railway.app';
         this.requestTimeout = 60000; // 60 seconds for analysis
         this.maxRetries = 2;
     }

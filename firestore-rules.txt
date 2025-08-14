@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Users can only access their own user document
+    match /users/{userId} {
+      allow read, write: if request.auth != null 
+        && request.auth.uid == userId
+        && validateUserData();
+      
+      // Validate user data structure and prevent tampering
+      function validateUserData() {
+        return request.resource.data.keys().hasAll(['uid', 'email']) &&
+               request.resource.data.uid == request.auth.uid &&
+               request.resource.data.email == request.auth.token.email &&
+               // Prevent users from modifying critical fields
+               (!request.resource.data.keys().hasAny(['subscription']) || 
+                validateSubscription()) &&
+               // Prevent usage tampering (only allow increments)
+               (!request.resource.data.keys().hasAny(['usage']) || 
+                validateUsage());
+      }
+      
+      // Subscription can only be modified by server/admin
+      function validateSubscription() {
+        return request.auth.token.admin == true ||
+               // Allow reading current subscription
+               request.method == 'get' ||
+               // Don't allow users to upgrade themselves
+               !('subscription' in request.resource.data.diff(resource.data).affectedKeys());
+      }
+      
+      // Usage validation - prevent cheating
+      function validateUsage() {
+        let currentUsage = resource.data.get('usage', {});
+        let newUsage = request.resource.data.get('usage', {});
+        
+        return 
+          // Allow reading usage
+          request.method == 'get' ||
+          // Only allow incrementing processedTracks by 1
+          (newUsage.get('processedTracks', 0) <= currentUsage.get('processedTracks', 0) + 1) &&
+          // Don't allow modifying monthlyLimit
+          newUsage.get('monthlyLimit', 3) == currentUsage.get('monthlyLimit', 3);
+      }
+    }
+    
+    // Payment/subscription logs - read-only for users
+    match /payments/{paymentId} {
+      allow read: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      allow write: if request.auth.token.admin == true;
+    }
+    
+    // Usage analytics - admin only
+    match /analytics/{document=**} {
+      allow read, write: if request.auth.token.admin == true;
+    }
+    
+    // App configuration - read-only for authenticated users
+    match /config/{document} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.token.admin == true;
+    }
+    
+    // Audit logs - admin only
+    match /audit/{document=**} {
+      allow read, write: if request.auth.token.admin == true;
+    }
+    
+    // Support tickets - users can create/read their own
+    match /support/{ticketId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      allow read, write: if request.auth.token.admin == true;
+    }
+    
+    // Block all other paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

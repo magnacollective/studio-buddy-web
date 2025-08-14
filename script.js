@@ -9,6 +9,7 @@ class StudioBuddyApp {
         this.currentlyPlaying = null;
         this.audioProcessor = null;
         this.audioAnalyzer = null;
+        this.lyricsGenerator = null;
         
         this.init();
     }
@@ -22,6 +23,9 @@ class StudioBuddyApp {
             // Use Railway API Manager - SERVER ONLY (no client-side fallback)
             this.audioAnalyzer = new RailwayAPIManager();
             
+            // Initialize AI Lyrics Generator
+            this.lyricsGenerator = new AILyricsGenerator();
+            
             // Check API health on startup
             const isHealthy = await this.audioAnalyzer.checkHealth();
             if (!isHealthy) {
@@ -34,6 +38,21 @@ class StudioBuddyApp {
                     console.log('Railway API version:', version);
                 }
             }
+            
+            // Check AI lyrics connection
+            setTimeout(async () => {
+                const aiStatus = await this.lyricsGenerator.testConnection();
+                const statusElement = document.getElementById('ai-status');
+                if (statusElement) {
+                    if (aiStatus.online) {
+                        statusElement.innerHTML = '🤖 AI API connected';
+                        statusElement.style.color = '#107c10';
+                    } else {
+                        statusElement.innerHTML = '💻 Using local generator (AI API offline)';
+                        statusElement.style.color = '#d83b01';
+                    }
+                }
+            }, 1000);
             
             this.setupEventListeners();
             this.setupMatrixBackground();
@@ -213,6 +232,12 @@ class StudioBuddyApp {
             return;
         }
 
+        // Check authentication and usage limits
+        const canProcess = await window.sessionManager.requireAuth();
+        if (!canProcess) {
+            return;
+        }
+
         try {
             this.showProgress('Mastering audio...');
             
@@ -238,6 +263,9 @@ class StudioBuddyApp {
             this.hideProgress();
             this.drawWaveform(this.masteredBuffer);
             
+            // Track usage for monetization
+            await window.sessionManager.recordUsage();
+            
             alert('Audio mastering completed successfully!');
         } catch (error) {
             console.error('Error mastering audio:', error);
@@ -249,6 +277,12 @@ class StudioBuddyApp {
     async analyzeAudio() {
         if (!this.analyzeBuffer) {
             alert('Please load an audio file for analysis first.');
+            return;
+        }
+
+        // Check authentication and usage limits
+        const canProcess = await window.sessionManager.requireAuth();
+        if (!canProcess) {
             return;
         }
 
@@ -278,6 +312,9 @@ class StudioBuddyApp {
             // Generate basic spectrum visualization since Railway API may not return spectrum
             this.drawSpectrumFromBuffer(this.analyzeBuffer);
             this.hideProgress();
+            
+            // Track usage for monetization
+            await window.sessionManager.recordUsage();
             
             console.log('Analysis complete via Railway API:', analysis.analysisMethod, 'confidence:', analysis.confidence);
         } catch (error) {
@@ -885,6 +922,33 @@ class StudioBuddyApp {
             alert(`Railway API stem separation failed: ${error.message}\n\nPlease check your internet connection and try again.`);
         }
     }
+    
+    // Lyrics generation methods
+    async generateLyrics(prompt, length, style, mood, structure) {
+        try {
+            const result = await this.lyricsGenerator.generateLyrics(prompt, {
+                length: parseInt(length),
+                style: style,
+                mood: mood,
+                structure: structure
+            });
+            
+            return result;
+        } catch (error) {
+            console.error('Error generating lyrics:', error);
+            throw error;
+        }
+    }
+    
+    async generateFullSong(prompt, genre) {
+        try {
+            const result = await this.lyricsGenerator.generateFullSong(prompt, genre);
+            return result;
+        } catch (error) {
+            console.error('Error generating full song:', error);
+            throw error;
+        }
+    }
 }
 
 // Window control functions (global)
@@ -904,6 +968,79 @@ function minimizeWindow(windowId) {
 function maximizeWindow(windowId) {
     const window = document.getElementById(windowId);
     window.classList.toggle('maximized');
+}
+
+// Global functions for lyrics generator
+async function generateLyrics() {
+    const prompt = document.getElementById('lyrics-prompt').value;
+    const length = document.getElementById('lyrics-length').value;
+    const style = document.getElementById('lyrics-style').value;
+    const mood = document.getElementById('lyrics-mood').value;
+    const structure = document.getElementById('lyrics-structure').value;
+    const output = document.getElementById('lyrics-output');
+    const status = document.getElementById('lyrics-status');
+    
+    try {
+        status.textContent = 'Generating enhanced lyrics...';
+        status.style.color = '#d83b01';
+        
+        const result = await app.generateLyrics(prompt, length, style, mood, structure);
+        
+        // Display the lyrics with enhanced formatting
+        const lyricsText = result.lyrics.join('\n');
+        const sourceIcon = result.source === 'openai_gpt' ? '🤖' : 
+                          result.source === 'template_based' ? '🎯' : '💻';
+        const sourceText = result.source === 'openai_gpt' ? 'AI Generated (GPT)' :
+                          result.source === 'hybrid_dataset' ? 'Your Dataset + Templates' : 
+                          result.source === 'template_based' ? 'Enhanced Templates' : 'Local Fallback';
+        
+        output.textContent = `${sourceIcon} ${sourceText} | ${style.toUpperCase()} | ${mood} | ${structure.toUpperCase()}\n\n${lyricsText}`;
+        
+        status.textContent = `Generated ${result.lyrics.length} lines`;
+        status.style.color = '#107c10';
+        
+    } catch (error) {
+        console.error('Failed to generate lyrics:', error);
+        output.textContent = 'Error generating lyrics. Please try again.';
+        status.textContent = 'Generation failed';
+        status.style.color = '#d83b01';
+    }
+}
+
+async function generateFullSong() {
+    const prompt = document.getElementById('lyrics-prompt').value;
+    const style = document.getElementById('lyrics-style').value;
+    const output = document.getElementById('lyrics-output');
+    const status = document.getElementById('lyrics-status');
+    
+    try {
+        status.textContent = 'Generating full song...';
+        status.style.color = '#d83b01';
+        
+        const result = await app.generateFullSong(prompt, style);
+        
+        // Format the full song for display
+        let formatted = '';
+        if (app.lyricsGenerator) {
+            formatted = app.lyricsGenerator.formatSongForDisplay(result);
+        } else {
+            formatted = `"${result.title}"\n\n`;
+            for (const [key, lines] of Object.entries(result.sections)) {
+                formatted += `[${key.toUpperCase()}]\n${lines.join('\n')}\n\n`;
+            }
+        }
+        
+        output.textContent = formatted;
+        
+        status.textContent = 'Full song generated';
+        status.style.color = '#107c10';
+        
+    } catch (error) {
+        console.error('Failed to generate full song:', error);
+        output.textContent = 'Error generating song. Please try again.';
+        status.textContent = 'Generation failed';
+        status.style.color = '#d83b01';
+    }
 }
 
 // App initialization is now handled in index.html to ensure proper loading order
