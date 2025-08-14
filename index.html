@@ -2832,7 +2832,7 @@
 
         async function analyzeAudio() {
             try {
-                log('[CLIENT] CLIENT-SIDE: Starting fast audio analysis...');
+                log('[RAILWAY] RAILWAY API: Starting server-side audio analysis...');
                 
                 const analyzeInput = document.querySelector('#analyzer-window input[type="file"]');
                 if (!analyzeInput.files[0]) {
@@ -2840,63 +2840,100 @@
                     return;
                 }
 
-                log('[CLIENT] Analyzing audio file locally in browser...');
-                log(`📋 File: ${analyzeInput.files[0].name} (${analyzeInput.files[0].size} bytes)`);
+                // Check authentication first
+                if (!window.sessionManager.requireAuth) {
+                    log('[ERROR] Session manager not ready');
+                    return;
+                }
+                
+                const canProcess = await window.sessionManager.requireAuth();
+                if (!canProcess) {
+                    log('[AUTH] Authentication required for analysis');
+                    return;
+                }
+
+                const file = analyzeInput.files[0];
+                const fileSizeMB = file.size / (1024 * 1024);
+                log(`[RAILWAY] File: ${file.name} (${fileSizeMB.toFixed(2)} MB)`);
+                
+                // File size check
+                if (fileSizeMB > 25) {
+                    log('[ERROR] File too large for analysis. Please use files under 25MB.');
+                    alert('File too large! Please use audio files under 25MB for analysis.');
+                    return;
+                }
                 
                 // Show progress indicator
                 showAnalysisProgress();
                 
-                // Use setTimeout to prevent UI blocking
-                setTimeout(async () => {
-                    try {
-                        // Read file as array buffer
-                        updateAnalysisProgress('Reading file...', 10);
-                        const arrayBuffer = await analyzeInput.files[0].arrayBuffer();
-                        
-                        // Get audio context (initialize if needed)
-                        updateAnalysisProgress('Initializing audio...', 20);
-                        let audioContext;
-                        try {
-                            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                            if (audioContext.state === 'suspended') {
-                                await audioContext.resume();
-                            }
-                        } catch (e) {
-                            throw new Error('Web Audio API not supported');
-                        }
-                        
-                        log('⚡ Decoding audio data...');
-                        updateAnalysisProgress('Decoding audio...', 40);
-                        
-                        // Decode audio
-                        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-                        
-                        log('⚡ Running fast analysis algorithms...');
-                        updateAnalysisProgress('Analyzing audio...', 60);
-                        
-                        // Use fast but accurate analysis - skip TuneBat for now due to speed
-                        let results = await performFastAccurateAnalysis(audioBuffer);
-                        
-                        updateAnalysisProgress('Finalizing...', 90);
-                        
-                        // Update UI with results
-                        document.getElementById('bpm-result').textContent = `${Math.round(results.bpm)} BPM`;
-                        document.getElementById('key-result').textContent = results.key || 'C Major';
-                        
-                        hideAnalysisProgress();
-                        
-                        log(`[SUCCESS] Fast analysis complete: ${Math.round(results.bpm)} BPM, ${results.key} key`);
-                        log(`[AUDIO] Duration: ${results.duration?.toFixed(1)}s, Sample rate: ${results.sampleRate}Hz`);
+                try {
+                    // Upload to Railway API for analysis
+                    updateAnalysisProgress('Uploading to Railway API...', 10);
+                    
+                    const formData = new FormData();
+                    formData.append('audio', file);
+                    
+                    updateAnalysisProgress('Analyzing with Railway API...', 30);
+                    log('[UPLOAD] Sending to Railway API for analysis...');
+                    
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+                    
+                    const response = await fetch(`${API_BASE_URL}/analyze`, {
+                        method: 'POST',
+                        body: formData,
+                        mode: 'cors',
+                        credentials: 'omit',
+                        signal: controller.signal,
+                        cache: 'no-store'
+                    }).finally(() => clearTimeout(timeoutId));
 
-                    } catch (error) {
-                        hideAnalysisProgress();
-                        log(`[ERROR] Analysis Error: ${error.message}`);
-                        // Fallback results
-                        document.getElementById('bpm-result').textContent = '120 BPM';
-                        document.getElementById('key-result').textContent = 'C Major';
-                        log('[FALLBACK] Using default analysis values');
+                    updateAnalysisProgress('Processing results...', 80);
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Railway API error: ${response.status} - ${errorText}`);
                     }
-                }, 50); // Small delay to allow UI to update
+                    
+                    const results = await response.json();
+                    log('[SUCCESS] Railway API analysis complete:', results);
+                    
+                    updateAnalysisProgress('Finalizing...', 95);
+                    
+                    // Update UI with Railway API results
+                    document.getElementById('bpm-result').textContent = `${Math.round(results.bpm || 120)} BPM`;
+                    document.getElementById('key-result').textContent = results.key || 'C Major';
+                    
+                    // Update additional fields if they exist
+                    const durationEl = document.getElementById('duration-result');
+                    const sampleRateEl = document.getElementById('samplerate-result');
+                    
+                    if (durationEl) durationEl.textContent = results.duration || `${(file.size / 44100 / 2).toFixed(1)}s`;
+                    if (sampleRateEl) sampleRateEl.textContent = results.sampleRate || '44100 Hz';
+                    
+                    hideAnalysisProgress();
+                    
+                    // Track usage
+                    await window.sessionManager.recordUsage();
+                    
+                    log(`[SUCCESS] Railway analysis complete: ${Math.round(results.bpm || 120)} BPM, ${results.key || 'C Major'} key`);
+
+                } catch (error) {
+                    hideAnalysisProgress();
+                    log(`[ERROR] Railway API Analysis Error: ${error.message}`);
+                    
+                    // Show error message
+                    if (error.name === 'AbortError') {
+                        log('[ERROR] Analysis timeout - please try with a smaller file');
+                    } else if (error.message.includes('Failed to fetch')) {
+                        log('[ERROR] Could not connect to Railway API');
+                    }
+                    
+                    // Fallback to basic results
+                    document.getElementById('bpm-result').textContent = '120 BPM';
+                    document.getElementById('key-result').textContent = 'C Major';
+                    log('[FALLBACK] Using default analysis values due to Railway API error');
+                }
 
             } catch (error) {
                 hideAnalysisProgress();
@@ -2925,7 +2962,7 @@
                 min-width: 200px;
             `;
             progress.innerHTML = `
-                <div style="margin-bottom: 10px;">🎵 Analyzing Audio...</div>
+                <div style="margin-bottom: 10px;">🚀 Railway API Analysis...</div>
                 <div style="background: #c0c0c0; border: 1px inset; height: 20px; margin: 10px 0;">
                     <div id="progress-bar" style="background: linear-gradient(90deg, #0000ff, #8080ff); height: 100%; width: 0%; transition: width 0.3s;"></div>
                 </div>
