@@ -2425,7 +2425,7 @@
 
         async function analyzeAudio() {
             try {
-                log('[CLIENT] CLIENT-SIDE: Starting TuneBat-style audio analysis...');
+                log('[CLIENT] CLIENT-SIDE: Starting fast audio analysis...');
                 
                 const analyzeInput = document.querySelector('#analyzer-window input[type="file"]');
                 if (!analyzeInput.files[0]) {
@@ -2436,90 +2436,229 @@
                 log('[CLIENT] Analyzing audio file locally in browser...');
                 log(`📋 File: ${analyzeInput.files[0].name} (${analyzeInput.files[0].size} bytes)`);
                 
-                // Read file as array buffer
-                const arrayBuffer = await analyzeInput.files[0].arrayBuffer();
+                // Show progress indicator
+                showAnalysisProgress();
                 
-                // Get audio context (initialize if needed)
-                let audioContext;
-                try {
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    if (audioContext.state === 'suspended') {
-                        await audioContext.resume();
+                // Use setTimeout to prevent UI blocking
+                setTimeout(async () => {
+                    try {
+                        // Read file as array buffer
+                        updateAnalysisProgress('Reading file...', 10);
+                        const arrayBuffer = await analyzeInput.files[0].arrayBuffer();
+                        
+                        // Get audio context (initialize if needed)
+                        updateAnalysisProgress('Initializing audio...', 20);
+                        let audioContext;
+                        try {
+                            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                            if (audioContext.state === 'suspended') {
+                                await audioContext.resume();
+                            }
+                        } catch (e) {
+                            throw new Error('Web Audio API not supported');
+                        }
+                        
+                        log('⚡ Decoding audio data...');
+                        updateAnalysisProgress('Decoding audio...', 40);
+                        
+                        // Decode audio
+                        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                        
+                        log('⚡ Running fast analysis algorithms...');
+                        updateAnalysisProgress('Analyzing audio...', 60);
+                        
+                        // Always use simple fast analysis to prevent blocking
+                        const results = await performSimpleAnalysis(audioBuffer);
+                        
+                        updateAnalysisProgress('Finalizing...', 90);
+                        
+                        // Update UI with results
+                        document.getElementById('bpm-result').textContent = `${Math.round(results.bpm)} BPM`;
+                        document.getElementById('key-result').textContent = results.key || 'C Major';
+                        
+                        hideAnalysisProgress();
+                        
+                        log(`[SUCCESS] Fast analysis complete: ${Math.round(results.bpm)} BPM, ${results.key} key`);
+                        log(`[AUDIO] Duration: ${results.duration?.toFixed(1)}s, Sample rate: ${results.sampleRate}Hz`);
+
+                    } catch (error) {
+                        hideAnalysisProgress();
+                        log(`[ERROR] Analysis Error: ${error.message}`);
+                        // Fallback results
+                        document.getElementById('bpm-result').textContent = '120 BPM';
+                        document.getElementById('key-result').textContent = 'C Major';
+                        log('[FALLBACK] Using default analysis values');
                     }
-                } catch (e) {
-                    throw new Error('Web Audio API not supported');
-                }
-                
-                log('⚡ Decoding audio data...');
-                
-                // Decode audio
-                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-                
-                log('⚡ Running TuneBat-style analysis algorithms...');
-                
-                // Use TuneBat analyzer if available, otherwise simple analysis
-                let results;
-                if (window.TuneBatAnalyzer) {
-                    const analyzer = new TuneBatAnalyzer(audioContext);
-                    results = await analyzer.analyzeAudio(audioBuffer);
-                } else {
-                    // Simple fallback analysis
-                    results = await performSimpleAnalysis(audioBuffer);
-                }
-                
-                // Update UI with results
-                document.getElementById('bpm-result').textContent = `${Math.round(results.bpm)} BPM`;
-                document.getElementById('key-result').textContent = results.key || 'Unknown';
-                
-                log(`[SUCCESS] Client-side analysis complete: ${Math.round(results.bpm)} BPM, ${results.key} key`);
-                log(`[AUDIO] Duration: ${results.duration?.toFixed(1)}s, Sample rate: ${results.sampleRate}Hz`);
+                }, 50); // Small delay to allow UI to update
 
             } catch (error) {
-                log(`[ERROR] Client-side Analysis Error: ${error.message}`);
-                // Fallback results
+                hideAnalysisProgress();
+                log(`[ERROR] Setup Error: ${error.message}`);
                 document.getElementById('bpm-result').textContent = '120 BPM';
                 document.getElementById('key-result').textContent = 'C Major';
-                log('[FALLBACK] Using default analysis values');
             }
         }
 
-        // Simple analysis fallback if TuneBat analyzer not loaded
+        // Progress UI functions
+        function showAnalysisProgress() {
+            const progress = document.createElement('div');
+            progress.id = 'analysis-progress';
+            progress.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(192, 192, 192, 0.95);
+                border: 2px outset #c0c0c0;
+                padding: 20px;
+                z-index: 10000;
+                font-family: 'MS Sans Serif', sans-serif;
+                font-size: 11px;
+                text-align: center;
+                min-width: 200px;
+            `;
+            progress.innerHTML = `
+                <div style="margin-bottom: 10px;">🎵 Analyzing Audio...</div>
+                <div style="background: #c0c0c0; border: 1px inset; height: 20px; margin: 10px 0;">
+                    <div id="progress-bar" style="background: linear-gradient(90deg, #0000ff, #8080ff); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                </div>
+                <div id="progress-text">Starting...</div>
+            `;
+            document.body.appendChild(progress);
+        }
+
+        function updateAnalysisProgress(text, percent) {
+            const progressText = document.getElementById('progress-text');
+            const progressBar = document.getElementById('progress-bar');
+            if (progressText) progressText.textContent = text;
+            if (progressBar) progressBar.style.width = percent + '%';
+        }
+
+        function hideAnalysisProgress() {
+            const progress = document.getElementById('analysis-progress');
+            if (progress) progress.remove();
+        }
+
+        // Fast analysis optimized to prevent UI blocking
         async function performSimpleAnalysis(audioBuffer) {
             const samples = audioBuffer.getChannelData(0);
             const sampleRate = audioBuffer.sampleRate;
             
-            // Very basic BPM detection using autocorrelation
+            // Limit analysis to prevent blocking - use only first 15 seconds
+            const maxSamples = Math.min(samples.length, sampleRate * 15);
+            const analyzeSamples = samples.slice(0, maxSamples);
+            
+            // Downsample for faster processing
+            const downsampleFactor = 4;
+            const downsampled = [];
+            for (let i = 0; i < analyzeSamples.length; i += downsampleFactor) {
+                downsampled.push(analyzeSamples[i]);
+            }
+            const dsRate = sampleRate / downsampleFactor;
+            
+            // Yield to prevent blocking
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
+            // Fast energy-based BPM detection
             let bestBPM = 120;
-            const windowSize = Math.min(samples.length, sampleRate * 30); // Max 30 seconds
-            const autocorr = [];
             
-            for (let lag = Math.floor(sampleRate * 0.3); lag < Math.floor(sampleRate * 2); lag++) {
-                let sum = 0;
-                for (let i = 0; i < windowSize - lag; i++) {
-                    sum += samples[i] * samples[i + lag];
+            try {
+                // Simple onset detection with energy
+                const windowSize = Math.floor(dsRate * 0.1); // 100ms windows
+                const hopSize = Math.floor(windowSize / 2);
+                const energies = [];
+                
+                for (let i = 0; i < downsampled.length - windowSize; i += hopSize) {
+                    let energy = 0;
+                    for (let j = 0; j < windowSize; j++) {
+                        energy += downsampled[i + j] * downsampled[i + j];
+                    }
+                    energies.push(energy);
+                    
+                    // Yield occasionally to prevent blocking
+                    if (i % (hopSize * 20) === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 1));
+                    }
                 }
-                autocorr.push({ lag, value: sum });
+                
+                // Find peaks in energy (simplified)
+                const peaks = [];
+                for (let i = 1; i < energies.length - 1; i++) {
+                    if (energies[i] > energies[i-1] && energies[i] > energies[i+1] && energies[i] > 0.1) {
+                        peaks.push(i * hopSize / dsRate); // Convert to time
+                    }
+                }
+                
+                // Estimate BPM from peak intervals
+                if (peaks.length >= 4) {
+                    const intervals = [];
+                    for (let i = 1; i < Math.min(peaks.length, 20); i++) {
+                        intervals.push(peaks[i] - peaks[i-1]);
+                    }
+                    
+                    // Find most common interval (simplified)
+                    intervals.sort((a, b) => a - b);
+                    const medianInterval = intervals[Math.floor(intervals.length / 2)];
+                    
+                    if (medianInterval > 0.2 && medianInterval < 2.0) { // Reasonable range
+                        bestBPM = 60 / medianInterval;
+                        
+                        // Adjust for common subdivisions
+                        if (bestBPM < 80) bestBPM *= 2;
+                        if (bestBPM > 160) bestBPM /= 2;
+                    }
+                }
+                
+            } catch (e) {
+                console.warn('BPM analysis error, using default:', e);
+                bestBPM = 120;
             }
             
-            // Find peak
-            let maxValue = 0;
-            let bestLag = 0;
-            for (const { lag, value } of autocorr) {
-                if (value > maxValue) {
-                    maxValue = value;
-                    bestLag = lag;
+            // Simple key detection (very fast)
+            let detectedKey = 'C Major';
+            try {
+                // Sample a few points to estimate dominant frequency
+                const fftSize = 2048;
+                const midPoint = Math.floor(analyzeSamples.length / 2);
+                const segment = analyzeSamples.slice(midPoint, midPoint + fftSize);
+                
+                // Very simple pitch detection
+                let maxMagnitude = 0;
+                let dominantFreq = 440;
+                
+                for (let k = 1; k < fftSize / 4; k++) {
+                    let real = 0, imag = 0;
+                    const step = Math.floor(segment.length / 32); // Sample sparsely
+                    
+                    for (let n = 0; n < segment.length; n += step) {
+                        const angle = -2 * Math.PI * k * n / fftSize;
+                        real += segment[n] * Math.cos(angle);
+                        imag += segment[n] * Math.sin(angle);
+                    }
+                    
+                    const magnitude = Math.sqrt(real * real + imag * imag);
+                    if (magnitude > maxMagnitude) {
+                        maxMagnitude = magnitude;
+                        dominantFreq = (k * sampleRate) / fftSize;
+                    }
                 }
-            }
-            
-            if (bestLag > 0) {
-                bestBPM = (60 * sampleRate) / bestLag;
-                if (bestBPM < 60) bestBPM *= 2;
-                if (bestBPM > 200) bestBPM /= 2;
+                
+                // Map frequency to key (very simplified)
+                if (dominantFreq > 0) {
+                    const keys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+                    const pitch = 12 * Math.log2(dominantFreq / 440) + 69;
+                    const keyIndex = Math.round(pitch) % 12;
+                    detectedKey = keys[keyIndex >= 0 ? keyIndex : keyIndex + 12] + ' Major';
+                }
+                
+            } catch (e) {
+                console.warn('Key detection error, using default:', e);
+                detectedKey = 'C Major';
             }
             
             return {
-                bpm: Math.round(bestBPM),
-                key: 'C Major',
+                bpm: Math.round(Math.max(60, Math.min(200, bestBPM))),
+                key: detectedKey,
                 duration: audioBuffer.duration,
                 sampleRate: audioBuffer.sampleRate
             };
