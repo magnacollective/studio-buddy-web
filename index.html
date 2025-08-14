@@ -545,7 +545,7 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
                         <div>
                             <label style="font-weight: bold; display: block; margin-bottom: 4px;">Source Audio:</label>
-                            <input type="file" accept="audio/*" style="width: 100%; margin: 4px 0;">
+                            <input type="file" id="source-input" accept="audio/*" style="width: 100%; margin: 4px 0;" onchange="loadSourceAudio(this)">
                             <div style="font-size: 9px; color: #666; margin-top: 2px;">Required - your audio to master</div>
                         </div>
                         <div>
@@ -1038,21 +1038,28 @@
                     log('[AUDIO] Audio context activated');
                 }
                 
-                // Try to initialize audioMotion first
+                // Always try to initialize audioMotion first
                 const audioMotionReady = await initAudioMotion();
+                log(`[VIZ] AudioMotion ready: ${audioMotionReady}`);
                 
-                if (audioMotionReady && currentAudio && isPlaying) {
-                    // Connect to audioMotion
-                    connectAudioToAudioMotion(currentAudio);
-                } else if (currentAudio && isPlaying) {
+                if (audioMotionReady) {
+                    // Connect current audio to audioMotion if playing
+                    if (currentAudio && isPlaying) {
+                        connectAudioToAudioMotion(currentAudio);
+                    }
+                    log('[VIZ] Using audioMotion visualizer');
+                } else {
                     // Fallback to original visualizer
-                    connectAudioToAnalyser(currentAudio);
-                    log('[VIZ] Reconnected current audio to fallback visualizer');
-                }
-                
-                // Start visualization if not already running (for fallback)
-                if (!audioMotionReady && !vizAnimationFrame) {
-                    startVisualization();
+                    if (currentAudio && isPlaying) {
+                        connectAudioToAnalyser(currentAudio);
+                        log('[VIZ] Reconnected current audio to fallback visualizer');
+                    }
+                    
+                    // Start fallback visualization if not already running
+                    if (!vizAnimationFrame) {
+                        startVisualization();
+                    }
+                    log('[VIZ] Using fallback canvas visualizer');
                 }
                 
                 log('[SUCCESS] Visualizer manually enabled');
@@ -1063,17 +1070,38 @@
         }
 
         function startVisualization() {
+            // If audioMotion is available and active, use it instead
+            if (audioMotion && currentAudio && isPlaying) {
+                connectAudioToAudioMotion(currentAudio);
+                return;
+            }
+            
+            // Fallback to canvas visualizer
             const canvas = document.getElementById('visualizer');
             if (!canvas) {
                 log('[ERROR] Visualizer canvas not found');
                 return;
             }
             
-            const ctx = canvas.getContext('2d');
+            let canvasElement = canvas;
+            
+            // Create a canvas if the element is a div (audioMotion container)
+            if (canvas.tagName === 'DIV') {
+                // Clear the div and create a canvas for fallback
+                canvas.innerHTML = '';
+                const fallbackCanvas = document.createElement('canvas');
+                fallbackCanvas.width = 750;
+                fallbackCanvas.height = 200;
+                fallbackCanvas.style.cssText = 'background: black; display: block; margin: 2px auto; border-radius: 4px; width: 100%; height: 100%;';
+                canvas.appendChild(fallbackCanvas);
+                canvasElement = fallbackCanvas;
+            }
+            
+            const ctx = canvasElement.getContext('2d');
             let frameCount = 0;
             
             function animate() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
                 frameCount++;
                 
                 let dataArray;
@@ -1147,7 +1175,7 @@
                     }
                 }
                 
-                drawVisualization(ctx, dataArray, canvas.width, canvas.height);
+                drawVisualization(ctx, dataArray, canvasElement.width, canvasElement.height);
                 
                 // Continue animation
                 vizAnimationFrame = requestAnimationFrame(animate);
@@ -1199,6 +1227,41 @@
                 
                 ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
                 ctx.fillRect(x + 1, y, barWidth - 2, barHeight);
+            }
+        }
+
+        // Audio file loading
+        function loadSourceAudio(input) {
+            if (input.files && input.files[0]) {
+                try {
+                    // Clean up existing source audio
+                    if (window.sourceAudio) {
+                        window.sourceAudio.pause();
+                        if (window.sourceAudio.src && window.sourceAudio.src.startsWith('blob:')) {
+                            URL.revokeObjectURL(window.sourceAudio.src);
+                        }
+                    }
+                    
+                    // Create new audio element immediately
+                    const audioURL = URL.createObjectURL(input.files[0]);
+                    window.sourceAudio = new Audio(audioURL);
+                    window.sourceAudio.setAttribute('playsinline', '');
+                    
+                    // Set up error handling
+                    window.sourceAudio.onerror = (e) => {
+                        log(`[ERROR] Source audio error: ${e.message}`);
+                    };
+                    
+                    // Log when loaded
+                    window.sourceAudio.onloadeddata = () => {
+                        log(`[AUDIO] Source audio loaded: ${input.files[0].name}`);
+                        log(`[AUDIO] Duration: ${formatTime(window.sourceAudio.duration)}`);
+                    };
+                    
+                    log(`[AUDIO] Source file selected: ${input.files[0].name}`);
+                } catch (error) {
+                    log(`[ERROR] Failed to load source audio: ${error.message}`);
+                }
             }
         }
 
