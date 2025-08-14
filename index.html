@@ -357,13 +357,13 @@
                     <!-- Main A/B Toggle - Big and Intuitive -->
                     <div style="background: white; border: 2px inset #c0c0c0; padding: 8px; margin: 8px 0;">
                         <div style="display: flex; gap: 0; margin-bottom: 8px;">
-                            <button onclick="selectTrack('source')" id="btn-source" 
+                            <button onclick="selectAndPlay('source')" id="btn-source" 
                                     style="flex: 1; padding: 12px; font-size: 14px; font-weight: bold; 
                                            background: linear-gradient(to bottom, #0080ff, #0060dd); 
                                            color: white; border: 2px outset #0080ff;">
                                 🎵 A: Original
                             </button>
-                            <button onclick="selectTrack('mastered')" id="btn-mastered" 
+                            <button onclick="selectAndPlay('mastered')" id="btn-mastered" 
                                     style="flex: 1; padding: 12px; font-size: 14px; font-weight: bold;
                                            background: #c0c0c0; border: 2px outset #c0c0c0;">
                                 ✨ B: Mastered
@@ -686,9 +686,17 @@
                 const masteredBlob = await response.blob();
                 const masteredUrl = URL.createObjectURL(masteredBlob);
                 
-                // Store for playback
+                // Store for playback with error handling
                 window.masteredAudio = new Audio(masteredUrl);
                 window.sourceAudio = new Audio(URL.createObjectURL(sourceInput.files[0]));
+                
+                // Add error handlers
+                window.masteredAudio.onerror = (e) => log(`❌ Mastered audio error: ${e.message}`);
+                window.sourceAudio.onerror = (e) => log(`❌ Source audio error: ${e.message}`);
+                
+                // Add load handlers to ensure audio is ready
+                window.masteredAudio.onloadeddata = () => log('✅ Mastered audio loaded');
+                window.sourceAudio.onloadeddata = () => log('✅ Source audio loaded');
                 
                 // Enable A/B comparison buttons
                 document.getElementById('btn-mastered').disabled = false;
@@ -736,7 +744,7 @@
         }
 
         // New intuitive track selection
-        function selectTrack(type) {
+        function selectTrack(type, forcePlay = false) {
             currentTrack = type;
             
             // Update button styles
@@ -768,12 +776,24 @@
                 document.getElementById('track-status').style.background = '#fff0e6';
             }
             
-            // If playing, switch to new track maintaining position
-            if (isPlaying && currentAudio) {
+            // Only switch playback if explicitly requested or if user clicked the button
+            if (forcePlay && isPlaying && currentAudio) {
                 const position = currentAudio.currentTime;
                 playAudio(type).then(() => {
                     if (currentAudio) currentAudio.currentTime = position;
                 });
+            }
+        }
+        
+        // Separate function for button clicks
+        function selectAndPlay(type) {
+            if (isPlaying) {
+                const position = currentAudio ? currentAudio.currentTime : 0;
+                playAudio(type).then(() => {
+                    if (currentAudio && position > 0) currentAudio.currentTime = position;
+                });
+            } else {
+                selectTrack(type);
             }
         }
 
@@ -802,18 +822,16 @@
 
         async function playAudio(type) {
             try {
-                await initAudioContext();
-                
                 const audio = type === 'source' ? window.sourceAudio : window.masteredAudio;
                 if (!audio) {
                     log(`❌ No ${type} audio available. Run mastering first.`);
                     return;
                 }
 
-                // Stop current playback
+                // Stop current playback if switching tracks
                 if (currentAudio && currentAudio !== audio) {
-                    currentAudio.pause();
                     const oldTime = currentAudio.currentTime;
+                    currentAudio.pause();
                     currentAudio = audio;
                     // Sync position when switching
                     audio.currentTime = oldTime;
@@ -823,23 +841,21 @@
                 
                 currentTrack = type;
                 
-                // Set up audio visualization
-                if (!audio.sourceNode) {
-                    audio.sourceNode = audioContext.createMediaElementSource(audio);
-                    audio.sourceNode.connect(analyser);
-                    analyser.connect(audioContext.destination);
-                }
-
+                // Play audio directly - simple and reliable
                 await audio.play();
                 isPlaying = true;
                 startProgressTracking();
-                startVisualization();
                 
                 log(`▶️ Playing ${type === 'source' ? 'Original' : 'Mastered'} audio`);
-                selectTrack(type);
+                
+                // Update UI without recursive calls
+                currentTrack = type;
 
             } catch (error) {
                 log(`❌ Playback error: ${error.message}`);
+                // Try to recover
+                currentAudio = null;
+                isPlaying = false;
             }
         }
 
@@ -902,28 +918,26 @@
             const currentTime = currentAudio ? currentAudio.currentTime : 0;
             const wasPlaying = isPlaying;
             
-            // Switch track instantly
+            // Switch track
             const newTrack = currentTrack === 'source' ? 'mastered' : 'source';
             
-            selectTrack(newTrack);
-            
             if (wasPlaying) {
-                // Quick switch while maintaining playback position
-                const oldAudio = currentAudio;
-                const newAudio = newTrack === 'source' ? window.sourceAudio : window.masteredAudio;
-                
-                // Pause old, set new, sync time, play new
-                if (oldAudio) oldAudio.pause();
-                currentAudio = newAudio;
-                currentAudio.currentTime = currentTime;
-                
-                try {
-                    await currentAudio.play();
-                    log(`🔄 Quick switched to ${newTrack === 'source' ? 'Original' : 'Mastered'}`);
-                } catch (error) {
-                    log(`❌ Quick switch error: ${error.message}`);
+                // Stop current, switch track, and play new
+                if (currentAudio) {
+                    currentAudio.pause();
                 }
+                
+                await playAudio(newTrack);
+                
+                // Sync position
+                if (currentAudio && currentTime > 0) {
+                    currentAudio.currentTime = currentTime;
+                }
+                
+                log(`🔄 Quick switched to ${newTrack === 'source' ? 'Original' : 'Mastered'}`);
             } else {
+                // Just select the track without playing
+                selectTrack(newTrack);
                 log(`🔄 Selected ${newTrack === 'source' ? 'Original' : 'Mastered'} (press Play to start)`);
             }
         }
