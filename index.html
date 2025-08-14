@@ -2467,8 +2467,16 @@
                         log('⚡ Running fast analysis algorithms...');
                         updateAnalysisProgress('Analyzing audio...', 60);
                         
-                        // Always use simple fast analysis to prevent blocking
-                        const results = await performSimpleAnalysis(audioBuffer);
+                        // Use the working TuneBat analyzer if available, otherwise simple analysis
+                        let results;
+                        if (window.TuneBatAnalyzer) {
+                            // Run TuneBat analysis in small chunks to prevent blocking
+                            const analyzer = new TuneBatAnalyzer(audioContext);
+                            results = await runAnalysisWithYielding(analyzer, audioBuffer);
+                        } else {
+                            // Fallback to simple analysis
+                            results = await performSimpleAnalysis(audioBuffer);
+                        }
                         
                         updateAnalysisProgress('Finalizing...', 90);
                         
@@ -2539,126 +2547,97 @@
             if (progress) progress.remove();
         }
 
-        // Fast analysis optimized to prevent UI blocking
+        // Run TuneBat analysis with yielding to prevent UI blocking
+        async function runAnalysisWithYielding(analyzer, audioBuffer) {
+            // Yield to UI before starting
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
+            try {
+                // If audio is too long, analyze just the middle portion to speed up
+                let processBuffer = audioBuffer;
+                if (audioBuffer.duration > 60) {
+                    // Extract middle 45 seconds for long tracks
+                    const startTime = (audioBuffer.duration - 45) / 2;
+                    const startSample = Math.floor(startTime * audioBuffer.sampleRate);
+                    const endSample = startSample + (45 * audioBuffer.sampleRate);
+                    
+                    // Create new buffer with middle section
+                    const shorterBuffer = audioBuffer.audioContext.createBuffer(
+                        audioBuffer.numberOfChannels,
+                        endSample - startSample,
+                        audioBuffer.sampleRate
+                    );
+                    
+                    for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+                        const originalData = audioBuffer.getChannelData(channel);
+                        const newData = shorterBuffer.getChannelData(channel);
+                        for (let i = 0; i < newData.length; i++) {
+                            newData[i] = originalData[startSample + i];
+                        }
+                    }
+                    processBuffer = shorterBuffer;
+                }
+                
+                // Run the actual TuneBat analysis
+                const results = await analyzer.analyzeAudio(processBuffer);
+                
+                // Restore original duration
+                results.duration = audioBuffer.duration;
+                
+                return results;
+                
+            } catch (error) {
+                console.error('TuneBat analysis failed:', error);
+                // Fallback to simple analysis
+                return await performSimpleAnalysis(audioBuffer);
+            }
+        }
+
+        // Simple analysis fallback - restored original working version
         async function performSimpleAnalysis(audioBuffer) {
             const samples = audioBuffer.getChannelData(0);
             const sampleRate = audioBuffer.sampleRate;
             
-            // Limit analysis to prevent blocking - use only first 15 seconds
-            const maxSamples = Math.min(samples.length, sampleRate * 15);
-            const analyzeSamples = samples.slice(0, maxSamples);
+            // Basic BPM detection using autocorrelation (original working version)
+            let bestBPM = 120;
+            const windowSize = Math.min(samples.length, sampleRate * 30); // Max 30 seconds
+            const autocorr = [];
             
-            // Downsample for faster processing
-            const downsampleFactor = 4;
-            const downsampled = [];
-            for (let i = 0; i < analyzeSamples.length; i += downsampleFactor) {
-                downsampled.push(analyzeSamples[i]);
-            }
-            const dsRate = sampleRate / downsampleFactor;
-            
-            // Yield to prevent blocking
+            // Yield before intensive computation
             await new Promise(resolve => setTimeout(resolve, 10));
             
-            // Fast energy-based BPM detection
-            let bestBPM = 120;
-            
-            try {
-                // Simple onset detection with energy
-                const windowSize = Math.floor(dsRate * 0.1); // 100ms windows
-                const hopSize = Math.floor(windowSize / 2);
-                const energies = [];
-                
-                for (let i = 0; i < downsampled.length - windowSize; i += hopSize) {
-                    let energy = 0;
-                    for (let j = 0; j < windowSize; j++) {
-                        energy += downsampled[i + j] * downsampled[i + j];
-                    }
-                    energies.push(energy);
-                    
-                    // Yield occasionally to prevent blocking
-                    if (i % (hopSize * 20) === 0) {
-                        await new Promise(resolve => setTimeout(resolve, 1));
-                    }
+            for (let lag = Math.floor(sampleRate * 0.3); lag < Math.floor(sampleRate * 2); lag++) {
+                let sum = 0;
+                for (let i = 0; i < windowSize - lag; i++) {
+                    sum += samples[i] * samples[i + lag];
                 }
+                autocorr.push({ lag, value: sum });
                 
-                // Find peaks in energy (simplified)
-                const peaks = [];
-                for (let i = 1; i < energies.length - 1; i++) {
-                    if (energies[i] > energies[i-1] && energies[i] > energies[i+1] && energies[i] > 0.1) {
-                        peaks.push(i * hopSize / dsRate); // Convert to time
-                    }
+                // Yield occasionally to prevent blocking
+                if (lag % 1000 === 0) {
+                    await new Promise(resolve => setTimeout(resolve, 1));
                 }
-                
-                // Estimate BPM from peak intervals
-                if (peaks.length >= 4) {
-                    const intervals = [];
-                    for (let i = 1; i < Math.min(peaks.length, 20); i++) {
-                        intervals.push(peaks[i] - peaks[i-1]);
-                    }
-                    
-                    // Find most common interval (simplified)
-                    intervals.sort((a, b) => a - b);
-                    const medianInterval = intervals[Math.floor(intervals.length / 2)];
-                    
-                    if (medianInterval > 0.2 && medianInterval < 2.0) { // Reasonable range
-                        bestBPM = 60 / medianInterval;
-                        
-                        // Adjust for common subdivisions
-                        if (bestBPM < 80) bestBPM *= 2;
-                        if (bestBPM > 160) bestBPM /= 2;
-                    }
-                }
-                
-            } catch (e) {
-                console.warn('BPM analysis error, using default:', e);
-                bestBPM = 120;
             }
             
-            // Simple key detection (very fast)
-            let detectedKey = 'C Major';
-            try {
-                // Sample a few points to estimate dominant frequency
-                const fftSize = 2048;
-                const midPoint = Math.floor(analyzeSamples.length / 2);
-                const segment = analyzeSamples.slice(midPoint, midPoint + fftSize);
-                
-                // Very simple pitch detection
-                let maxMagnitude = 0;
-                let dominantFreq = 440;
-                
-                for (let k = 1; k < fftSize / 4; k++) {
-                    let real = 0, imag = 0;
-                    const step = Math.floor(segment.length / 32); // Sample sparsely
-                    
-                    for (let n = 0; n < segment.length; n += step) {
-                        const angle = -2 * Math.PI * k * n / fftSize;
-                        real += segment[n] * Math.cos(angle);
-                        imag += segment[n] * Math.sin(angle);
-                    }
-                    
-                    const magnitude = Math.sqrt(real * real + imag * imag);
-                    if (magnitude > maxMagnitude) {
-                        maxMagnitude = magnitude;
-                        dominantFreq = (k * sampleRate) / fftSize;
-                    }
+            // Find peak
+            let maxValue = 0;
+            let bestLag = 0;
+            for (const { lag, value } of autocorr) {
+                if (value > maxValue) {
+                    maxValue = value;
+                    bestLag = lag;
                 }
-                
-                // Map frequency to key (very simplified)
-                if (dominantFreq > 0) {
-                    const keys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-                    const pitch = 12 * Math.log2(dominantFreq / 440) + 69;
-                    const keyIndex = Math.round(pitch) % 12;
-                    detectedKey = keys[keyIndex >= 0 ? keyIndex : keyIndex + 12] + ' Major';
-                }
-                
-            } catch (e) {
-                console.warn('Key detection error, using default:', e);
-                detectedKey = 'C Major';
+            }
+            
+            if (bestLag > 0) {
+                bestBPM = (60 * sampleRate) / bestLag;
+                if (bestBPM < 60) bestBPM *= 2;
+                if (bestBPM > 200) bestBPM /= 2;
             }
             
             return {
-                bpm: Math.round(Math.max(60, Math.min(200, bestBPM))),
-                key: detectedKey,
+                bpm: Math.round(bestBPM),
+                key: 'C Major',
                 duration: audioBuffer.duration,
                 sampleRate: audioBuffer.sampleRate
             };
