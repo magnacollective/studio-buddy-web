@@ -504,7 +504,15 @@
     </div>
 
     <script>
+        // Load environment variables (injected by build process)
+        window.STUDIOBUDDY_API_URL = '{{STUDIOBUDDY_API_URL}}';
+        window.VOCAL_REMOVER_API_URL = '{{VOCAL_REMOVER_API_URL}}';
+        
         console.log('🚀 Studio Buddy Web Loading...');
+        console.log('🔧 API URLs:', {
+            studiobuddy: window.STUDIOBUDDY_API_URL,
+            vocalRemover: window.VOCAL_REMOVER_API_URL
+        });
 
         // Create Matrix rain
         function createMatrix() {
@@ -574,6 +582,15 @@
             if (titleBar) titleBar.classList.remove('inactive');
         }
 
+        // API Configuration - uses environment variables in production
+        const API_BASE_URL = window.location.hostname === 'localhost' 
+            ? 'https://studiobuddy-production.up.railway.app'
+            : (window.STUDIOBUDDY_API_URL || 'https://studiobuddy-production.up.railway.app');
+            
+        const VOCAL_API_URL = window.location.hostname === 'localhost'
+            ? 'https://vocal-remover-production-1bbc.up.railway.app' 
+            : (window.VOCAL_REMOVER_API_URL || 'https://vocal-remover-production-1bbc.up.railway.app');
+
         // Railway API integration
         async function startMastering() {
             try {
@@ -614,7 +631,7 @@
                 log('📤 Uploading directly to Railway mastering service...');
                 log(`📋 FormData contents: source=${sourceInput.files[0]?.name}, reference=${referenceInput.files[0]?.name || 'none'}`);
                 
-                const response = await fetch('https://studiobuddy-production.up.railway.app/master', {
+                const response = await fetch(`${API_BASE_URL}/master`, {
                     method: 'POST',
                     body: formData,
                     mode: 'cors'
@@ -996,7 +1013,7 @@
                 log('📤 Uploading to vocal-remover Railway service for analysis...');
                 log(`📋 Analysis FormData: audio=${analyzeInput.files[0]?.name}`);
                 
-                const response = await fetch('https://vocal-remover-production.up.railway.app/analyze', {
+                const response = await fetch(`${VOCAL_API_URL}/analyze`, {
                     method: 'POST',
                     body: formData,
                     mode: 'cors'
@@ -1074,7 +1091,7 @@
 
                 log(`📤 Uploading to vocal-remover service...`);
                 
-                const response = await fetch('https://vocal-remover-production.up.railway.app/separate', {
+                const response = await fetch(`${VOCAL_API_URL}/separate`, {
                     method: 'POST',
                     body: formData,
                     mode: 'cors'

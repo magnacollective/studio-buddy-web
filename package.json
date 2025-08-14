@@ -5,7 +5,9 @@
   "main": "index.html",
   "scripts": {
     "start": "npx serve .",
-    "dev": "npx serve -p 3000"
+    "dev": "npx serve -p 3000",
+    "build": "node build.js",
+    "deploy": "npm run build && npx vercel --prod"
   },
   "keywords": [
     "audio",
