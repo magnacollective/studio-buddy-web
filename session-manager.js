@@ -14,9 +14,9 @@ class SessionManager {
     const waitForDependencies = () => {
       return new Promise((resolve) => {
         const checkDependencies = () => {
-          console.log('🔍 Checking dependencies - authManager:', !!window.authManager, 'authModal:', !!window.authModal);
-          if (window.authManager && window.authModal) {
-            console.log('✅ Dependencies ready, resolving...');
+          console.log('🔍 Checking dependencies - authManager:', !!window.authManager, 'authModal:', !!window.authModal, 'userDashboard:', !!window.userDashboard, 'paymentManager:', !!window.paymentManager);
+          if (window.authManager && window.authModal && window.userDashboard && window.paymentManager) {
+            console.log('✅ All dependencies ready, resolving...');
             resolve();
           } else {
             console.log('⏳ Dependencies not ready, waiting...');
@@ -638,20 +638,26 @@ class SessionManager {
 
   showDashboard() {
     console.log('📊 Opening user dashboard...');
+    console.log('🔍 window.userDashboard exists:', !!window.userDashboard);
+    console.log('🔍 window.userDashboard.show exists:', !!(window.userDashboard && window.userDashboard.show));
     if (window.userDashboard && typeof window.userDashboard.show === 'function') {
       window.userDashboard.show();
     } else {
       console.error('❌ User dashboard not available');
+      console.error('Dashboard object:', window.userDashboard);
       alert('Dashboard is loading... Please try again in a moment.');
     }
   }
 
   showUpgradeModal() {
     console.log('⭐ Opening upgrade modal...');
+    console.log('🔍 window.paymentManager exists:', !!window.paymentManager);
+    console.log('🔍 window.paymentManager.showUpgradeModal exists:', !!(window.paymentManager && window.paymentManager.showUpgradeModal));
     if (window.paymentManager && typeof window.paymentManager.showUpgradeModal === 'function') {
       window.paymentManager.showUpgradeModal();
     } else {
       console.error('❌ Payment manager not available');
+      console.error('Payment manager object:', window.paymentManager);
       alert('Payment system is loading... Please try again in a moment.');
     }
   }

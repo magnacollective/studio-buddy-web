@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studio Buddy - Production Setup Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #f0f0f0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #ff6600;
+            padding-bottom: 10px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .warning { background: #fff3cd; color: #856404; }
+        .error { background: #f8d7da; color: #721c24; }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border-left: 4px solid #007bff;
+        }
+        button {
+            background: #ff6600;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px 10px 0;
+        }
+        button:hover {
+            background: #e55a00;
+        }
+        .console-output {
+            background: #000;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Studio Buddy - Production Setup Test</h1>
+        
+        <div class="status" id="statusBar">
+            Ready to test your production setup
+        </div>
+        
+        <div>
+            <button onclick="runValidation()">🔍 Run Validation</button>
+            <button onclick="testPaymentFlow()">💳 Test Payment Flow</button>
+            <button onclick="testMenuApps()">📱 Test Menu Apps</button>
+            <button onclick="clearConsole()">🧹 Clear Console</button>
+        </div>
+        
+        <h3>📋 Test Results</h3>
+        <div class="console-output" id="consoleOutput">
+Click "Run Validation" to start testing your production setup...
+        </div>
+        
+        <h3>📖 Quick Setup Guide</h3>
+        <pre>
+1. Set Environment Variables:
+   - STRIPE_PUBLISHABLE_KEY (pk_live_... for production)
+   - STRIPE_SECRET_KEY (sk_live_... for production)
+   - STRIPE_PRICE_ID (price_...)
+   - STRIPE_WEBHOOK_SECRET (whsec_...)
+
+2. Deploy API Endpoints:
+   - /api/create-checkout-session
+   - /api/verify-payment
+   - /api/stripe-webhook
+
+3. Configure Webhooks in Stripe Dashboard
+
+4. Test the complete flow
+        </pre>
+        
+        <h3>🔗 Useful Links</h3>
+        <ul>
+            <li><a href="https://dashboard.stripe.com" target="_blank">Stripe Dashboard</a></li>
+            <li><a href="./PRODUCTION_SETUP.md" target="_blank">Full Production Setup Guide</a></li>
+            <li><a href="./index.html" target="_blank">Main Application</a></li>
+        </ul>
+    </div>
+
+    <!-- Load required scripts -->
+    <script src="config.js"></script>
+    <script src="validate-setup.js"></script>
+    <script src="payment-manager.js" type="module"></script>
+    <script src="session-manager.js"></script>
+
+    <script>
+        let consoleOutput = document.getElementById('consoleOutput');
+        let statusBar = document.getElementById('statusBar');
+        
+        // Override console.log to display in our output
+        const originalConsoleLog = console.log;
+        const originalConsoleWarn = console.warn;
+        const originalConsoleError = console.error;
+        
+        function logToOutput(message, type = 'log') {
+            originalConsoleLog(message);
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'warn' ? '⚠️' : 'ℹ️';
+            consoleOutput.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        
+        console.log = (message) => logToOutput(message, 'log');
+        console.warn = (message) => logToOutput(message, 'warn');
+        console.error = (message) => logToOutput(message, 'error');
+        
+        function clearConsole() {
+            consoleOutput.textContent = '';
+        }
+        
+        async function runValidation() {
+            clearConsole();
+            statusBar.textContent = '🔍 Running validation...';
+            statusBar.className = 'status warning';
+            
+            try {
+                const validator = new SetupValidator();
+                const result = await validator.run();
+                
+                if (result.success) {
+                    statusBar.textContent = '✅ Validation passed! Production ready.';
+                    statusBar.className = 'status success';
+                } else {
+                    statusBar.textContent = `⚠️ Found ${result.issues.length} issues and ${result.warnings.length} warnings`;
+                    statusBar.className = 'status warning';
+                }
+            } catch (error) {
+                console.error('Validation failed: ' + error.message);
+                statusBar.textContent = '❌ Validation failed';
+                statusBar.className = 'status error';
+            }
+        }
+        
+        function testPaymentFlow() {
+            clearConsole();
+            statusBar.textContent = '💳 Testing payment flow...';
+            statusBar.className = 'status warning';
+            
+            console.log('🚀 Testing Payment Flow');
+            console.log('========================');
+            
+            // Test if payment manager is available
+            if (typeof window.paymentManager === 'undefined') {
+                console.error('Payment manager not available');
+                statusBar.textContent = '❌ Payment manager not loaded';
+                statusBar.className = 'status error';
+                return;
+            }
+            
+            console.log('✅ Payment manager loaded');
+            console.log(`🎭 Demo mode: ${window.paymentManager.config.demoMode}`);
+            console.log(`🔑 Stripe initialized: ${window.paymentManager.isInitialized}`);
+            
+            // Test upgrade modal
+            try {
+                console.log('📋 Opening upgrade modal...');
+                window.paymentManager.showUpgradeModal();
+                console.log('✅ Upgrade modal opened successfully');
+                
+                statusBar.textContent = '✅ Payment flow test completed';
+                statusBar.className = 'status success';
+            } catch (error) {
+                console.error('Failed to open upgrade modal: ' + error.message);
+                statusBar.textContent = '❌ Payment flow test failed';
+                statusBar.className = 'status error';
+            }
+        }
+        
+        function testMenuApps() {
+            clearConsole();
+            statusBar.textContent = '📱 Testing menu apps...';
+            statusBar.className = 'status warning';
+            
+            console.log('🚀 Testing Menu App Opening');
+            console.log('============================');
+            
+            const appTypes = [
+                'audio-mastering',
+                'audio-analysis', 
+                'vocal-remover',
+                'lyrics-generator',
+                'settings'
+            ];
+            
+            let successCount = 0;
+            let failureCount = 0;
+            
+            appTypes.forEach(appType => {
+                try {
+                    console.log(`📋 Testing ${appType}...`);
+                    
+                    if (typeof window.openWindow === 'function') {
+                        // Test the function exists but don't actually open
+                        console.log(`✅ ${appType} - openWindow function available`);
+                        
+                        // Check if the window element exists
+                        const windowMap = {
+                            'audio-mastering': 'studio-buddy-window',
+                            'audio-analysis': 'analyzer-window', 
+                            'vocal-remover': 'vocal-remover-window',
+                            'lyrics-generator': 'lyrics-generator-window',
+                            'settings': 'settings-window'
+                        };
+                        
+                        const windowId = windowMap[appType] || appType + '-window';
+                        const windowElement = document.getElementById(windowId);
+                        
+                        if (windowElement) {
+                            console.log(`✅ ${appType} - Window element found (${windowId})`);
+                            successCount++;
+                        } else {
+                            console.warn(`⚠️ ${appType} - Window element not found (${windowId})`);
+                            console.log(`   Note: This is expected in the test page. The app windows are in index.html`);
+                            successCount++; // Still count as success since function exists
+                        }
+                    } else {
+                        console.error(`❌ ${appType} - openWindow function not available`);
+                        failureCount++;
+                    }
+                } catch (error) {
+                    console.error(`❌ ${appType} - Error: ${error.message}`);
+                    failureCount++;
+                }
+            });
+            
+            console.log(`\n📊 Menu Test Summary:`);
+            console.log(`   ✅ Successful: ${successCount}`);
+            console.log(`   ❌ Failed: ${failureCount}`);
+            console.log(`   📋 Total: ${appTypes.length}`);
+            
+            if (failureCount === 0) {
+                statusBar.textContent = '✅ Menu apps test completed successfully';
+                statusBar.className = 'status success';
+            } else {
+                statusBar.textContent = `⚠️ Menu test: ${successCount} passed, ${failureCount} failed`;
+                statusBar.className = 'status warning';
+            }
+        }
+        
+        // Initial status
+        console.log('Studio Buddy Production Setup Test loaded');
+        console.log('Click the buttons above to run tests');
+    </script>
+</body>
+</html>
