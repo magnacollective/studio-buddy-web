@@ -992,101 +992,55 @@
                 
                 <div class="section">
                     <h3>⚙️ Analysis Settings</h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
                         <div>
-                            <label>Profile:</label>
+                            <label>Speed:</label>
                             <select id="analysis-profile" style="width: 100%;">
-                                <option value="fast">⚡ Fast (15s)</option>
-                                <option value="accurate">🎯 Accurate (30s)</option>
+                                <option value="fast">⚡ Fast</option>
+                                <option value="accurate">🎯 Accurate</option>
                             </select>
                         </div>
-                        <div>
-                            <label>Quality:</label>
-                            <div style="background: #e0e0e0; border: 1px inset; padding: 4px; text-align: center;">
-                                <strong>💎 Pro Backend</strong>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
                         <div>
                             <label>Genre (optional):</label>
                             <select id="analysis-genre" style="width: 100%;">
                                 <option value="">Auto-detect</option>
-                                <option value="edm">🎛️ EDM/Electronic</option>
-                                <option value="house">🏠 House</option>
-                                <option value="techno">⚙️ Techno</option>
-                                <option value="trance">🌀 Trance</option>
-                                <option value="hiphop">🎤 Hip-Hop</option>
-                                <option value="trap">🔥 Trap</option>
-                                <option value="pop">⭐ Pop</option>
-                                <option value="rock">🎸 Rock</option>
+                                <option value="hiphop">Hip-Hop/Trap</option>
+                                <option value="edm">EDM/House</option>
+                                <option value="pop">Pop/Rock</option>
                             </select>
-                        </div>
-                        <div>
-                            <label>Analysis Window:</label>
-                            <select id="analysis-window" style="width: 100%;">
-                                <option value="45">45 seconds</option>
-                                <option value="60">60 seconds</option>
-                                <option value="75" selected>75 seconds</option>
-                                <option value="90">90 seconds</option>
-                                <option value="120">2 minutes</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
-                        <div>
-                            <label>Min BPM:</label>
-                            <input type="number" id="analysis-min-bpm" value="90" min="40" max="200" style="width: 100%;">
-                        </div>
-                        <div>
-                            <label>Max BPM:</label>
-                            <input type="number" id="analysis-max-bpm" value="180" min="60" max="240" style="width: 100%;">
                         </div>
                     </div>
                     
                     <button onclick="analyzeAudio()" style="width: 100%; padding: 8px;">🚀 Analyze with Railway API</button>
                     
                     <script>
-                        // Auto-adjust BPM ranges based on genre selection
-                        document.getElementById('analysis-genre').addEventListener('change', function() {
-                            const genre = this.value.toLowerCase();
-                            const minBpm = document.getElementById('analysis-min-bpm');
-                            const maxBpm = document.getElementById('analysis-max-bpm');
+                        // Set smart defaults - simplified interface with hidden settings
+                        function getAnalysisSettings() {
+                            const genre = document.getElementById('analysis-genre').value.toLowerCase();
+                            const profile = document.getElementById('analysis-profile').value;
+                            
+                            // Smart defaults based on genre
+                            let minBpm = 90, maxBpm = 180, windowSec = 30;
                             
                             switch(genre) {
                                 case 'edm':
-                                case 'house':
-                                case 'techno':
-                                case 'trance':
-                                    minBpm.value = 110;
-                                    maxBpm.value = 200;
-                                    break;
+                                    minBpm = 110; maxBpm = 200; break;
                                 case 'hiphop':
-                                case 'trap':
-                                    minBpm.value = 60;
-                                    maxBpm.value = 180;
-                                    break;
+                                    minBpm = 60; maxBpm = 180; break;
                                 case 'pop':
-                                case 'rock':
-                                    minBpm.value = 70;
-                                    maxBpm.value = 190;
-                                    break;
-                                default:
-                                    minBpm.value = 90;
-                                    maxBpm.value = 180;
+                                    minBpm = 70; maxBpm = 190; break;
                             }
-                            console.log(`🎵 Genre ${genre || 'auto'}: BPM range ${minBpm.value}-${maxBpm.value}`);
-                        });
+                            
+                            return { genre, profile, minBpm, maxBpm, windowSec };
+                        }
                     </script>
                 </div>
                 <div class="section">
                     <h3>📊 Analysis Results</h3>
                     <div style="background: #e0e0e0; border: 1px inset; padding: 8px; margin: 4px 0;">
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                            <div><strong>BPM:</strong> <span id="bpm-result" style="color: #0066cc;">-</span></div>
-                            <div><strong>Key:</strong> <span id="key-result" style="color: #0066cc;">-</span></div>
+                            <div><strong>BPM:</strong> <span id="bpm-result" style="color: #0066cc;">-</span> <span id="bpm-confidence" style="font-size: 0.8em; color: #666;"></span></div>
+                            <div><strong>Key:</strong> <span id="key-result" style="color: #0066cc;">-</span> <span id="key-confidence" style="font-size: 0.8em; color: #666;"></span></div>
                             <div><strong>Duration:</strong> <span id="duration-result">-</span></div>
                             <div><strong>Sample Rate:</strong> <span id="samplerate-result">-</span></div>
                         </div>
@@ -3068,13 +3022,10 @@
                     // Upload to Railway API for analysis
                     updateAnalysisProgress('Uploading to Railway API...', 10);
                     
-                    // Get analysis parameters from UI
-                    const profile = document.getElementById('analysis-profile').value;
+                    // Get simplified analysis parameters
+                    const settings = getAnalysisSettings();
+                    const { profile, genre, minBpm, maxBpm, windowSec } = settings;
                     const backend = 'pro'; // Always use pro backend
-                    const genre = document.getElementById('analysis-genre').value;
-                    const windowSec = parseInt(document.getElementById('analysis-window').value);
-                    const minBpm = parseInt(document.getElementById('analysis-min-bpm').value);
-                    const maxBpm = parseInt(document.getElementById('analysis-max-bpm').value);
                     
                     log(`[PARAMS] Profile: ${profile}, Backend: ${backend}, Genre: ${genre || 'auto'}`);
                     log(`[PARAMS] Window: ${windowSec}s, BPM range: ${minBpm}-${maxBpm}`);
@@ -3125,9 +3076,19 @@
                     
                     updateAnalysisProgress('Finalizing...', 95);
                     
-                    // Update UI with Railway API results
-                    document.getElementById('bpm-result').textContent = `${Math.round(results.bpm || 120)} BPM`;
+                    // Update UI with Railway API results and confidence
+                    document.getElementById('bpm-result').textContent = `${Math.round(results.bpm || 120)}`;
                     document.getElementById('key-result').textContent = results.key || 'C Major';
+                    
+                    // Show confidence scores if available
+                    if (results.bpm_candidates && results.bpm_candidates.length > 0) {
+                        const bpmConf = Math.round(results.bpm_candidates[0].confidence * 100);
+                        document.getElementById('bpm-confidence').textContent = `(${bpmConf}%)`;
+                    }
+                    if (results.key_candidates && results.key_candidates.length > 0) {
+                        const keyConf = Math.round(results.key_candidates[0].confidence * 100);
+                        document.getElementById('key-confidence').textContent = `(${keyConf}%)`;
+                    }
                     document.getElementById('duration-result').textContent = results.duration || `${(file.size / 44100 / 2).toFixed(1)}s`;
                     document.getElementById('samplerate-result').textContent = results.sample_rate || '44100 Hz';
                     
