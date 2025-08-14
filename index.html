@@ -2275,12 +2275,87 @@
 
         // API Configuration - uses environment variables in production
         const API_BASE_URL = window.location.hostname === 'localhost' 
-            ? 'https://studiobuddy-production.up.railway.app'
-            : (window.STUDIOBUDDY_API_URL || 'https://studiobuddy-production.up.railway.app');
+            ? 'https://vocal-remover-production-1bbc.up.railway.app'
+            : (window.STUDIOBUDDY_API_URL || 'https://vocal-remover-production-1bbc.up.railway.app');
             
         const VOCAL_API_URL = window.location.hostname === 'localhost'
             ? 'https://vocal-remover-production-1bbc.up.railway.app' 
             : (window.VOCAL_REMOVER_API_URL || 'https://vocal-remover-production-1bbc.up.railway.app');
+            
+        // Debug API URLs
+        console.log('🔗 API Configuration:');
+        console.log('📊 Analysis API (API_BASE_URL):', API_BASE_URL);
+        console.log('🎤 Vocal API (VOCAL_API_URL):', VOCAL_API_URL);
+        console.log('🌐 Current hostname:', window.location.hostname);
+        console.log('📍 Environment variables:', {
+            STUDIOBUDDY_API_URL: window.STUDIOBUDDY_API_URL,
+            VOCAL_REMOVER_API_URL: window.VOCAL_REMOVER_API_URL
+        });
+
+        // Test Railway API connectivity
+        async function testRailwayConnection() {
+            const currentOrigin = window.location.origin;
+            console.log('🧪 Testing Railway API connectivity...');
+            console.log('🌐 Current Origin:', currentOrigin);
+            console.log('🔒 Railway CORS Origins: https://studio-buddy-web.vercel.app, http://localhost:3000');
+            
+            // Check if origin is allowed
+            const allowedOrigins = ['https://studio-buddy-web.vercel.app', 'http://localhost:3000'];
+            const isAllowed = allowedOrigins.includes(currentOrigin);
+            console.log(`🚦 Origin allowed: ${isAllowed ? '✅' : '❌'}`);
+            
+            if (!isAllowed) {
+                console.warn('⚠️ Current origin not in Railway CORS allowed list');
+                console.warn('💡 Railway needs to add this origin to ALLOWED_ORIGINS env var:', currentOrigin);
+            }
+            
+            // Test Analysis API
+            try {
+                console.log(`🔍 Testing Analysis API: ${API_BASE_URL}/health`);
+                const analysisHealth = await fetch(`${API_BASE_URL}/health`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'no-store'
+                });
+                console.log('📊 Analysis API Health:', analysisHealth.status, analysisHealth.statusText);
+                if (analysisHealth.ok) {
+                    const data = await analysisHealth.json();
+                    console.log('📊 Analysis API Data:', data);
+                } else {
+                    console.error('📊 Analysis API Error:', await analysisHealth.text());
+                }
+            } catch (error) {
+                console.error('📊 Analysis API Connection Error:', error);
+                if (error.message.includes('CORS') || error.message.includes('network error')) {
+                    console.error('🚫 CORS/Network error - Railway server not allowing this origin');
+                }
+            }
+            
+            // Test Vocal API
+            try {
+                console.log(`🔍 Testing Vocal API: ${VOCAL_API_URL}/health`);
+                const vocalHealth = await fetch(`${VOCAL_API_URL}/health`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'no-store'
+                });
+                console.log('🎤 Vocal API Health:', vocalHealth.status, vocalHealth.statusText);
+                if (vocalHealth.ok) {
+                    const data = await vocalHealth.json();
+                    console.log('🎤 Vocal API Data:', data);
+                } else {
+                    console.error('🎤 Vocal API Error:', await vocalHealth.text());
+                }
+            } catch (error) {
+                console.error('🎤 Vocal API Connection Error:', error);
+                if (error.message.includes('CORS') || error.message.includes('network error')) {
+                    console.error('🚫 CORS/Network error - Railway server not allowing this origin');
+                }
+            }
+        }
+        
+        // Test connection on page load
+        setTimeout(testRailwayConnection, 2000);
 
         // Railway API integration
         async function startMastering() {
