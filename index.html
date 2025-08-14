@@ -967,11 +967,21 @@
                 return;
             }
             
+            // Don't switch if already on source
+            if (abActiveTrack === 'source') {
+                log('[A/B] Already on Original track');
+                return;
+            }
+            
             abActiveTrack = 'source';
             updateABButtonStates();
             
             if (isPlaying) {
                 seamlessTrackSwitch('source');
+            } else {
+                // Just update reference for next play
+                currentAudio = window.sourceAudio;
+                currentTrack = 'source';
             }
             
             log('[A/B] Switched to Original track');
@@ -983,11 +993,21 @@
                 return;
             }
             
+            // Don't switch if already on mastered
+            if (abActiveTrack === 'mastered') {
+                log('[A/B] Already on Mastered track');
+                return;
+            }
+            
             abActiveTrack = 'mastered';
             updateABButtonStates();
             
             if (isPlaying) {
                 seamlessTrackSwitch('mastered');
+            } else {
+                // Just update reference for next play
+                currentAudio = window.masteredAudio;
+                currentTrack = 'mastered';
             }
             
             log('[A/B] Switched to Mastered track');
@@ -1033,29 +1053,38 @@
             const currentPosition = currentAudio ? currentAudio.currentTime : abSyncedPosition;
             abSyncedPosition = currentPosition;
             
-            // Stop current track
-            if (currentAudio) {
+            // Get the new track
+            const newAudio = trackType === 'source' ? window.sourceAudio : window.masteredAudio;
+            
+            // Pre-configure the new track for seamless switching
+            newAudio.muted = false;
+            newAudio.volume = 1.0;
+            newAudio.currentTime = abSyncedPosition;
+            
+            // Pause current track and immediately start new one
+            if (currentAudio && currentAudio !== newAudio) {
                 currentAudio.pause();
             }
             
-            // Switch to new track
-            const newAudio = trackType === 'source' ? window.sourceAudio : window.masteredAudio;
+            // Update references
             currentAudio = newAudio;
             currentTrack = trackType;
             
-            // Ensure proper audio settings and sync position
-            currentAudio.muted = false;
-            currentAudio.volume = 1.0;
-            currentAudio.currentTime = abSyncedPosition;
-            
-            currentAudio.play().then(() => {
+            // Start playback immediately
+            newAudio.play().then(() => {
                 // Connect to visualizer
                 if (audioMotion) {
                     connectAudioToAudioMotion(currentAudio);
                 }
-                log(`[A/B] Seamless switch to ${trackType} at ${abSyncedPosition.toFixed(2)}s - Volume: ${currentAudio.volume}`);
+                log(`[A/B] Instant switch to ${trackType} at ${abSyncedPosition.toFixed(2)}s`);
             }).catch(e => {
                 log(`[ERROR] A/B switch error: ${e.message}`);
+                // Try to recover by falling back
+                if (e.message.includes('interrupted')) {
+                    setTimeout(() => {
+                        newAudio.play().catch(e2 => log(`[ERROR] Recovery failed: ${e2.message}`));
+                    }, 50);
+                }
             });
         }
 
@@ -1923,23 +1952,46 @@
                 
                 document.getElementById('ab-status').textContent = '[READY] A/B comparison ready - Click buttons to switch';
                 
-                // Initialize A/B comparison system
-                abActiveTrack = 'source';
+                // Initialize A/B comparison system - default to mastered track
+                abActiveTrack = 'mastered';
                 updateABButtonStates();
                 
-                // Don't override current playback state if audio is playing
+                // Auto-play mastered track or preserve current playback
                 if (!isPlaying) {
+                    // Auto-play the mastered result
                     abSyncedPosition = 0;
-                    currentAudio = window.sourceAudio;
-                    currentTrack = 'source';
-                    const playBtnEl = document.getElementById('play-pause-btn');
-                    if (playBtnEl) playBtnEl.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">play_arrow</span><span>Play</span>';
+                    currentAudio = window.masteredAudio;
+                    currentTrack = 'mastered';
+                    
+                    // Start playing the mastered track automatically
+                    setTimeout(async () => {
+                        try {
+                            await initAudioContext();
+                            currentAudio.muted = false;
+                            currentAudio.volume = 1.0;
+                            await currentAudio.play();
+                            isPlaying = true;
+                            document.getElementById('play-pause-btn').innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">pause</span><span>Pause</span>';
+                            
+                            if (audioMotion) {
+                                connectAudioToAudioMotion(currentAudio);
+                            }
+                            startVisualization();
+                            startProgressTracking();
+                            startABPositionSync();
+                            
+                            log('[AUTO-PLAY] Started mastered track automatically');
+                        } catch (e) {
+                            log(`[ERROR] Auto-play failed: ${e.message}`);
+                        }
+                    }, 500);
                 } else {
-                    // Preserve current position if playing
+                    // Seamlessly switch to mastered track if currently playing
                     if (currentAudio) {
                         abSyncedPosition = currentAudio.currentTime;
+                        seamlessTrackSwitch('mastered');
+                        log('[A/B] Seamlessly switched to mastered track during playback');
                     }
-                    log('[A/B] Preserved current playback state during mastering completion');
                 }
                 
                 // Complete progress and create completion notification
