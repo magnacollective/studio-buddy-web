@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Studio Buddy - Professional Audio Mastering</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
     <style>
         * {
             box-sizing: border-box;
@@ -496,19 +497,19 @@
         <!-- Desktop icons -->
         <div class="desktop-icons">
             <div class="desktop-icon" onclick="openWindow('studio-buddy')">
-                <div class="icon">🎵</div>
+                <div class="icon"><span class="material-symbols-outlined">music_note</span></div>
                 <div class="label">Studio Buddy<br>Audio Mastering</div>
             </div>
             <div class="desktop-icon" onclick="openWindow('analyzer')">
-                <div class="icon"></div>
+                <div class="icon"><span class="material-symbols-outlined">analytics</span></div>
                 <div class="label">Key/BPM<br>Analyzer</div>
             </div>
             <div class="desktop-icon" onclick="openWindow('vocal-remover')">
-                <div class="icon"></div>
+                <div class="icon"><span class="material-symbols-outlined">mic_off</span></div>
                 <div class="label">Vocal<br>Remover</div>
             </div>
             <div class="desktop-icon" onclick="openWindow('settings')">
-                <div class="icon"></div>
+                <div class="icon"><span class="material-symbols-outlined">settings</span></div>
                 <div class="label">System<br>Settings</div>
             </div>
         </div>
@@ -536,8 +537,8 @@
                             <div style="font-size: 9px; color: #666; margin-top: 2px;">Optional - style reference</div>
                         </div>
                         <div style="display: flex; flex-direction: column; justify-content: end; gap: 4px;">
-                            <button class="master-btn" onclick="startMastering()" id="master-button" style="height: 40px;">🎵 Master Audio</button>
-                            <button class="master-btn" onclick="resetForNewSong()" id="new-song-button" style="height: 32px; background: #c04000; font-size: 11px;" title="Clear cache and reset for new song">🔄 Master New Song</button>
+                            <button class="master-btn" onclick="startMastering()" id="master-button" style="height: 40px;">♪ Master Audio</button>
+                            <button class="master-btn" onclick="resetForNewSong()" id="new-song-button" style="height: 32px; background: #c04000; font-size: 11px;" title="Clear cache and reset for new song">Master New Song</button>
                         </div>
                     </div>
                 </div>
@@ -559,7 +560,7 @@
                         
                         <!-- Animated processing indicator -->
                         <div style="text-align: center; margin-top: 8px;">
-                            <div id="process-spinner" style="display: inline-block; animation: spin 1s linear infinite;">⚙️</div>
+                            <div id="process-spinner" style="display: inline-block; animation: spin 1s linear infinite;"></div>
                             <span id="process-dots" style="margin-left: 8px;">...</span>
                         </div>
                     </div>
@@ -570,8 +571,9 @@
                     <!-- Simple Playback Controls -->
                     <div style="display: flex; gap: 8px; margin-bottom: 12px;">
                         <button onclick="playPause()" id="play-pause-btn" 
-                                style="flex: 2; padding: 10px; font-size: 14px; font-weight: bold;">
-                            ▶️ Play
+                                style="flex: 2; padding: 10px; font-size: 14px; font-weight: bold; display: inline-flex; align-items: center; gap: 6px;">
+                            <span class="material-symbols-outlined" aria-hidden="true">play_arrow</span>
+                            <span>Play</span>
                         </button>
                         <button onclick="stopAudio()" style="flex: 1; padding: 10px; font-size: 12px;">Stop</button>
                         <button onclick="downloadMastered()" style="flex: 1; padding: 10px; font-size: 12px;">Download</button>
@@ -1967,7 +1969,7 @@
                 if (currentAudio) {
                     currentAudio.pause();
                     isPlaying = false;
-                    document.getElementById('play-pause-btn').innerHTML = '▶️ Play';
+                    document.getElementById('play-pause-btn').innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">play_arrow</span><span>Play</span>';
                     stopProgressTracking();
                     stopVisualization();
                     log('[PAUSE] Paused');
@@ -1980,7 +1982,7 @@
                 
                 await playAudio(trackType);
                 isPlaying = true;
-                document.getElementById('play-pause-btn').innerHTML = '⏸ Pause';
+                document.getElementById('play-pause-btn').innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">pause</span><span>Pause</span>';
             }
         }
 
@@ -2099,7 +2101,7 @@
             stopProgressTracking();
             stopVisualization();
             
-            document.getElementById('play-pause-btn').innerHTML = '▶️ Play';
+            document.getElementById('play-pause-btn').innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">play_arrow</span><span>Play</span>';
             document.getElementById('progress-fill').style.width = '0%';
             document.getElementById('current-time').textContent = '0:00';
             document.getElementById('total-time').textContent = '0:00';
