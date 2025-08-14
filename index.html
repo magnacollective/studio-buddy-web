@@ -972,10 +972,6 @@
             
             if (isPlaying) {
                 seamlessTrackSwitch('source');
-            } else {
-                // Just update current audio reference for play button
-                currentAudio = window.sourceAudio;
-                currentTrack = 'source';
             }
             
             log('[A/B] Switched to Original track');
@@ -992,10 +988,6 @@
             
             if (isPlaying) {
                 seamlessTrackSwitch('mastered');
-            } else {
-                // Just update current audio reference for play button
-                currentAudio = window.masteredAudio;
-                currentTrack = 'mastered';
             }
             
             log('[A/B] Switched to Mastered track');
@@ -1907,13 +1899,22 @@
                 
                 // Initialize A/B comparison system
                 abActiveTrack = 'source';
-                abSyncedPosition = 0;
                 updateABButtonStates();
-                currentAudio = window.sourceAudio;
-                currentTrack = 'source';
-                isPlaying = false;
-                const playBtnEl = document.getElementById('play-pause-btn');
-                if (playBtnEl) playBtnEl.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">play_arrow</span><span>Play</span>';
+                
+                // Don't override current playback state if audio is playing
+                if (!isPlaying) {
+                    abSyncedPosition = 0;
+                    currentAudio = window.sourceAudio;
+                    currentTrack = 'source';
+                    const playBtnEl = document.getElementById('play-pause-btn');
+                    if (playBtnEl) playBtnEl.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">play_arrow</span><span>Play</span>';
+                } else {
+                    // Preserve current position if playing
+                    if (currentAudio) {
+                        abSyncedPosition = currentAudio.currentTime;
+                    }
+                    log('[A/B] Preserved current playback state during mastering completion');
+                }
                 
                 // Complete progress and create completion notification
                 updateProcessProgress(100, 'Mastering complete!');
@@ -1983,28 +1984,42 @@
                 return;
             }
             
-            if (isPlaying) {
+            if (isPlaying && currentAudio) {
                 // Pause current playback
-                if (currentAudio) {
-                    currentAudio.pause();
-                    isPlaying = false;
-                    document.getElementById('play-pause-btn').innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">play_arrow</span><span>Play</span>';
-                    stopProgressTracking();
-                    stopVisualization();
-                    stopABPositionSync();
-                    log('[PAUSE] Paused');
-                }
+                currentAudio.pause();
+                isPlaying = false;
+                document.getElementById('play-pause-btn').innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">play_arrow</span><span>Play</span>';
+                stopProgressTracking();
+                stopVisualization();
+                stopABPositionSync();
+                log('[PAUSE] Paused');
             } else {
                 // Start playback using active A/B track
                 const trackType = abActiveTrack;
+                currentAudio = trackType === 'source' ? window.sourceAudio : window.masteredAudio;
+                currentTrack = trackType;
                 
-                await playAudio(trackType);
-                isPlaying = true;
-                document.getElementById('play-pause-btn').innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">pause</span><span>Pause</span>';
-                
-                // Start A/B position sync if both tracks available
-                if (window.sourceAudio && window.masteredAudio) {
-                    startABPositionSync();
+                if (currentAudio) {
+                    // Resume from synced position if available
+                    currentAudio.currentTime = abSyncedPosition;
+                    
+                    await currentAudio.play();
+                    isPlaying = true;
+                    document.getElementById('play-pause-btn').innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">pause</span><span>Pause</span>';
+                    
+                    // Connect to visualizer
+                    if (audioMotion) {
+                        connectAudioToAudioMotion(currentAudio);
+                    }
+                    startVisualization();
+                    startProgressTracking();
+                    
+                    // Start A/B position sync if both tracks available
+                    if (window.sourceAudio && window.masteredAudio) {
+                        startABPositionSync();
+                    }
+                    
+                    log(`[PLAY] Started ${trackType} track`);
                 }
             }
         }
@@ -2146,8 +2161,8 @@
             document.getElementById('current-time').textContent = '0:00';
             document.getElementById('total-time').textContent = '0:00';
             
-            // Keep current audio reference for next play
-            currentAudio = abActiveTrack === 'source' ? window.sourceAudio : window.masteredAudio;
+            // Clear current audio reference
+            currentAudio = null;
             
             log('[STOP] Audio stopped');
         }
