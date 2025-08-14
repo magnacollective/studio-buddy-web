@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Studio Buddy - Professional Audio Mastering</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <script type="module">
+        import AudioMotionAnalyzer from 'https://cdn.skypack.dev/audiomotion-analyzer?min';
+        window.AudioMotionAnalyzer = AudioMotionAnalyzer;
+    </script>
     <style>
         * {
             box-sizing: border-box;
@@ -478,13 +482,13 @@
     <div class="boot-screen" id="boot-screen">
         <div class="matrix-bg" id="boot-matrix"></div>
         <!-- Click to Start Button -->
-        <div class="boot-content">
+        <div class="boot-content" id="boot-ui">
+            <video class="boot-video" id="boot-video" src="assets/Video_Adjustment_and_Generation.mp4" playsinline muted loop autoplay></video>
             <div id="boot-start-button" style="background: #fff; color: #000; padding: 20px 40px; font-family: 'Courier New', monospace; font-size: 16px; border: 2px solid #000; cursor: pointer; animation: blink 1s infinite;">CLICK TO START</div>
         </div>
         
         <!-- Boot sequence (hidden initially) -->
         <div id="boot-sequence" class="boot-content" style="display: none;">
-            <video class="boot-video" id="boot-video" src="assets/Video_Adjustment_and_Generation.mp4" playsinline muted></video>
             <div class="boot-text" style="animation-delay: 0.3s;">STUDIO BUDDY BIOS Version 2.1</div>
             <div class="boot-text" style="animation-delay: 0.6s;">Copyright (C) 1995 StudioBuddy Technologies, Inc.</div>
             <div class="boot-text" style="animation-delay: 0.9s;">Performing POST...</div>
@@ -496,7 +500,7 @@
                 <div class="boot-progress-fill" id="boot-progress-fill"></div>
                 <div class="boot-percentage" id="boot-percentage">0%</div>
             </div>
-            <div class="boot-text" style="animation-delay: 3.0s; font-weight: bold; color: #0f0;">READY</div>
+            <div id="boot-ready" class="boot-text" style="display: none; font-weight: bold; color: #0f0;">READY</div>
         </div>
     </div>
 
@@ -648,7 +652,7 @@
                         </div>
                         
                         <!-- Main Visualizer Canvas -->
-                        <canvas id="visualizer" width="750" height="200" style="background: black; display: block; margin: 2px auto; border-radius: 4px;"></canvas>
+                        <div id="visualizer" style="width: 750px; height: 200px; background: black; display: block; margin: 2px auto; border-radius: 4px;"></div>
                         
                         <!-- Frequency Labels -->
                         <div style="display: flex; justify-content: space-between; font-size: 8px; color: #00ff00; margin-top: 2px; padding: 0 8px;">
@@ -2504,16 +2508,7 @@
                 // Now we can play beeps with user interaction
                 await playDOSBootBeeps();
                 
-                // Play boot video centered
-                const bootVideo = document.getElementById('boot-video');
-                if (bootVideo) {
-                    try {
-                        bootVideo.currentTime = 0;
-                        await bootVideo.play();
-                    } catch (e) {
-                        // Autoplay may fail; keep muted and require user click which already happened
-                    }
-                }
+                // Video is already playing in same position behind the start screen; keep looping
                 
                 // Continue with normal boot sequence
                 startBootAnimation();
@@ -2556,7 +2551,12 @@
                     if (pct < 100) {
                         requestAnimationFrame(tick);
                     } else {
-                        setTimeout(completeBootSequence, 300);
+                        // Show READY just before transition
+                        const ready = document.getElementById('boot-ready');
+                        if (ready) {
+                            ready.style.display = 'block';
+                        }
+                        setTimeout(completeBootSequence, 350);
                     }
                 };
                 requestAnimationFrame(tick);
