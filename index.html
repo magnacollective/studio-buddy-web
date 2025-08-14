@@ -114,6 +114,10 @@
             flex-direction: column;
         }
 
+        #studio-buddy-window {
+            min-width: 600px;
+        }
+
         .title-bar {
             background: linear-gradient(to right, #000080, rgba(0, 0, 128, 0.8));
             color: white;
@@ -124,6 +128,13 @@
             height: 18px;
             cursor: move;
             font-size: 11px;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .title-bar.inactive {
@@ -383,7 +394,7 @@
         </div>
 
         <!-- Studio Buddy Window -->
-        <div class="window" id="studio-buddy-window" style="top: 100px; left: 200px;">
+        <div class="window" id="studio-buddy-window" style="top: 100px; left: 200px; width: 600px;">
             <div class="title-bar">
                 <div class="title-text">Studio Buddy - Professional Audio Mastering</div>
                 <div class="title-controls">
@@ -393,13 +404,17 @@
             <div class="window-content">
                 <div class="section">
                     <h3>Audio Files</h3>
-                    <div>
-                        <label>Source Audio:</label>
-                        <input type="file" accept="audio/*" style="width: 100%; margin: 4px 0;">
-                    </div>
-                    <div>
-                        <label>Reference Audio:</label>
-                        <input type="file" accept="audio/*" style="width: 100%; margin: 4px 0;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label style="font-weight: bold; display: block; margin-bottom: 4px;">Source Audio:</label>
+                            <input type="file" accept="audio/*" style="width: 100%; margin: 4px 0;">
+                            <div style="font-size: 9px; color: #666; margin-top: 2px;">Required - your audio to master</div>
+                        </div>
+                        <div>
+                            <label style="font-weight: bold; display: block; margin-bottom: 4px;">Reference Audio:</label>
+                            <input type="file" accept="audio/*" style="width: 100%; margin: 4px 0;">
+                            <div style="font-size: 9px; color: #666; margin-top: 2px;">Optional - style reference</div>
+                        </div>
                     </div>
                 </div>
                 <div class="section">
@@ -430,33 +445,32 @@
                     <h3>Playback & A/B Comparison</h3>
                     
                     <!-- Simple Playback Controls -->
-                    <div style="display: flex; gap: 4px; margin-bottom: 12px;">
+                    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
                         <button onclick="playPause()" id="play-pause-btn" 
-                                style="flex: 1; padding: 10px; font-size: 14px; font-weight: bold;">
+                                style="flex: 2; padding: 10px; font-size: 14px; font-weight: bold;">
                             ▶️ Play
                         </button>
-                        <button onclick="stopAudio()" style="padding: 10px;">⏹️ Stop</button>
-                        <button onclick="downloadMastered()" style="padding: 10px;">💾 Download</button>
+                        <button onclick="stopAudio()" style="flex: 1; padding: 10px; font-size: 12px;">⏹️ Stop</button>
+                        <button onclick="downloadMastered()" style="flex: 1; padding: 10px; font-size: 12px;">💾 Download</button>
                     </div>
                     
-                    <!-- A/B Comparison Slider -->
+                    <!-- A/B Comparison Toggle -->
                     <div style="background: white; border: 2px inset #c0c0c0; padding: 12px; margin: 8px 0;">
                         <div style="font-size: 11px; font-weight: bold; margin-bottom: 8px; text-align: center;">
                             A/B Comparison
                         </div>
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div style="font-size: 10px; font-weight: bold; color: #0080ff; min-width: 50px;">
+                        <div style="display: flex; justify-content: center; gap: 8px;">
+                            <button id="ab-original-btn" onclick="switchToOriginal()" 
+                                    style="flex: 1; padding: 12px; font-size: 12px; font-weight: bold; background: linear-gradient(to bottom, #0080ff, #0066cc); color: white; border: 2px outset #0080ff;">
                                 🎵 Original
-                            </div>
-                            <input type="range" id="ab-slider" min="0" max="100" value="0" 
-                                   oninput="updateABSlider(this.value)" 
-                                   style="flex: 1; height: 20px; background: linear-gradient(to right, #0080ff, #ff8800);">
-                            <div style="font-size: 10px; font-weight: bold; color: #ff8800; min-width: 50px; text-align: right;">
+                            </button>
+                            <button id="ab-mastered-btn" onclick="switchToMastered()" disabled
+                                    style="flex: 1; padding: 12px; font-size: 12px; font-weight: bold; background: #c0c0c0; color: #808080; border: 2px outset #c0c0c0;">
                                 ✨ Mastered
-                            </div>
+                            </button>
                         </div>
                         <div id="ab-status" style="text-align: center; font-size: 10px; margin-top: 8px; color: #666;">
-                            Move slider to compare Original ↔ Mastered
+                            Click buttons to switch between Original and Mastered
                         </div>
                     </div>
                     
@@ -496,7 +510,7 @@
                         </div>
                         
                         <!-- Main Visualizer Canvas -->
-                        <canvas id="visualizer" width="350" height="200" style="background: black; display: block; margin: 2px auto; border-radius: 4px;"></canvas>
+                        <canvas id="visualizer" width="550" height="200" style="background: black; display: block; margin: 2px auto; border-radius: 4px;"></canvas>
                         
                         <!-- Frequency Labels -->
                         <div style="display: flex; justify-content: space-between; font-size: 8px; color: #00ff00; margin-top: 2px; padding: 0 8px;">
@@ -656,6 +670,12 @@
         }
 
         function hideProcessProgress() {
+            // Clear progress timer if it exists
+            if (progressTimer) {
+                clearInterval(progressTimer);
+                progressTimer = null;
+            }
+            
             document.getElementById('processing-progress').style.display = 'none';
             document.getElementById('master-button').disabled = false;
             document.getElementById('master-button').style.opacity = '1';
@@ -666,15 +686,22 @@
         let progressStartTime = 0;
         const TOTAL_PROCESS_TIME = 78000; // 1.3 minutes in milliseconds
 
-        function updateProgress(percentage, status) {
-            document.getElementById('process-percentage').textContent = Math.round(percentage) + '%';
-            document.getElementById('process-bar').style.width = percentage + '%';
-            document.getElementById('process-status').textContent = status;
+        function updateProcessProgress(percentage, status) {
+            const processPercentage = document.getElementById('process-percentage');
+            const processBar = document.getElementById('process-bar');
+            const processStatus = document.getElementById('process-status');
+            const processDots = document.getElementById('process-dots');
+            
+            if (processPercentage) processPercentage.textContent = Math.round(percentage) + '%';
+            if (processBar) processBar.style.width = percentage + '%';
+            if (processStatus) processStatus.textContent = status;
             
             // Update dots animation
-            const dots = ['.', '..', '...'];
-            const dotIndex = Math.floor(Date.now() / 500) % 3;
-            document.getElementById('process-dots').textContent = dots[dotIndex];
+            if (processDots) {
+                const dots = ['.', '..', '...'];
+                const dotIndex = Math.floor(Date.now() / 500) % 3;
+                processDots.textContent = dots[dotIndex];
+            }
         }
 
         function startRealisticProgress() {
@@ -682,6 +709,9 @@
             
             progressStartTime = Date.now();
             showProcessProgress('Professional Audio Mastering');
+            
+            // Start with 0% and immediate update
+            updateProcessProgress(0, 'Initializing mastering engine...');
             
             // Progress phases with realistic timing
             const phases = [
@@ -694,16 +724,13 @@
                 { percentage: 65, status: 'Processing stereo imaging...', delay: 48000 },
                 { percentage: 75, status: 'Applying limiting and loudness...', delay: 58000 },
                 { percentage: 85, status: 'Rendering final output...', delay: 68000 },
-                { percentage: 95, status: 'Downloading mastered audio...', delay: 73000 },
-                { percentage: 100, status: 'Mastering complete!', delay: 78000 }
+                { percentage: 95, status: 'Downloading mastered audio...', delay: 73000 }
             ];
             
+            // Schedule phase updates
             phases.forEach(phase => {
                 setTimeout(() => {
-                    updateProgress(phase.percentage, phase.status);
-                    if (phase.percentage === 100) {
-                        setTimeout(() => hideProcessProgress(), 2000);
-                    }
+                    updateProcessProgress(phase.percentage, phase.status);
                 }, phase.delay);
             });
             
@@ -712,15 +739,33 @@
                 const elapsed = Date.now() - progressStartTime;
                 const totalProgress = Math.min((elapsed / TOTAL_PROCESS_TIME) * 100, 100);
                 
-                // Only update if we're between major phases
-                const currentPhase = phases.find(p => elapsed < p.delay);
-                if (currentPhase) {
-                    const smoothProgress = Math.min(totalProgress, currentPhase.percentage - 1);
-                    document.getElementById('process-bar').style.width = smoothProgress + '%';
+                // Find current phase for smooth interpolation
+                let currentPhaseProgress = 0;
+                for (let i = 0; i < phases.length; i++) {
+                    if (elapsed < phases[i].delay) {
+                        const prevPercentage = i > 0 ? phases[i-1].percentage : 0;
+                        const prevDelay = i > 0 ? phases[i-1].delay : 0;
+                        const progressInPhase = (elapsed - prevDelay) / (phases[i].delay - prevDelay);
+                        currentPhaseProgress = prevPercentage + (phases[i].percentage - prevPercentage) * progressInPhase;
+                        break;
+                    }
+                }
+                
+                // Update smooth progress
+                const smoothProgress = Math.min(Math.max(currentPhaseProgress, 0), 95); // Cap at 95% until completion
+                const processBar = document.getElementById('process-bar');
+                const processPercentage = document.getElementById('process-percentage');
+                
+                if (processBar) {
+                    processBar.style.width = smoothProgress + '%';
+                }
+                if (processPercentage) {
+                    processPercentage.textContent = Math.round(smoothProgress) + '%';
                 }
                 
                 if (elapsed >= TOTAL_PROCESS_TIME) {
                     clearInterval(progressTimer);
+                    progressTimer = null;
                 }
             }, 200);
         }
@@ -758,29 +803,63 @@
             log(`⏩ Seeking to ${Math.floor(time / 60)}:${Math.floor(time % 60).toString().padStart(2, '0')}`);
         }
 
-        // A/B Slider functionality
-        function updateABSlider(value) {
-            const percentage = parseInt(value);
+        // A/B Toggle functionality
+        function switchToOriginal() {
+            if (!window.sourceAudio) {
+                log('❌ No original audio loaded');
+                return;
+            }
+            
+            // Update button states
+            const originalBtn = document.getElementById('ab-original-btn');
+            const masteredBtn = document.getElementById('ab-mastered-btn');
             const abStatus = document.getElementById('ab-status');
             
-            if (percentage === 0) {
-                abStatus.textContent = '🎵 Playing Original';
-                abStatus.style.color = '#0080ff';
-                if (isPlaying) switchToTrack('source');
-            } else if (percentage === 100) {
-                abStatus.textContent = '✨ Playing Mastered';
-                abStatus.style.color = '#ff8800';
-                if (isPlaying) switchToTrack('mastered');
-            } else {
-                abStatus.textContent = `Mix: ${100-percentage}% Original | ${percentage}% Mastered`;
-                abStatus.style.color = '#666';
-                // For now, just switch to the dominant track
-                if (percentage < 50 && currentTrack !== 'source') {
-                    if (isPlaying) switchToTrack('source');
-                } else if (percentage >= 50 && currentTrack !== 'mastered') {
-                    if (isPlaying) switchToTrack('mastered');
-                }
+            originalBtn.style.background = 'linear-gradient(to bottom, #0080ff, #0066cc)';
+            originalBtn.style.color = 'white';
+            originalBtn.style.border = '2px inset #0080ff';
+            
+            masteredBtn.style.background = '#c0c0c0';
+            masteredBtn.style.color = 'black';
+            masteredBtn.style.border = '2px outset #c0c0c0';
+            
+            abStatus.textContent = '🎵 Playing Original Track';
+            abStatus.style.color = '#0080ff';
+            
+            if (isPlaying) {
+                switchToTrack('source');
             }
+            
+            log('🎵 Switched to Original track');
+        }
+        
+        function switchToMastered() {
+            if (!window.masteredAudio) {
+                log('❌ No mastered audio available. Run mastering first.');
+                return;
+            }
+            
+            // Update button states
+            const originalBtn = document.getElementById('ab-original-btn');
+            const masteredBtn = document.getElementById('ab-mastered-btn');
+            const abStatus = document.getElementById('ab-status');
+            
+            originalBtn.style.background = '#c0c0c0';
+            originalBtn.style.color = 'black';
+            originalBtn.style.border = '2px outset #c0c0c0';
+            
+            masteredBtn.style.background = 'linear-gradient(to bottom, #ff8800, #cc6600)';
+            masteredBtn.style.color = 'white';
+            masteredBtn.style.border = '2px inset #ff8800';
+            
+            abStatus.textContent = '✨ Playing Mastered Track';
+            abStatus.style.color = '#ff8800';
+            
+            if (isPlaying) {
+                switchToTrack('mastered');
+            }
+            
+            log('✨ Switched to Mastered track');
         }
 
         function switchToTrack(trackType) {
@@ -812,28 +891,42 @@
         }
 
         function startVisualization() {
-            if (vizAnimationFrame) return;
-            
             const canvas = document.getElementById('visualizer');
+            if (!canvas) return;
+            
             const ctx = canvas.getContext('2d');
             
             function animate() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
-                // Generate fake data for now (replace with real audio analysis later)
+                // Generate realistic fake data that varies with music
                 const dataArray = new Uint8Array(64);
+                const time = Date.now() * 0.001;
+                
                 for (let i = 0; i < dataArray.length; i++) {
-                    dataArray[i] = Math.random() * 255 * (isPlaying ? 1 : 0.1);
+                    if (isPlaying) {
+                        // Create realistic frequency response simulation
+                        const freq = i / dataArray.length;
+                        const bassBoost = freq < 0.1 ? 2 : 1;
+                        const trebleRoll = freq > 0.8 ? 0.5 : 1;
+                        const musicValue = Math.sin(time * (2 + freq * 8)) * Math.cos(time * (1 + freq * 3));
+                        dataArray[i] = Math.max(0, Math.min(255, 
+                            (Math.abs(musicValue) * 200 + Math.random() * 50) * bassBoost * trebleRoll
+                        ));
+                    } else {
+                        dataArray[i] = Math.random() * 30; // Low ambient when paused
+                    }
                 }
                 
                 drawVisualization(ctx, dataArray, canvas.width, canvas.height);
                 
-                if (isPlaying) {
-                    vizAnimationFrame = requestAnimationFrame(animate);
-                }
+                // Continue animation regardless of playing state
+                vizAnimationFrame = requestAnimationFrame(animate);
             }
             
-            animate();
+            if (!vizAnimationFrame) {
+                animate();
+            }
         }
 
         function stopVisualization() {
@@ -958,6 +1051,79 @@
             }
         }
 
+        // Completion notification functions
+        function playCompletionSound() {
+            try {
+                // Create a simple completion sound using Web Audio API
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Create a pleasant "ding" sound
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(1200, audioContext.currentTime + 0.1);
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.4);
+                
+                log('🔔 Completion sound played');
+            } catch (error) {
+                log('🔇 Could not play completion sound');
+            }
+        }
+        
+        function showCompletionNotification() {
+            // Create a Windows 95-style notification popup
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: #c0c0c0;
+                border: 2px outset #c0c0c0;
+                padding: 16px;
+                z-index: 9999;
+                box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.3);
+                font-family: 'MS Sans Serif', sans-serif;
+                font-size: 11px;
+                min-width: 300px;
+                text-align: center;
+            `;
+            
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                    <div style="font-size: 32px;">✅</div>
+                    <div>
+                        <div style="font-weight: bold; font-size: 12px; margin-bottom: 4px;">Mastering Complete!</div>
+                        <div style="font-size: 10px; color: #666;">Your audio has been professionally mastered</div>
+                    </div>
+                </div>
+                <button onclick="this.parentElement.remove()" 
+                        style="background: #c0c0c0; border: 2px outset #c0c0c0; padding: 4px 12px; font-size: 11px; cursor: pointer;">
+                    OK
+                </button>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 5000);
+            
+            log('💬 Completion notification shown');
+        }
+
         // Create Matrix rain
         function createMatrix() {
             const matrix = document.getElementById('matrix-bg');
@@ -996,7 +1162,14 @@
             console.scrollTop = console.scrollHeight;
         }
 
-        // Window management
+        // Simplified and reliable window dragging system
+        let isDragging = false;
+        let currentDragWindow = null;
+        let startX = 0;
+        let startY = 0;
+        let startLeft = 0;
+        let startTop = 0;
+
         function openWindow(windowId) {
             const window = document.getElementById(windowId + '-window');
             if (window) {
@@ -1015,16 +1188,139 @@
         }
 
         function bringToFront(windowElement) {
+            // Reset all windows to background
             document.querySelectorAll('.window').forEach(w => {
                 w.style.zIndex = '100';
                 const titleBar = w.querySelector('.title-bar');
                 if (titleBar) titleBar.classList.add('inactive');
             });
             
+            // Bring clicked window to front
             windowElement.style.zIndex = '200';
             const titleBar = windowElement.querySelector('.title-bar');
             if (titleBar) titleBar.classList.remove('inactive');
         }
+
+        function setupWindowDragging() {
+            // Set up dragging for all windows with Safari/mobile compatibility
+            document.querySelectorAll('.window').forEach(windowElement => {
+                const titleBar = windowElement.querySelector('.title-bar');
+                if (!titleBar) return;
+
+                // Safari-compatible styles
+                titleBar.style.cursor = 'move';
+                titleBar.style.userSelect = 'none';
+                titleBar.style.webkitUserSelect = 'none';
+                titleBar.style.mozUserSelect = 'none';
+                titleBar.style.msUserSelect = 'none';
+                titleBar.style.touchAction = 'none'; // Prevent touch scrolling
+
+                // Mouse events
+                titleBar.addEventListener('mousedown', handleDragStart, { passive: false });
+                
+                // Touch events for mobile Safari
+                titleBar.addEventListener('touchstart', handleDragStart, { passive: false });
+                
+                function handleDragStart(e) {
+                    // Don't drag if clicking on window controls (close button)
+                    if (e.target.classList.contains('title-btn')) {
+                        return;
+                    }
+
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    isDragging = true;
+                    currentDragWindow = windowElement;
+                    
+                    // Bring window to front
+                    bringToFront(windowElement);
+                    
+                    // Get coordinates from mouse or touch
+                    const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+                    const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+                    
+                    // Record starting positions
+                    startX = clientX;
+                    startY = clientY;
+                    
+                    const rect = windowElement.getBoundingClientRect();
+                    startLeft = rect.left;
+                    startTop = rect.top;
+                    
+                    // Change cursor
+                    titleBar.style.cursor = 'grabbing';
+                    document.body.style.cursor = 'grabbing';
+                    document.body.style.userSelect = 'none';
+                    
+                    log(`🖱️ Started dragging ${windowElement.id} at (${clientX}, ${clientY})`);
+                    log(`📍 Window initial position: (${startLeft}, ${startTop})`);
+                    log(`🔧 Event type: ${e.type}, has touches: ${!!e.touches}`);
+                }
+            });
+        }
+
+        // Cross-browser compatible event handlers
+        function handleDragMove(e) {
+            if (!isDragging || !currentDragWindow) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Get coordinates from mouse or touch
+            const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+            const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+            
+            // Calculate new position
+            const deltaX = clientX - startX;
+            const deltaY = clientY - startY;
+            
+            let newLeft = startLeft + deltaX;
+            let newTop = startTop + deltaY;
+            
+            // Keep window within bounds
+            const windowWidth = currentDragWindow.offsetWidth;
+            const windowHeight = currentDragWindow.offsetHeight;
+            const maxLeft = window.innerWidth - 100; // Keep at least 100px visible
+            const maxTop = window.innerHeight - 100;
+            
+            newLeft = Math.max(-windowWidth + 100, Math.min(newLeft, maxLeft));
+            newTop = Math.max(0, Math.min(newTop, maxTop));
+            
+            // Apply new position
+            currentDragWindow.style.left = newLeft + 'px';
+            currentDragWindow.style.top = newTop + 'px';
+            
+            // Debug logging (remove this once working)
+            if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+                console.log(`🔄 Dragging: delta(${deltaX}, ${deltaY}) -> position(${newLeft}, ${newTop})`);
+            }
+        }
+
+        function handleDragEnd(e) {
+            if (isDragging && currentDragWindow) {
+                const titleBar = currentDragWindow.querySelector('.title-bar');
+                if (titleBar) {
+                    titleBar.style.cursor = 'move';
+                }
+                document.body.style.cursor = 'default';
+                document.body.style.userSelect = 'auto';
+                
+                log(`✅ Finished dragging ${currentDragWindow.id}`);
+            }
+            
+            isDragging = false;
+            currentDragWindow = null;
+        }
+
+        // Add global event listeners with Safari compatibility
+        document.addEventListener('mousemove', handleDragMove, { passive: false });
+        document.addEventListener('mouseup', handleDragEnd, { passive: false });
+        
+        // Touch events for mobile Safari
+        document.addEventListener('touchmove', handleDragMove, { passive: false });
+        document.addEventListener('touchend', handleDragEnd, { passive: false });
+        document.addEventListener('touchcancel', handleDragEnd, { passive: false });
 
         // API Configuration - uses environment variables in production
         const API_BASE_URL = window.location.hostname === 'localhost' 
@@ -1110,18 +1406,37 @@
                 window.masteredAudio.onloadeddata = () => log('✅ Mastered audio loaded');
                 window.sourceAudio.onloadeddata = () => log('✅ Source audio loaded');
                 
-                // Enable A/B slider
-                document.getElementById('ab-slider').disabled = false;
-                document.getElementById('ab-status').textContent = '🎵 Ready for A/B comparison';
+                // Enable mastered button and update UI
+                const masteredBtn = document.getElementById('ab-mastered-btn');
+                masteredBtn.disabled = false;
+                masteredBtn.style.background = '#c0c0c0';
+                masteredBtn.style.color = 'black';
+                masteredBtn.style.border = '2px outset #c0c0c0';
                 
-                // Set slider to original by default
-                document.getElementById('ab-slider').value = 0;
-
+                document.getElementById('ab-status').textContent = '🎵 Ready for A/B comparison - Click buttons to switch';
+                
+                // Complete progress and create completion notification
+                updateProcessProgress(100, 'Mastering complete!');
+                
+                // Play completion sound and show notification
+                playCompletionSound();
+                showCompletionNotification();
+                
+                // Hide progress bar after notification
+                setTimeout(() => {
+                    hideProcessProgress();
+                }, 3000);
+                
                 log('✅ Professional mastering complete!');
                 log('🎵 Ready for A/B comparison');
-                log('💡 Click the A/B buttons to compare, or use Quick A/B for instant switching!');
+                log('💡 Click the A/B buttons to compare Original ↔ Mastered!');
 
             } catch (error) {
+                // Clear progress timer and hide progress bar on error
+                if (progressTimer) {
+                    clearInterval(progressTimer);
+                    progressTimer = null;
+                }
                 hideProcessProgress();
                 
                 if (error.message.includes('CORS') || error.message.includes('Access-Control')) {
@@ -1174,9 +1489,10 @@
                     log('⏸️ Paused');
                 }
             } else {
-                // Determine which track to play based on slider
-                const sliderValue = document.getElementById('ab-slider').value;
-                const trackType = sliderValue < 50 ? 'source' : (window.masteredAudio ? 'mastered' : 'source');
+                // Determine which track to play based on button states
+                const masteredBtn = document.getElementById('ab-mastered-btn');
+                const isMasteredActive = masteredBtn.style.background.includes('ff8800') || masteredBtn.style.background.includes('gradient');
+                const trackType = isMasteredActive && window.masteredAudio ? 'mastered' : 'source';
                 
                 await playAudio(trackType);
                 isPlaying = true;
@@ -1269,7 +1585,8 @@
             
             document.getElementById('play-pause-btn').innerHTML = '▶️ Play';
             document.getElementById('progress-fill').style.width = '0%';
-            document.getElementById('time-display').textContent = '0:00 / 0:00';
+            document.getElementById('current-time').textContent = '0:00';
+            document.getElementById('total-time').textContent = '0:00';
             
             log('⏹️ Audio stopped');
         }
@@ -1332,7 +1649,7 @@
         // Progress tracking
         function startProgressTracking() {
             stopProgressTracking();
-            progressInterval = setInterval(updateProgress, 100);
+            progressInterval = setInterval(updateProgressTracking, 100);
         }
 
         function stopProgressTracking() {
@@ -1342,7 +1659,7 @@
             }
         }
 
-        function updateProgress() {
+        function updateProgressTracking() {
             if (!currentAudio) return;
             
             const progress = (currentAudio.currentTime / currentAudio.duration) * 100;
@@ -1350,7 +1667,14 @@
             const total = formatTime(currentAudio.duration);
             
             document.getElementById('progress-fill').style.width = progress + '%';
-            document.getElementById('time-display').textContent = `${current} / ${total}`;
+            document.getElementById('current-time').textContent = current;
+            document.getElementById('total-time').textContent = total;
+            
+            // Update track title
+            const trackTitle = document.getElementById('track-title');
+            if (trackTitle) {
+                trackTitle.textContent = currentTrack === 'source' ? 'Original Track' : 'Mastered Track';
+            }
         }
 
         function formatTime(seconds) {
@@ -1548,8 +1872,20 @@
             createMatrix();
             updateClock();
             setInterval(updateClock, 1000);
+            
+            // Set up window dragging system
+            setupWindowDragging();
+            
+            // Start visualizer animation immediately
+            startVisualization();
+            
             log('🚀 Studio Buddy Web initialized');
             log('🎯 Click desktop icons to open windows');
+            log('🖱️ Windows are draggable by their title bars');
+            log('💡 Drag by clicking and holding the blue title bar');
+            log(`🌐 Browser: ${navigator.userAgent.includes('Safari') ? 'Safari' : 'Other'}`);
+            log(`📱 Touch support: ${('ontouchstart' in window) ? 'Yes' : 'No'}`);
+            log(`🔗 URL: ${window.location.hostname}`);
         });
 
         // Vocal Remover Functions
