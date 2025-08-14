@@ -1038,14 +1038,20 @@
                     log('[AUDIO] Audio context activated');
                 }
                 
-                // If audio is currently playing, reconnect it
-                if (currentAudio && isPlaying) {
+                // Try to initialize audioMotion first
+                const audioMotionReady = await initAudioMotion();
+                
+                if (audioMotionReady && currentAudio && isPlaying) {
+                    // Connect to audioMotion
+                    connectAudioToAudioMotion(currentAudio);
+                } else if (currentAudio && isPlaying) {
+                    // Fallback to original visualizer
                     connectAudioToAnalyser(currentAudio);
-                    log('[VIZ] Reconnected current audio to visualizer');
+                    log('[VIZ] Reconnected current audio to fallback visualizer');
                 }
                 
-                // Start visualization if not already running
-                if (!vizAnimationFrame) {
+                // Start visualization if not already running (for fallback)
+                if (!audioMotionReady && !vizAnimationFrame) {
                     startVisualization();
                 }
                 
@@ -1193,6 +1199,55 @@
                 
                 ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
                 ctx.fillRect(x + 1, y, barWidth - 2, barHeight);
+            }
+        }
+
+        // AudioMotion integration
+        let audioMotion = null;
+
+        async function initAudioMotion() {
+            if (!audioMotion && window.AudioMotionAnalyzer) {
+                try {
+                    const container = document.getElementById('visualizer');
+                    audioMotion = new window.AudioMotionAnalyzer(container, {
+                        mode: 10,
+                        gradient: 'classic',
+                        showBgColor: true,
+                        bgAlpha: 0.7,
+                        showLeds: false,
+                        showScaleX: false,
+                        showScaleY: false,
+                        showPeaks: true,
+                        showFPS: false,
+                        smoothing: 0.5,
+                        minFreq: 20,
+                        maxFreq: 22000
+                    });
+                    
+                    log('[VIZ] audioMotion initialized successfully');
+                    return true;
+                } catch (error) {
+                    log(`[ERROR] Failed to initialize audioMotion: ${error.message}`);
+                    return false;
+                }
+            }
+            return !!audioMotion;
+        }
+
+        function connectAudioToAudioMotion(audioElement) {
+            if (!audioMotion || !audioElement) return false;
+            
+            try {
+                if (audioMotion.audioSource) {
+                    audioMotion.disconnectInput();
+                }
+                
+                audioMotion.connectInput(audioElement);
+                log('[VIZ] Audio connected to audioMotion visualizer');
+                return true;
+            } catch (error) {
+                log(`[ERROR] Failed to connect audio to audioMotion: ${error.message}`);
+                return false;
             }
         }
 
@@ -2036,7 +2091,11 @@
                 currentTrack = type;
                 
                 // Connect audio to visualizer BEFORE playing
-                connectAudioToAnalyser(audio);
+                if (audioMotion) {
+                    connectAudioToAudioMotion(audio);
+                } else {
+                    connectAudioToAnalyser(audio);
+                }
                 
                 // Ensure audio context is resumed (required by browsers)
                 if (audioContext.state === 'suspended') {
