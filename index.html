@@ -932,7 +932,7 @@
 
         <!-- Taskbar -->
         <div class="taskbar">
-            <div class="start-button" id="start-button" onclick="handleStartClick()">
+            <div class="start-button" id="start-button">
                 <span>🪟</span>
                 <span id="start-text">Sign In</span>
             </div>
@@ -3722,19 +3722,38 @@
             sessionManager: typeof window.sessionManager
         });
         
-        // Test the click handler directly
+        // Add robust event listener for start button
         setTimeout(() => {
-            console.log('🔧 DEBUG: Testing handleStartClick function...');
+            console.log('🔧 DEBUG: Setting up start button click handler...');
             console.log('🔧 DEBUG: handleStartClick exists:', typeof window.handleStartClick);
+            console.log('🔧 DEBUG: sessionManager available:', !!window.sessionManager);
             
-            // Add backup click handler if the global function doesn't exist
             const startButton = document.getElementById('start-button');
-            if (startButton && typeof window.handleStartClick !== 'function') {
-                console.log('🔧 DEBUG: Adding backup click handler');
+            if (startButton) {
+                // Remove any existing onclick attribute
+                startButton.removeAttribute('onclick');
+                
+                // Add robust event listener
                 startButton.addEventListener('click', function(e) {
-                    console.log('🔧 DEBUG: Backup click handler triggered');
-                    alert('Debug: Button clicked! Session manager: ' + (window.sessionManager ? 'Available' : 'Missing'));
+                    console.log('🔧 DEBUG: Start button clicked');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    if (window.sessionManager && typeof window.sessionManager.handleStartButtonClick === 'function') {
+                        console.log('🔧 DEBUG: Calling session manager handleStartButtonClick');
+                        window.sessionManager.handleStartButtonClick();
+                    } else if (typeof window.handleStartClick === 'function') {
+                        console.log('🔧 DEBUG: Calling global handleStartClick');
+                        window.handleStartClick();
+                    } else {
+                        console.error('🔧 DEBUG: No click handler available');
+                        alert('Authentication system not ready. Please refresh the page.');
+                    }
                 });
+                
+                console.log('🔧 DEBUG: Start button event listener added successfully');
+            } else {
+                console.error('🔧 DEBUG: Start button element not found');
             }
         }, 2000);
     </script>
