@@ -12,10 +12,13 @@ class RailwayAPIManager {
     async analyzeAudio(audioBuffer, options = {}) {
         const startTime = performance.now();
         console.log('🚀 Railway API analysis starting...');
+        console.log('📡 Target URL:', this.baseURL);
+        console.log('🎵 Audio buffer:', audioBuffer);
 
         try {
             // Convert AudioBuffer to File/Blob for upload
             const audioFile = await this.audioBufferToFile(audioBuffer);
+            console.log('📄 Audio file created:', audioFile);
             
             // Call Railway API for analysis
             const result = await this.callAnalyzeEndpoint(audioFile, options);
@@ -25,6 +28,7 @@ class RailwayAPIManager {
 
         } catch (error) {
             console.error('❌ Railway API analysis error:', error);
+            console.error('❌ Full error details:', error);
             throw new Error(`Railway API analysis failed: ${error.message}`);
         }
     }
@@ -61,13 +65,20 @@ class RailwayAPIManager {
         if (options.profile) formData.append('profile', options.profile);
         if (options.backend) formData.append('backend', options.backend);
 
+        console.log('🚀 Sending request to:', `${this.baseURL}/analyze`);
+        console.log('📋 Options:', options);
+
         const response = await this.makeRequest(`${this.baseURL}/analyze`, {
             method: 'POST',
             body: formData
         });
 
+        console.log('📥 Response status:', response.status, response.statusText);
+
         if (!response.ok) {
-            throw new Error(`Analysis request failed: ${response.status} ${response.statusText}`);
+            const errorText = await response.text();
+            console.error('❌ Error response body:', errorText);
+            throw new Error(`Analysis request failed: ${response.status} ${response.statusText} - ${errorText}`);
         }
 
         const result = await response.json();

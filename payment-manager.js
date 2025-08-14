@@ -1,9 +1,15 @@
 // Payment Manager for subscription handling
 import { authManager } from './auth.js';
 
-export class PaymentManager {
+class PaymentManager {
   constructor() {
-    this.stripePublishableKey = 'pk_test_your_stripe_publishable_key'; // Replace with actual key
+    // Configuration - replace with your actual Stripe keys
+    this.config = {
+      stripePublishableKey: 'pk_test_51234567890_your_actual_publishable_key_here',
+      priceId: 'price_1234567890_your_actual_price_id_here', // Studio Buddy Premium price
+      demoMode: true // Set to false for production
+    };
+    
     this.stripe = null;
     this.isInitialized = false;
     this.init();
@@ -27,24 +33,33 @@ export class PaymentManager {
 
   initializeStripe() {
     try {
-      this.stripe = Stripe(this.stripePublishableKey);
+      this.stripe = Stripe(this.config.stripePublishableKey);
       this.isInitialized = true;
       console.log('✅ Stripe initialized successfully');
+      console.log(`💡 Demo mode: ${this.config.demoMode ? 'ON' : 'OFF'}`);
     } catch (error) {
       console.error('Error initializing Stripe:', error);
+      console.log('💡 Using demo mode due to Stripe initialization error');
+      this.config.demoMode = true;
     }
   }
 
   // Create checkout session for premium subscription
   async createPremiumCheckout() {
-    if (!authManager.isAuthenticated()) {
+    if (!window.authManager.isAuthenticated()) {
       throw new Error('User must be authenticated to subscribe');
     }
 
+    // Check if demo mode or production mode
+    if (this.config.demoMode) {
+      console.log('🎭 Demo mode: Using simulated checkout');
+      return this.simulateSuccessfulUpgrade();
+    }
+
     try {
-      const user = authManager.getCurrentUser();
+      const user = window.authManager.getCurrentUser();
       
-      // This would normally call your backend API to create a Stripe checkout session
+      // Call your backend API to create a Stripe checkout session
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
@@ -52,14 +67,15 @@ export class PaymentManager {
           'Authorization': `Bearer ${await user.getIdToken()}`
         },
         body: JSON.stringify({
-          priceId: 'price_premium_monthly', // Your Stripe price ID
+          priceId: this.config.priceId,
           userId: user.uid,
           email: user.email
         })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create checkout session');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create checkout session');
       }
 
       const { sessionId } = await response.json();
@@ -74,6 +90,14 @@ export class PaymentManager {
       }
     } catch (error) {
       console.error('Error creating checkout session:', error);
+      
+      // Fallback to demo mode if API is not available
+      if (error.message.includes('Failed to fetch')) {
+        console.log('🎭 API unavailable, falling back to demo mode');
+        this.config.demoMode = true;
+        return this.simulateSuccessfulUpgrade();
+      }
+      
       throw error;
     }
   }

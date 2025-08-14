@@ -20,7 +20,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "firebase": "^10.7.1"
+    "firebase": "^10.7.1",
+    "stripe": "^14.0.0"
   },
   "devDependencies": {
     "serve": "^14.2.0"

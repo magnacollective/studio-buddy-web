@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Direct Railway API Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        button { padding: 10px 20px; margin: 10px; }
+        #log { background: #f0f0f0; padding: 15px; margin: 15px 0; height: 400px; overflow-y: auto; }
+        #audio-upload { margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Direct Railway API Test</h1>
+    
+    <div id="audio-upload">
+        <input type="file" id="audioFile" accept="audio/*">
+        <button onclick="testRailwayAPI()">Test Railway API</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <div id="log"></div>
+
+    <script src="railway-api-manager.js"></script>
+    <script>
+        let railwayAPI;
+        let currentAudioBuffer;
+
+        window.addEventListener('load', () => {
+            railwayAPI = new RailwayAPIManager();
+            log('✅ Railway API Manager initialized');
+            log('📡 API URL: ' + railwayAPI.baseURL);
+        });
+
+        document.getElementById('audioFile').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                log('📄 Loading audio file: ' + file.name);
+                
+                // Create audio context
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Read file
+                const arrayBuffer = await file.arrayBuffer();
+                currentAudioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                
+                log('✅ Audio loaded: ' + currentAudioBuffer.duration.toFixed(2) + 's, ' + currentAudioBuffer.sampleRate + 'Hz');
+            } catch (error) {
+                log('❌ Error loading audio: ' + error.message);
+            }
+        });
+
+        async function testRailwayAPI() {
+            if (!currentAudioBuffer) {
+                alert('Please select an audio file first');
+                return;
+            }
+
+            try {
+                log('🚀 Testing Railway API directly...');
+                log('📡 URL: ' + railwayAPI.baseURL + '/analyze');
+                
+                const result = await railwayAPI.analyzeAudio(currentAudioBuffer, {
+                    window_sec: 60,
+                    prefer_min_bpm: 80,
+                    prefer_max_bpm: 180,
+                    profile: 'accurate',
+                    backend: 'pro'
+                });
+                
+                log('✅ SUCCESS! BPM: ' + result.bpm + ', Key: ' + result.key);
+                log('📊 Full result: ' + JSON.stringify(result, null, 2));
+                
+            } catch (error) {
+                log('❌ FAILED: ' + error.message);
+                console.error('Full error:', error);
+            }
+        }
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+    </script>
+</body>
+</html>

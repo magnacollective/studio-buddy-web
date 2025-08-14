@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Successful - Studio Buddy</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'MS Sans Serif', sans-serif;
+            font-size: 11px;
+            background: #008080;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .success-container {
+            background: #c0c0c0;
+            border: 2px outset #c0c0c0;
+            padding: 30px;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 4px 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .success-header {
+            background: linear-gradient(90deg, #00cc00, #00aa00);
+            color: white;
+            padding: 8px 12px;
+            margin: -30px -30px 20px -30px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .success-icon {
+            font-size: 48px;
+            color: #00cc00;
+            margin-bottom: 20px;
+        }
+
+        .success-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #000080;
+        }
+
+        .success-message {
+            margin-bottom: 20px;
+            line-height: 1.4;
+            color: #000;
+        }
+
+        .premium-benefits {
+            background: #e0ffe0;
+            border: 1px inset #c0c0c0;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .benefit-item {
+            margin-bottom: 5px;
+            color: #006600;
+            font-weight: bold;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: #c0c0c0;
+            border: 2px outset #c0c0c0;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 11px;
+            text-decoration: none;
+            color: #000;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background: #d0d0d0;
+        }
+
+        .btn:active {
+            border: 2px inset #c0c0c0;
+        }
+
+        .btn-primary {
+            background: #0080ff;
+            color: white;
+            border-color: #0080ff;
+            font-weight: bold;
+        }
+
+        .btn-primary:hover {
+            background: #0066cc;
+        }
+
+        .loading {
+            display: none;
+            color: #666;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="success-container">
+        <div class="success-header">
+            🎉 Payment Successful
+        </div>
+        
+        <div class="success-icon">⭐</div>
+        
+        <h1 class="success-title">Welcome to Studio Buddy Premium!</h1>
+        
+        <p class="success-message">
+            Your subscription has been activated successfully. You now have unlimited access to all Studio Buddy features!
+        </p>
+
+        <div class="premium-benefits">
+            <strong>Your Premium Benefits:</strong><br><br>
+            <div class="benefit-item">✓ Unlimited audio track processing</div>
+            <div class="benefit-item">✓ Priority processing speed</div>
+            <div class="benefit-item">✓ Advanced audio analysis algorithms</div>
+            <div class="benefit-item">✓ Export in multiple high-quality formats</div>
+            <div class="benefit-item">✓ Premium customer support</div>
+            <div class="benefit-item">✓ Early access to new features</div>
+        </div>
+
+        <div class="action-buttons">
+            <a href="/" class="btn btn-primary">Return to Studio Buddy</a>
+            <a href="/dashboard.html" class="btn">View Dashboard</a>
+        </div>
+
+        <div class="loading" id="loading">
+            Updating your account...
+        </div>
+    </div>
+
+    <script>
+        // Get session ID from URL and update user subscription
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('session_id');
+
+        if (sessionId) {
+            // Update user account with premium status
+            updateUserSubscription(sessionId);
+        }
+
+        async function updateUserSubscription(sessionId) {
+            try {
+                document.getElementById('loading').style.display = 'block';
+                
+                // Call your backend to confirm the payment and update user
+                const response = await fetch('/api/confirm-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId })
+                });
+
+                if (response.ok) {
+                    console.log('✅ Subscription updated successfully');
+                } else {
+                    console.log('⚠️ Backend update failed, webhook will handle it');
+                }
+            } catch (error) {
+                console.log('⚠️ Update request failed, webhook will handle it:', error);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        // Auto-redirect after 30 seconds
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 30000);
+    </script>
+</body>
+</html>
