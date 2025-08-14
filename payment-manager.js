@@ -3,11 +3,11 @@ import { authManager } from './auth.js';
 
 class PaymentManager {
   constructor() {
-    // Configuration - replace with your actual Stripe keys
+    // Configuration - uses environment variables or defaults to demo mode
     this.config = {
-      stripePublishableKey: 'pk_test_51234567890_your_actual_publishable_key_here',
-      priceId: 'price_1234567890_your_actual_price_id_here', // Studio Buddy Premium price
-      demoMode: true // Set to false for production
+      stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY || 'pk_test_demo_mode',
+      priceId: process.env.STRIPE_PRICE_ID || 'price_demo_mode',
+      demoMode: !process.env.STRIPE_SECRET_KEY || process.env.NODE_ENV === 'development'
     };
     
     this.stripe = null;
