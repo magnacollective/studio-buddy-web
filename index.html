@@ -2912,7 +2912,16 @@
             try {
                 const a = document.createElement('a');
                 a.href = window.masteredAudio.src;
-                a.download = 'studio-buddy-mastered.wav';
+                
+                // Get original filename and add _mastered suffix
+                const sourceInput = document.querySelector('#studio-buddy-window input[type="file"]');
+                let filename = 'studio-buddy-mastered.wav';
+                if (sourceInput && sourceInput.files[0]) {
+                    const originalName = sourceInput.files[0].name;
+                    const nameWithoutExt = originalName.replace(/\.[^/.]+$/, '');
+                    filename = `${nameWithoutExt}_mastered.wav`;
+                }
+                a.download = filename;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -3495,11 +3504,21 @@
                 downloadButton.onclick = function() {
                     const a = document.createElement('a');
                     a.href = separatedUrl;
-                    a.download = `${stemType}_separated.wav`;
+                    
+                    // Get original filename and add stem type suffix
+                    const vocalInput = document.getElementById('vocal-input');
+                    let filename = `${stemType}_separated.wav`;
+                    if (vocalInput && vocalInput.files[0]) {
+                        const originalName = vocalInput.files[0].name;
+                        const nameWithoutExt = originalName.replace(/\.[^/.]+$/, '');
+                        filename = `${nameWithoutExt}_${stemType}.wav`;
+                    }
+                    a.download = filename;
+                    
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
-                    log(`[DOWNLOAD] Downloading ${stemType} separated audio`);
+                    log(`[DOWNLOAD] Downloading ${filename}`);
                 };
                 
                 // Create play/pause button
@@ -3590,10 +3609,172 @@
         }
 
         async function separateAllStems() {
-            log('🎭 Starting full stem separation...');
-            // This would call the API to separate all stems at once
-            // For now, we'll just call separateStems for vocals as an example
-            await separateStems('all');
+            log('🎭 Starting full stem separation - processing each stem individually...');
+            
+            const vocalInput = document.getElementById('vocal-input');
+            if (!vocalInput.files[0]) {
+                log('[ERROR] Please select an audio file first');
+                return;
+            }
+            
+            // Array of stem types to process
+            const stemTypes = ['vocals', 'instrumental', 'drums', 'bass'];
+            const results = {};
+            
+            // Show multi-stem progress container
+            const resultsDiv = document.getElementById('vocal-results');
+            resultsDiv.innerHTML = `
+                <div style="font-weight: bold; margin-bottom: 8px; color: #000080;">
+                    🎭 Processing All Stems Individually
+                </div>
+                <div id="multi-stem-progress">
+                    ${stemTypes.map(stem => `
+                        <div id="${stem}-progress" style="margin: 4px 0; padding: 4px; border: 1px solid #ccc; background: #f9f9f9;">
+                            <div style="font-weight: bold;">${stem.charAt(0).toUpperCase() + stem.slice(1)}</div>
+                            <div style="font-size: 10px; color: #666;">Waiting...</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            // Process each stem type individually
+            for (let i = 0; i < stemTypes.length; i++) {
+                const stemType = stemTypes[i];
+                
+                try {
+                    log(`[MULTI-STEM] Processing ${stemType} (${i + 1}/${stemTypes.length})...`);
+                    
+                    // Update progress UI for current stem
+                    const progressDiv = document.getElementById(`${stemType}-progress`);
+                    progressDiv.style.background = '#e6f3ff';
+                    progressDiv.querySelector('div:last-child').textContent = 'Processing...';
+                    
+                    // Process this stem using the existing separateStems function logic
+                    const result = await processSingleStem(stemType);
+                    
+                    if (result.success) {
+                        results[stemType] = result;
+                        progressDiv.style.background = '#e6ffe6';
+                        progressDiv.querySelector('div:last-child').textContent = '✅ Complete';
+                        progressDiv.innerHTML += result.ui;
+                        log(`[MULTI-STEM] ${stemType} completed successfully`);
+                    } else {
+                        progressDiv.style.background = '#ffe6e6';
+                        progressDiv.querySelector('div:last-child').textContent = `❌ Failed: ${result.error}`;
+                        log(`[MULTI-STEM] ${stemType} failed: ${result.error}`);
+                    }
+                    
+                } catch (error) {
+                    log(`[MULTI-STEM] Error processing ${stemType}: ${error.message}`);
+                    const progressDiv = document.getElementById(`${stemType}-progress`);
+                    progressDiv.style.background = '#ffe6e6';
+                    progressDiv.querySelector('div:last-child').textContent = `❌ Error: ${error.message}`;
+                }
+                
+                // Small delay between requests to avoid overwhelming the server
+                if (i < stemTypes.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+            
+            log(`🎭 All stems processing complete! Processed: ${Object.keys(results).length}/${stemTypes.length} successfully`);
+        }
+        
+        // Helper function to process a single stem (extracted from separateStems logic)
+        async function processSingleStem(stemType) {
+            try {
+                const vocalInput = document.getElementById('vocal-input');
+                const file = vocalInput.files[0];
+                
+                // Check authentication
+                if (!window.sessionManager.requireAuth) {
+                    throw new Error('Session manager not ready');
+                }
+                
+                const canProcess = await window.sessionManager.requireAuth();
+                if (!canProcess) {
+                    throw new Error('Authentication required');
+                }
+                
+                // Prepare form data
+                const formData = new FormData();
+                formData.append('audio', file);
+                
+                log(`[SINGLE-STEM] Uploading ${stemType} to Railway API...`);
+                
+                // Set timeout for individual stem processing
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => {
+                    console.error(`⏱️ ${stemType} separation timeout after 5 minutes`);
+                    controller.abort();
+                }, 300000); // 5 minute timeout
+                
+                // Make Railway API request
+                const response = await fetch(`${VOCAL_API_URL}/separate?stem_type=${encodeURIComponent(stemType)}`, {
+                    method: 'POST',
+                    body: formData,
+                    mode: 'cors',
+                    credentials: 'omit',
+                    headers: { 'Accept': 'audio/wav' },
+                    signal: controller.signal,
+                    cache: 'no-store'
+                }).finally(() => clearTimeout(timeoutId));
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Railway API error: ${response.status} - ${errorText}`);
+                }
+                
+                const separatedBlob = await response.blob();
+                const separatedUrl = URL.createObjectURL(separatedBlob);
+                
+                // Create UI for this stem result
+                const stemUI = createStemResultUI(stemType, separatedUrl);
+                
+                // Track usage
+                await window.sessionManager.recordUsage();
+                
+                return {
+                    success: true,
+                    blob: separatedBlob,
+                    url: separatedUrl,
+                    ui: stemUI
+                };
+                
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error.message
+                };
+            }
+        }
+        
+        // Helper function to create UI for individual stem results
+        function createStemResultUI(stemType, separatedUrl) {
+            // Get original filename for proper download naming
+            const vocalInput = document.getElementById('vocal-input');
+            let downloadFilename = `${stemType}_separated.wav`;
+            if (vocalInput && vocalInput.files[0]) {
+                const originalName = vocalInput.files[0].name;
+                const nameWithoutExt = originalName.replace(/\.[^/.]+$/, '');
+                downloadFilename = `${nameWithoutExt}_${stemType}.wav`;
+            }
+            
+            return `
+                <div style="margin: 8px 0; padding: 6px; background: #f0f0f0; border: 1px solid #ccc;">
+                    <audio src="${separatedUrl}" controls style="width: 100%; height: 24px; margin: 4px 0;"></audio>
+                    <div style="display: flex; gap: 4px; margin-top: 4px;">
+                        <button onclick="this.previousElementSibling.previousElementSibling.paused ? this.previousElementSibling.previousElementSibling.play() : this.previousElementSibling.previousElementSibling.pause()" 
+                                style="padding: 2px 6px; font-size: 10px; background: #c0c0c0; border: 1px outset #c0c0c0;">
+                            ▶️ Play
+                        </button>
+                        <a href="${separatedUrl}" download="${downloadFilename}" 
+                           style="padding: 2px 6px; font-size: 10px; background: #c0c0c0; border: 1px outset #c0c0c0; text-decoration: none; color: black;">
+                            📥 Download
+                        </a>
+                    </div>
+                </div>
+            `;
         }
 
         // File input handler for vocal remover
