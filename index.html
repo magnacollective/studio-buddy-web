@@ -2834,12 +2834,11 @@
             const sampleRate = audioBuffer.sampleRate;
             const duration = audioBuffer.duration;
             
-            // Analyze only a small window (30 seconds max, heavily downsampled)
-            const maxAnalysisSeconds = Math.min(30, duration);
-            const startSample = Math.floor((duration - maxAnalysisSeconds) / 2 * sampleRate);
-            const endSample = Math.min(startSample + maxAnalysisSeconds * sampleRate, samples.length);
+            // Use full file with heavy downsampling for comprehensive analysis
+            const startSample = 0;
+            const endSample = samples.length;
             
-            // Heavy downsampling - take every 16th sample
+            // Heavy downsampling - take every 16th sample across entire track
             const downsampleFactor = 16;
             const downsampled = [];
             for (let i = startSample; i < endSample; i += downsampleFactor) {
