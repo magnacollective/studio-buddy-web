@@ -47,6 +47,10 @@ class SessionManager {
   createUserInterface() {
     // Create global start button handler
     window.handleStartClick = () => {
+      console.log('🖱️ Start button clicked!');
+      console.log('🔍 Session manager initialized:', this.isInitialized);
+      console.log('🔍 Auth modal available:', !!window.authModal);
+      console.log('🔍 Auth manager available:', !!window.authManager);
       this.handleStartButtonClick();
     };
     
@@ -55,6 +59,8 @@ class SessionManager {
     
     // Don't lock interface - let users explore freely
     // Authentication only required when processing
+    
+    console.log('✅ Session manager user interface created');
   }
 
   addAuthStyles() {
@@ -292,10 +298,24 @@ class SessionManager {
   }
 
   handleStartButtonClick() {
-    if (!window.authManager.isAuthenticated()) {
+    console.log('📋 Processing start button click...');
+    console.log('🔍 Auth manager exists:', !!window.authManager);
+    
+    if (!window.authManager) {
+      console.error('❌ Auth manager not available!');
+      alert('Authentication system not ready. Please refresh the page.');
+      return;
+    }
+    
+    const isAuthenticated = window.authManager.isAuthenticated();
+    console.log('🔍 User authenticated:', isAuthenticated);
+    
+    if (!isAuthenticated) {
+      console.log('👤 Showing start menu for unauthenticated user');
       // Show sign-in options
       this.showStartMenu();
     } else {
+      console.log('👤 Showing user menu for authenticated user');
       // Show user menu for authenticated users
       this.showUserStartMenu();
     }
@@ -634,5 +654,7 @@ class SessionManager {
 }
 
 // Create global session manager
+console.log('🚀 Initializing Session Manager...');
 const sessionManager = new SessionManager();
 window.sessionManager = sessionManager;
+console.log('✅ Session Manager created and attached to window');
