@@ -234,6 +234,8 @@ class SessionManager {
     const startText = document.getElementById('start-text');
     const userStatus = document.getElementById('user-status');
 
+    console.log('🔄 Auth state changed:', user ? 'User signed in' : 'User signed out');
+
     if (user) {
       // User is signed in
       const userData = await window.authManager.getUserData();
@@ -243,12 +245,234 @@ class SessionManager {
       userStatus.style.display = 'inline';
       userStatus.textContent = userData?.subscription?.plan === 'premium' ? '⭐' : '👤';
       
+      // Update the start menu to show user menu
+      this.updateStartMenuForUser(user, userData);
+      
       this.showNotification(`Welcome back, ${displayName}!`, 'success');
     } else {
       // User is signed out
       startText.textContent = 'Sign In';
       userStatus.style.display = 'none';
+      
+      // Update the start menu to show sign-in menu
+      this.updateStartMenuForGuest();
     }
+  }
+
+  updateStartMenuForUser(user, userData) {
+    console.log('📝 Updating start menu for authenticated user');
+    const startMenu = document.getElementById('start-menu');
+    if (!startMenu) return;
+
+    const displayName = user.displayName || user.email.split('@')[0];
+    const isPremium = userData?.subscription?.plan === 'premium';
+
+    startMenu.innerHTML = `
+      <div class="start-menu-section" style="padding: 4px 0;">
+        <div class="start-menu-header" style="background: #e0e0e0; padding: 4px 12px; font-weight: bold; color: #000080; font-size: 10px; text-transform: uppercase; border-bottom: 1px solid #808080; margin-bottom: 2px;">Welcome, ${displayName}</div>
+        <div class="start-menu-item" id="dashboard-item" style="display: flex; align-items: center; padding: 6px 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#0080ff'; this.style.color='white'" onmouseout="this.style.background=''; this.style.color=''">
+          <span class="start-menu-icon" style="margin-right: 8px; font-size: 14px; width: 18px; text-align: center;">📊</span>
+          My Dashboard
+        </div>
+        <div class="start-menu-item" id="upgrade-item" style="display: flex; align-items: center; padding: 6px 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#0080ff'; this.style.color='white'" onmouseout="this.style.background=''; this.style.color=''">
+          <span class="start-menu-icon" style="margin-right: 8px; font-size: 14px; width: 18px; text-align: center;">${isPremium ? '⭐' : '⬆️'}</span>
+          ${isPremium ? 'Premium Account' : 'Upgrade to Premium'}
+        </div>
+      </div>
+      <div class="start-menu-divider" style="height: 1px; background: #808080; margin: 4px 8px;"></div>
+      <div class="start-menu-section" style="padding: 4px 0;">
+        <div class="start-menu-header" style="background: #e0e0e0; padding: 4px 12px; font-weight: bold; color: #000080; font-size: 10px; text-transform: uppercase; border-bottom: 1px solid #808080; margin-bottom: 2px;">Features</div>
+        <div class="start-menu-item" data-window="audio-mastering" style="display: flex; align-items: center; padding: 6px 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#0080ff'; this.style.color='white'" onmouseout="this.style.background=''; this.style.color=''">
+          <span class="start-menu-icon" style="margin-right: 8px; font-size: 14px; width: 18px; text-align: center;">🎛️</span>
+          Audio Mastering
+        </div>
+        <div class="start-menu-item" data-window="audio-analysis" style="display: flex; align-items: center; padding: 6px 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#0080ff'; this.style.color='white'" onmouseout="this.style.background=''; this.style.color=''">
+          <span class="start-menu-icon" style="margin-right: 8px; font-size: 14px; width: 18px; text-align: center;">📊</span>
+          Audio Analysis
+        </div>
+        <div class="start-menu-item" data-window="vocal-remover" style="display: flex; align-items: center; padding: 6px 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#0080ff'; this.style.color='white'" onmouseout="this.style.background=''; this.style.color=''">
+          <span class="start-menu-icon" style="margin-right: 8px; font-size: 14px; width: 18px; text-align: center;">🎤</span>
+          Vocal Remover
+        </div>
+        <div class="start-menu-item" data-window="lyrics-generator" style="display: flex; align-items: center; padding: 6px 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#0080ff'; this.style.color='white'" onmouseout="this.style.background=''; this.style.color=''">
+          <span class="start-menu-icon" style="margin-right: 8px; font-size: 14px; width: 18px; text-align: center;">✍️</span>
+          AI Lyrics Generator
+        </div>
+      </div>
+      <div class="start-menu-divider" style="height: 1px; background: #808080; margin: 4px 8px;"></div>
+      <div class="start-menu-section" style="padding: 4px 0;">
+        <div class="start-menu-item" id="signout-item" style="display: flex; align-items: center; padding: 6px 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#0080ff'; this.style.color='white'" onmouseout="this.style.background=''; this.style.color=''">
+          <span class="start-menu-icon" style="margin-right: 8px; font-size: 14px; width: 18px; text-align: center;">🚪</span>
+          Sign Out
+        </div>
+      </div>
+    `;
+
+    // Re-attach event handlers after updating innerHTML
+    this.attachUserMenuHandlers();
+  }
+
+  updateStartMenuForGuest() {
+    console.log('📝 Updating start menu for guest user');
+    const startMenu = document.getElementById('start-menu');
+    if (!startMenu) return;
+
+    startMenu.innerHTML = `
+      <div class="start-menu-section" style="padding: 4px 0;">
+        <div class="start-menu-header" style="background: #e0e0e0; padding: 4px 12px; font-weight: bold; color: #000080; font-size: 10px; text-transform: uppercase; border-bottom: 1px solid #808080; margin-bottom: 2px;">Account</div>
+        <div class="start-menu-item" id="signin-item" style="display: flex; align-items: center; padding: 6px 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#0080ff'; this.style.color='white'" onmouseout="this.style.background=''; this.style.color=''">
+          <span class="start-menu-icon" style="margin-right: 8px; font-size: 14px; width: 18px; text-align: center;">🔑</span>
+          Sign In
+        </div>
+        <div class="start-menu-item" id="signup-item" style="display: flex; align-items: center; padding: 6px 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#0080ff'; this.style.color='white'" onmouseout="this.style.background=''; this.style.color=''">
+          <span class="start-menu-icon" style="margin-right: 8px; font-size: 14px; width: 18px; text-align: center;">👤</span>
+          Create Free Account
+        </div>
+      </div>
+      <div class="start-menu-divider" style="height: 1px; background: #808080; margin: 4px 8px;"></div>
+      <div class="start-menu-section" style="padding: 4px 0;">
+        <div class="start-menu-header" style="background: #e0e0e0; padding: 4px 12px; font-weight: bold; color: #000080; font-size: 10px; text-transform: uppercase; border-bottom: 1px solid #808080; margin-bottom: 2px;">Features</div>
+        <div class="start-menu-item" data-window="audio-mastering" style="display: flex; align-items: center; padding: 6px 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#0080ff'; this.style.color='white'" onmouseout="this.style.background=''; this.style.color=''">
+          <span class="start-menu-icon" style="margin-right: 8px; font-size: 14px; width: 18px; text-align: center;">🎛️</span>
+          Audio Mastering
+        </div>
+        <div class="start-menu-item" data-window="audio-analysis" style="display: flex; align-items: center; padding: 6px 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#0080ff'; this.style.color='white'" onmouseout="this.style.background=''; this.style.color=''">
+          <span class="start-menu-icon" style="margin-right: 8px; font-size: 14px; width: 18px; text-align: center;">📊</span>
+          Audio Analysis
+        </div>
+        <div class="start-menu-item" data-window="vocal-remover" style="display: flex; align-items: center; padding: 6px 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#0080ff'; this.style.color='white'" onmouseout="this.style.background=''; this.style.color=''">
+          <span class="start-menu-icon" style="margin-right: 8px; font-size: 14px; width: 18px; text-align: center;">🎤</span>
+          Vocal Remover
+        </div>
+        <div class="start-menu-item" data-window="lyrics-generator" style="display: flex; align-items: center; padding: 6px 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#0080ff'; this.style.color='white'" onmouseout="this.style.background=''; this.style.color=''">
+          <span class="start-menu-icon" style="margin-right: 8px; font-size: 14px; width: 18px; text-align: center;">✍️</span>
+          AI Lyrics Generator
+        </div>
+      </div>
+      <div class="start-menu-divider" style="height: 1px; background: #808080; margin: 4px 8px;"></div>
+      <div class="start-menu-section" style="padding: 4px 0;">
+        <div class="start-menu-item" id="upgrade-item" style="display: flex; align-items: center; padding: 6px 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#0080ff'; this.style.color='white'" onmouseout="this.style.background=''; this.style.color=''">
+          <span class="start-menu-icon" style="margin-right: 8px; font-size: 14px; width: 18px; text-align: center;">⭐</span>
+          Upgrade to Premium
+        </div>
+      </div>
+    `;
+
+    // Re-attach event handlers after updating innerHTML
+    this.attachGuestMenuHandlers();
+  }
+
+  attachUserMenuHandlers() {
+    const dashboardItem = document.getElementById('dashboard-item');
+    const upgradeItem = document.getElementById('upgrade-item');
+    const signoutItem = document.getElementById('signout-item');
+    const startMenu = document.getElementById('start-menu');
+
+    if (dashboardItem) {
+      dashboardItem.addEventListener('click', (e) => {
+        console.log('🔧 DEBUG: Dashboard clicked');
+        e.stopPropagation();
+        startMenu.style.display = 'none';
+        this.showDashboard();
+      });
+    }
+
+    if (upgradeItem) {
+      upgradeItem.addEventListener('click', (e) => {
+        console.log('🔧 DEBUG: Upgrade clicked');
+        e.stopPropagation();
+        startMenu.style.display = 'none';
+        this.showUpgradeModal();
+      });
+    }
+
+    if (signoutItem) {
+      signoutItem.addEventListener('click', (e) => {
+        console.log('🔧 DEBUG: Sign out clicked');
+        e.stopPropagation();
+        startMenu.style.display = 'none';
+        this.signOut();
+      });
+    }
+
+    // Handle feature window clicks
+    const featureItems = startMenu.querySelectorAll('[data-window]');
+    featureItems.forEach(item => {
+      item.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const windowType = this.getAttribute('data-window');
+        console.log('🔧 DEBUG: Opening window:', windowType);
+        startMenu.style.display = 'none';
+        
+        if (window.openWindow) {
+          window.openWindow(windowType);
+        } else {
+          alert(`${windowType} feature loading...`);
+        }
+      });
+    });
+  }
+
+  attachGuestMenuHandlers() {
+    const signinItem = document.getElementById('signin-item');
+    const signupItem = document.getElementById('signup-item');
+    const upgradeItem = document.getElementById('upgrade-item');
+    const startMenu = document.getElementById('start-menu');
+
+    if (signinItem) {
+      signinItem.addEventListener('click', (e) => {
+        console.log('🔧 DEBUG: Sign in clicked');
+        e.stopPropagation();
+        startMenu.style.display = 'none';
+        
+        if (window.authModal && window.authModal.show) {
+          window.authModal.show();
+        } else {
+          alert('Please wait for authentication system to load...');
+        }
+      });
+    }
+
+    if (signupItem) {
+      signupItem.addEventListener('click', (e) => {
+        console.log('🔧 DEBUG: Sign up clicked');
+        e.stopPropagation();
+        startMenu.style.display = 'none';
+        
+        if (window.authModal && window.authModal.show && window.authModal.switchTab) {
+          window.authModal.show();
+          window.authModal.switchTab('signup');
+        } else {
+          alert('Please wait for authentication system to load...');
+        }
+      });
+    }
+
+    if (upgradeItem) {
+      upgradeItem.addEventListener('click', (e) => {
+        console.log('🔧 DEBUG: Upgrade clicked');
+        e.stopPropagation();
+        startMenu.style.display = 'none';
+        alert('Premium upgrade feature coming soon!');
+      });
+    }
+
+    // Handle feature window clicks
+    const featureItems = startMenu.querySelectorAll('[data-window]');
+    featureItems.forEach(item => {
+      item.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const windowType = this.getAttribute('data-window');
+        console.log('🔧 DEBUG: Opening window:', windowType);
+        startMenu.style.display = 'none';
+        
+        if (window.openWindow) {
+          window.openWindow(windowType);
+        } else {
+          alert(`${windowType} feature loading...`);
+        }
+      });
+    });
   }
 
   lockInterface() {
