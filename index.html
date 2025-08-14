@@ -3449,21 +3449,106 @@
                 
                 const separatedUrl = URL.createObjectURL(separatedBlob);
                 
-                // Create download link
-                const downloadLink = document.createElement('a');
-                downloadLink.href = separatedUrl;
-                downloadLink.download = `${stemType}_separated.wav`;
-                downloadLink.textContent = `Download ${stemType}`;
-                downloadLink.style.display = 'block';
-                downloadLink.style.margin = '4px 0';
-                downloadLink.style.color = '#000080';
-                downloadLink.style.textDecoration = 'underline';
-                downloadLink.style.cursor = 'pointer';
+                // Create results container with Windows 95 styling
+                const resultsContainer = document.createElement('div');
+                resultsContainer.style.cssText = `
+                    padding: 10px;
+                    background: #f0f0f0;
+                    border: 2px inset #c0c0c0;
+                    margin: 8px 0;
+                    font-family: 'MS Sans Serif', sans-serif;
+                    font-size: 11px;
+                `;
+                
+                // Create title
+                const title = document.createElement('div');
+                title.textContent = `${stemType.charAt(0).toUpperCase() + stemType.slice(1)} Separation Complete`;
+                title.style.cssText = `
+                    font-weight: bold;
+                    margin-bottom: 8px;
+                    color: #000080;
+                `;
+                
+                // Create audio player with Windows 95 styling
+                const audioPlayer = document.createElement('audio');
+                audioPlayer.src = separatedUrl;
+                audioPlayer.controls = true;
+                audioPlayer.style.cssText = `
+                    width: 100%;
+                    margin: 8px 0;
+                    height: 32px;
+                `;
+                
+                // Create download button
+                const downloadButton = document.createElement('button');
+                downloadButton.textContent = `📥 Download ${stemType}.wav`;
+                downloadButton.style.cssText = `
+                    margin: 4px 8px 4px 0;
+                    padding: 6px 12px;
+                    background: #c0c0c0;
+                    border: 2px outset #c0c0c0;
+                    cursor: pointer;
+                    font-size: 11px;
+                    font-family: 'MS Sans Serif', sans-serif;
+                `;
+                
+                downloadButton.onclick = function() {
+                    const a = document.createElement('a');
+                    a.href = separatedUrl;
+                    a.download = `${stemType}_separated.wav`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    log(`[DOWNLOAD] Downloading ${stemType} separated audio`);
+                };
+                
+                // Create play/pause button
+                const playButton = document.createElement('button');
+                playButton.textContent = '▶️ Play';
+                playButton.style.cssText = `
+                    margin: 4px 8px 4px 0;
+                    padding: 6px 12px;
+                    background: #c0c0c0;
+                    border: 2px outset #c0c0c0;
+                    cursor: pointer;
+                    font-size: 11px;
+                    font-family: 'MS Sans Serif', sans-serif;
+                `;
+                
+                playButton.onclick = function() {
+                    if (audioPlayer.paused) {
+                        audioPlayer.play();
+                        this.textContent = '⏸️ Pause';
+                        this.style.border = '2px inset #c0c0c0';
+                        log(`[PLAY] Playing ${stemType} separated audio`);
+                    } else {
+                        audioPlayer.pause();
+                        this.textContent = '▶️ Play';
+                        this.style.border = '2px outset #c0c0c0';
+                        log(`[PAUSE] Paused ${stemType} separated audio`);
+                    }
+                };
+                
+                // Update play button when audio ends
+                audioPlayer.onended = () => {
+                    playButton.textContent = '▶️ Play';
+                    playButton.style.border = '2px outset #c0c0c0';
+                };
+                
+                // Assemble the results
+                resultsContainer.appendChild(title);
+                resultsContainer.appendChild(audioPlayer);
+                
+                const buttonContainer = document.createElement('div');
+                buttonContainer.style.marginTop = '8px';
+                buttonContainer.appendChild(playButton);
+                buttonContainer.appendChild(downloadButton);
+                resultsContainer.appendChild(buttonContainer);
 
                 // Add to results
                 const resultsDiv = document.getElementById('vocal-results');
                 resultsDiv.innerHTML = ''; // Clear previous results
-                resultsDiv.appendChild(downloadLink);
+                resultsDiv.appendChild(resultsContainer);
 
                 progressFill.style.width = '100%';
                 progressText.textContent = `${stemType} separation complete!`;
