@@ -1004,7 +1004,12 @@
         }
 
         function switchToTrack(trackType) {
-            if (!window.sourceAudio || !window.masteredAudio) return;
+            if (!window.sourceAudio || !window.masteredAudio) {
+                // If one is missing, just point currentAudio safely
+                currentAudio = window.sourceAudio || window.masteredAudio || null;
+                currentTrack = currentAudio === window.sourceAudio ? 'source' : 'mastered';
+                return;
+            }
             
             const newAudio = trackType === 'source' ? window.sourceAudio : window.masteredAudio;
             const currentTime = currentAudio ? currentAudio.currentTime : 0;
@@ -1022,12 +1027,11 @@
             }
         }
 
-        // Simple visualizer functions
-        let vizAnimationFrame;
+        // AudioMotion visualizer only
 
         async function enableVisualizer() {
             try {
-                log('[AUDIO] Manual visualizer activation...');
+                log('[VIZ] Enabling audioMotion visualizer...');
                 
                 // Initialize audio context with user gesture
                 await initAudioContext();
@@ -1037,36 +1041,18 @@
                     log('[AUDIO] Audio context activated');
                 }
                 
-                // Always try to initialize audioMotion first
+                // Initialize audioMotion
                 const audioMotionReady = await initAudioMotion();
-                log(`[VIZ] AudioMotion ready: ${audioMotionReady}`);
                 
                 if (audioMotionReady) {
                     // Connect current audio to audioMotion if playing
                     if (currentAudio && isPlaying) {
                         connectAudioToAudioMotion(currentAudio);
                     }
-                    // Stop any existing canvas animation since we're using audioMotion
-                    if (vizAnimationFrame) {
-                        cancelAnimationFrame(vizAnimationFrame);
-                        vizAnimationFrame = null;
-                    }
-                    log('[VIZ] Using audioMotion visualizer');
+                    log('[VIZ] AudioMotion visualizer enabled successfully');
                 } else {
-                    // Fallback to original visualizer
-                    if (currentAudio && isPlaying) {
-                        connectAudioToAnalyser(currentAudio);
-                        log('[VIZ] Reconnected current audio to fallback visualizer');
-                    }
-                    
-                    // Start fallback visualization if not already running
-                    if (!vizAnimationFrame) {
-                        startVisualization();
-                    }
-                    log('[VIZ] Using fallback canvas visualizer');
+                    log('[ERROR] Failed to initialize audioMotion visualizer');
                 }
-                
-                log('[SUCCESS] Visualizer manually enabled');
                 
             } catch (error) {
                 log(`[ERROR] Failed to enable visualizer: ${error.message}`);
@@ -1074,165 +1060,19 @@
         }
 
         function startVisualization() {
-            // Always prioritize audioMotion if it exists
-            if (audioMotion) {
-                if (currentAudio && isPlaying) {
-                    connectAudioToAudioMotion(currentAudio);
-                }
-                return; // Don't start canvas fallback if audioMotion exists
-            }
-            
-            // Fallback to canvas visualizer
-            const canvas = document.getElementById('visualizer');
-            if (!canvas) {
-                log('[ERROR] Visualizer canvas not found');
-                return;
-            }
-            
-            let canvasElement = canvas;
-            
-            // Create a canvas if the element is a div (audioMotion container)
-            if (canvas.tagName === 'DIV') {
-                // Clear the div and create a canvas for fallback
-                canvas.innerHTML = '';
-                const fallbackCanvas = document.createElement('canvas');
-                fallbackCanvas.width = 750;
-                fallbackCanvas.height = 200;
-                fallbackCanvas.style.cssText = 'background: black; display: block; margin: 2px auto; border-radius: 4px; width: 100%; height: 100%;';
-                canvas.appendChild(fallbackCanvas);
-                canvasElement = fallbackCanvas;
-            }
-            
-            const ctx = canvasElement.getContext('2d');
-            let frameCount = 0;
-            
-            function animate() {
-                ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-                frameCount++;
-                
-                let dataArray;
-                let usingRealData = false;
-                
-                if (analyser && isPlaying && audioSource) {
-                    // Use real audio data when available
-                    const bufferLength = analyser.frequencyBinCount;
-                    const rawData = new Uint8Array(bufferLength);
-                    analyser.getByteFrequencyData(rawData);
-                    
-                    // Check if we're getting real audio data
-                    const dataSum = rawData.reduce((sum, val) => sum + val, 0);
-                    const maxValue = Math.max(...rawData);
-                    
-                    // Very low threshold for detection and add more debugging  
-                    if (dataSum > 5 || maxValue > 5) { // Very low threshold for real audio activity
-                        usingRealData = true;
-                        
-                        // Reduce to 64 bars for visualization
-                        dataArray = new Uint8Array(64);
-                        const step = Math.floor(bufferLength / 64);
-                        for (let i = 0; i < 64; i++) {
-                            let sum = 0;
-                            for (let j = 0; j < step; j++) {
-                                sum += rawData[i * step + j] || 0;
-                            }
-                            dataArray[i] = Math.min(255, sum / step);
-                        }
-                        
-                        // Log real data usage occasionally
-                        if (frameCount % 120 === 0) {
-                            log(`[VIZ] Using real audio data (sum: ${dataSum}, max: ${maxValue})`);
-                        }
-                    }
-                }
-                
-                if (!usingRealData) {
-                    // Debug: Log why we're not using real data
-                    if (frameCount % 120 === 0 && analyser && isPlaying) {
-                        const bufferLength = analyser.frequencyBinCount;
-                        const testData = new Uint8Array(bufferLength);
-                        analyser.getByteFrequencyData(testData);
-                        const testSum = testData.reduce((sum, val) => sum + val, 0);
-                        const testMax = Math.max(...testData);
-                        log(`[DEBUG] No real data: sum=${testSum}, max=${testMax}, playing=${isPlaying}, analyser=${!!analyser}, audioSource=${!!audioSource}`);
-                    }
-                    
-                    // Fallback to simulated visualization
-                    dataArray = new Uint8Array(64);
-                    const time = Date.now() * 0.001;
-                    
-                    for (let i = 0; i < dataArray.length; i++) {
-                        if (isPlaying) {
-                            // Create realistic frequency response simulation as fallback
-                            const freq = i / dataArray.length;
-                            const bassBoost = freq < 0.1 ? 2.5 : 1;
-                            const trebleRoll = freq > 0.8 ? 0.3 : 1;
-                            const musicValue = Math.sin(time * (3 + freq * 6)) * Math.cos(time * (1.5 + freq * 4));
-                            dataArray[i] = Math.max(0, Math.min(255, 
-                                (Math.abs(musicValue) * 180 + Math.random() * 40) * bassBoost * trebleRoll
-                            ));
-                        } else {
-                            dataArray[i] = Math.random() * 12; // Very low ambient when paused
-                        }
-                    }
-                    
-                    // Log fallback usage occasionally
-                    if (frameCount % 120 === 0 && isPlaying) {
-                        log('[VIZ] Using fallback visualization (no real audio data)');
-                    }
-                }
-                
-                drawVisualization(ctx, dataArray, canvasElement.width, canvasElement.height);
-                
-                // Continue animation
-                vizAnimationFrame = requestAnimationFrame(animate);
-            }
-            
-            if (!vizAnimationFrame) {
-                log('[VIZ] Starting visualizer animation');
-                animate();
+            // AudioMotion-only visualization
+            if (audioMotion && currentAudio && isPlaying) {
+                connectAudioToAudioMotion(currentAudio);
+                log('[VIZ] AudioMotion visualization started');
+            } else if (!audioMotion) {
+                log('[ERROR] AudioMotion not initialized');
             }
         }
 
         function stopVisualization() {
-            if (vizAnimationFrame) {
-                cancelAnimationFrame(vizAnimationFrame);
-                vizAnimationFrame = null;
-            }
-        }
-
-        function drawVisualization(ctx, dataArray, width, height) {
-            drawSimpleSpectrum(ctx, dataArray, width, height);
-            
-            // Update VU meters
-            const leftLevel = Math.max(...dataArray.slice(0, dataArray.length / 2));
-            const rightLevel = Math.max(...dataArray.slice(dataArray.length / 2));
-            document.getElementById('vu-left').style.height = (leftLevel / 255 * 100) + '%';
-            document.getElementById('vu-right').style.height = (rightLevel / 255 * 100) + '%';
-        }
-
-        function drawSimpleSpectrum(ctx, dataArray, width, height) {
-            const barCount = 64; // Reduced for cleaner look
-            const barWidth = width / barCount;
-            const step = Math.floor(dataArray.length / barCount);
-            
-            // Clear canvas
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, width, height);
-            
-            for (let i = 0; i < barCount; i++) {
-                const dataIndex = i * step;
-                const barHeight = (dataArray[dataIndex] / 255) * height * 0.85;
-                const x = i * barWidth;
-                const y = height - barHeight;
-                
-                // Simple gradient from blue to white based on frequency
-                const intensity = dataArray[dataIndex] / 255;
-                const blue = Math.floor(100 + intensity * 155);
-                const green = Math.floor(intensity * 200);
-                const red = Math.floor(intensity * 100);
-                
-                ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
-                ctx.fillRect(x + 1, y, barWidth - 2, barHeight);
+            // AudioMotion handles its own lifecycle
+            if (audioMotion) {
+                log('[VIZ] AudioMotion visualization stopped');
             }
         }
 
@@ -1273,6 +1113,17 @@
 
         // AudioMotion integration
         let audioMotion = null;
+
+        // Initialize audioMotion early
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Wait a bit for the CDN module to load
+            setTimeout(async () => {
+                if (window.AudioMotionAnalyzer) {
+                    await initAudioMotion();
+                    log('[VIZ] AudioMotion pre-initialized');
+                }
+            }, 1000);
+        });
 
         async function initAudioMotion() {
             if (!audioMotion && window.AudioMotionAnalyzer) {
@@ -1912,7 +1763,9 @@
                 
                 // Store for playback with error handling
                 window.masteredAudio = new Audio(masteredUrl);
-                window.sourceAudio = new Audio(URL.createObjectURL(sourceInput.files[0]));
+                if (!window.sourceAudio) {
+                    window.sourceAudio = new Audio(URL.createObjectURL(sourceInput.files[0]));
+                }
                 // Prepare for automatic, policy-safe autoplay (muted)
                 window.masteredAudio.muted = true;
                 window.masteredAudio.autoplay = true;
@@ -1953,22 +1806,28 @@
                 window.masteredAudio.addEventListener('play', async () => {
                     try {
                         await initAudioContext();
-                        connectAudioToAnalyser(window.masteredAudio);
+                        await initAudioMotion();
+                        if (audioMotion) {
+                            connectAudioToAudioMotion(window.masteredAudio);
+                        }
                         startVisualization();
-                        log('[VIZ] Visualizer connected to mastered audio on play');
+                        log('[VIZ] AudioMotion connected to mastered audio on play');
                     } catch (e) {
-                        log(`[ERROR] Visualizer hookup (mastered) failed: ${e.message}`);
+                        log(`[ERROR] AudioMotion hookup (mastered) failed: ${e.message}`);
                     }
                 });
 
                 window.sourceAudio.addEventListener('play', async () => {
                     try {
                         await initAudioContext();
-                        connectAudioToAnalyser(window.sourceAudio);
+                        await initAudioMotion();
+                        if (audioMotion) {
+                            connectAudioToAudioMotion(window.sourceAudio);
+                        }
                         startVisualization();
-                        log('[VIZ] Visualizer connected to source audio on play');
+                        log('[VIZ] AudioMotion connected to source audio on play');
                     } catch (e) {
-                        log(`[ERROR] Visualizer hookup (source) failed: ${e.message}`);
+                        log(`[ERROR] AudioMotion hookup (source) failed: ${e.message}`);
                     }
                 });
                 
@@ -1980,6 +1839,18 @@
                 masteredBtn.style.border = '2px outset #c0c0c0';
                 
                 document.getElementById('ab-status').textContent = '[READY] A/B comparison ready - Click buttons to switch';
+                // Default to Original selected and playable
+                const originalBtn = document.getElementById('ab-original-btn');
+                if (originalBtn) {
+                    originalBtn.style.background = 'linear-gradient(to bottom, #0080ff, #0066cc)';
+                    originalBtn.style.color = 'white';
+                    originalBtn.style.border = '2px inset #0080ff';
+                }
+                currentAudio = window.sourceAudio;
+                currentTrack = 'source';
+                isPlaying = false;
+                const playBtnEl = document.getElementById('play-pause-btn');
+                if (playBtnEl) playBtnEl.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">play_arrow</span><span>Play</span>';
                 
                 // Complete progress and create completion notification
                 updateProcessProgress(100, 'Mastering complete!');
@@ -2021,8 +1892,6 @@
         // Audio playback and A/B comparison
         let currentAudio = null;
         let audioContext = null;
-        let analyser = null;
-        let audioSource = null;
         let progressInterval = null;
         let isABMode = false;
         let currentTrack = 'source';
@@ -2032,9 +1901,6 @@
         async function initAudioContext() {
             if (!audioContext) {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = audioContext.createAnalyser();
-                analyser.fftSize = 512; // Increased for better resolution
-                analyser.smoothingTimeConstant = 0.8;
                 log('[AUDIO] Audio context initialized');
             }
             
@@ -2043,68 +1909,8 @@
                 await audioContext.resume();
                 log('[AUDIO] Audio context resumed');
             }
-            
-            // Verify analyser is working
-            if (analyser) {
-                log(`[AUDIO] Analyser ready: FFT=${analyser.fftSize}, bins=${analyser.frequencyBinCount}`);
-            }
         }
 
-        function connectAudioToAnalyser(audio) {
-            if (!audioContext || !analyser) {
-                log('[ERROR] No audio context or analyser available');
-                return;
-            }
-            
-            try {
-                // Check if this audio element already has a source connected
-                if (audio._connectedSource) {
-                    audioSource = audio._connectedSource;
-                    log('[VIZ] Using existing audio connection');
-                    return;
-                }
-                
-                // Disconnect any existing source
-                if (audioSource) {
-                    try {
-                        audioSource.disconnect();
-                    } catch (e) {
-                        // Ignore disconnect errors
-                    }
-                }
-                
-                // Create new media element source
-                audioSource = audioContext.createMediaElementSource(audio);
-                
-                // Store reference on the audio element to avoid duplicate connections
-                audio._connectedSource = audioSource;
-                
-                // Connect: source -> analyser -> destination
-                audioSource.connect(analyser);
-                audioSource.connect(audioContext.destination);
-                
-                log('[VIZ] Audio connected to visualizer successfully');
-                log(`[AUDIO] Analyser settings: FFT=${analyser.fftSize}, Smoothing=${analyser.smoothingTimeConstant}`);
-                log(`[AUDIO] Audio duration: ${audio.duration}s, current time: ${audio.currentTime}s`);
-                
-                // Force a test to see if we're getting data
-                setTimeout(() => {
-                    const dataArray = new Uint8Array(analyser.frequencyBinCount);
-                    analyser.getByteFrequencyData(dataArray);
-                    const hasData = dataArray.some(value => value > 0);
-                    const maxValue = Math.max(...dataArray);
-                    log(`[DATA] Visualizer data test: ${hasData ? 'RECEIVING DATA [OK]' : 'NO DATA [FAIL]'} (max: ${maxValue})`);
-                }, 500);
-                
-            } catch (error) {
-                if (error.message.includes('already connected')) {
-                    log('[VIZ] Audio already connected to visualizer');
-                } else {
-                    log(`[ERROR] Visualizer connection error: ${error.message}`);
-                    console.error('Full error:', error);
-                }
-            }
-        }
 
 
         // Simplified play/pause toggle
@@ -2167,11 +1973,15 @@
                 
                 currentTrack = type;
                 
-                // Connect audio to visualizer BEFORE playing
+                // Connect audio to audioMotion visualizer BEFORE playing
                 if (audioMotion) {
                     connectAudioToAudioMotion(audio);
                 } else {
-                    connectAudioToAnalyser(audio);
+                    // Initialize audioMotion if not ready yet
+                    await initAudioMotion();
+                    if (audioMotion) {
+                        connectAudioToAudioMotion(audio);
+                    }
                 }
                 
                 // Ensure audio context is resumed (required by browsers)
