@@ -986,14 +986,123 @@
             </div>
             <div class="window-content">
                 <div class="section">
-                    <h3>Audio Analysis</h3>
-                    <input type="file" accept="audio/*,audio/mpeg,audio/mp4,audio/wav,audio/flac,audio/ogg,.mp3,.mp4,.wav,.flac,.ogg,.aac,.m4a" style="width: 100%; margin: 4px 0;">
-                    <button onclick="analyzeAudio()">📊 Analyze Audio</button>
+                    <h3>🎵 Audio Analysis</h3>
+                    <input type="file" id="analyzer-audio-input" accept="audio/*,audio/mpeg,audio/mp4,audio/wav,audio/flac,audio/ogg,.mp3,.mp4,.wav,.flac,.ogg,.aac,.m4a" style="width: 100%; margin: 4px 0;">
+                </div>
+                
+                <div class="section">
+                    <h3>⚙️ Analysis Settings</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                        <div>
+                            <label>Profile:</label>
+                            <select id="analysis-profile" style="width: 100%;">
+                                <option value="fast">⚡ Fast (15s)</option>
+                                <option value="accurate">🎯 Accurate (30s)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Quality:</label>
+                            <div style="background: #e0e0e0; border: 1px inset; padding: 4px; text-align: center;">
+                                <strong>💎 Pro Backend</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                        <div>
+                            <label>Genre (optional):</label>
+                            <select id="analysis-genre" style="width: 100%;">
+                                <option value="">Auto-detect</option>
+                                <option value="edm">🎛️ EDM/Electronic</option>
+                                <option value="house">🏠 House</option>
+                                <option value="techno">⚙️ Techno</option>
+                                <option value="trance">🌀 Trance</option>
+                                <option value="hiphop">🎤 Hip-Hop</option>
+                                <option value="trap">🔥 Trap</option>
+                                <option value="pop">⭐ Pop</option>
+                                <option value="rock">🎸 Rock</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Analysis Window:</label>
+                            <select id="analysis-window" style="width: 100%;">
+                                <option value="45">45 seconds</option>
+                                <option value="60">60 seconds</option>
+                                <option value="75" selected>75 seconds</option>
+                                <option value="90">90 seconds</option>
+                                <option value="120">2 minutes</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                        <div>
+                            <label>Min BPM:</label>
+                            <input type="number" id="analysis-min-bpm" value="90" min="40" max="200" style="width: 100%;">
+                        </div>
+                        <div>
+                            <label>Max BPM:</label>
+                            <input type="number" id="analysis-max-bpm" value="180" min="60" max="240" style="width: 100%;">
+                        </div>
+                    </div>
+                    
+                    <button onclick="analyzeAudio()" style="width: 100%; padding: 8px;">🚀 Analyze with Railway API</button>
+                    
+                    <script>
+                        // Auto-adjust BPM ranges based on genre selection
+                        document.getElementById('analysis-genre').addEventListener('change', function() {
+                            const genre = this.value.toLowerCase();
+                            const minBpm = document.getElementById('analysis-min-bpm');
+                            const maxBpm = document.getElementById('analysis-max-bpm');
+                            
+                            switch(genre) {
+                                case 'edm':
+                                case 'house':
+                                case 'techno':
+                                case 'trance':
+                                    minBpm.value = 110;
+                                    maxBpm.value = 200;
+                                    break;
+                                case 'hiphop':
+                                case 'trap':
+                                    minBpm.value = 60;
+                                    maxBpm.value = 180;
+                                    break;
+                                case 'pop':
+                                case 'rock':
+                                    minBpm.value = 70;
+                                    maxBpm.value = 190;
+                                    break;
+                                default:
+                                    minBpm.value = 90;
+                                    maxBpm.value = 180;
+                            }
+                            console.log(`🎵 Genre ${genre || 'auto'}: BPM range ${minBpm.value}-${maxBpm.value}`);
+                        });
+                    </script>
                 </div>
                 <div class="section">
-                    <h3>Results</h3>
-                    <div>BPM: <span id="bpm-result">-</span></div>
-                    <div>Key: <span id="key-result">-</span></div>
+                    <h3>📊 Analysis Results</h3>
+                    <div style="background: #e0e0e0; border: 1px inset; padding: 8px; margin: 4px 0;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <div><strong>BPM:</strong> <span id="bpm-result" style="color: #0066cc;">-</span></div>
+                            <div><strong>Key:</strong> <span id="key-result" style="color: #0066cc;">-</span></div>
+                            <div><strong>Duration:</strong> <span id="duration-result">-</span></div>
+                            <div><strong>Sample Rate:</strong> <span id="samplerate-result">-</span></div>
+                        </div>
+                    </div>
+                    
+                    <div id="analysis-candidates" style="display: none; margin-top: 8px;">
+                        <details>
+                            <summary style="cursor: pointer; font-weight: bold;">🎯 Alternative Results</summary>
+                            <div style="background: #f0f0f0; border: 1px inset; padding: 6px; margin: 4px 0; font-size: 10px;">
+                                <div><strong>BPM Candidates:</strong></div>
+                                <div id="bpm-candidates" style="margin: 2px 0;"></div>
+                                <div><strong>Key Candidates:</strong></div>
+                                <div id="key-candidates" style="margin: 2px 0;"></div>
+                            </div>
+                        </details>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2834,7 +2943,7 @@
             try {
                 log('[RAILWAY] RAILWAY API: Starting server-side audio analysis...');
                 
-                const analyzeInput = document.querySelector('#analyzer-window input[type="file"]');
+                const analyzeInput = document.getElementById('analyzer-audio-input');
                 if (!analyzeInput.files[0]) {
                     log('[ERROR] Please select an audio file to analyze');
                     return;
@@ -2870,16 +2979,40 @@
                     // Upload to Railway API for analysis
                     updateAnalysisProgress('Uploading to Railway API...', 10);
                     
+                    // Get analysis parameters from UI
+                    const profile = document.getElementById('analysis-profile').value;
+                    const backend = 'pro'; // Always use pro backend
+                    const genre = document.getElementById('analysis-genre').value;
+                    const windowSec = parseInt(document.getElementById('analysis-window').value);
+                    const minBpm = parseInt(document.getElementById('analysis-min-bpm').value);
+                    const maxBpm = parseInt(document.getElementById('analysis-max-bpm').value);
+                    
+                    log(`[PARAMS] Profile: ${profile}, Backend: ${backend}, Genre: ${genre || 'auto'}`);
+                    log(`[PARAMS] Window: ${windowSec}s, BPM range: ${minBpm}-${maxBpm}`);
+                    
                     const formData = new FormData();
                     formData.append('audio', file);
                     
-                    updateAnalysisProgress('Analyzing with Railway API...', 30);
-                    log('[UPLOAD] Sending to Railway API for analysis...');
+                    // Build query parameters for advanced analysis
+                    const params = new URLSearchParams({
+                        profile: profile,
+                        backend: backend,
+                        window_sec: windowSec.toString(),
+                        prefer_min_bpm: minBpm.toString(),
+                        prefer_max_bpm: maxBpm.toString()
+                    });
+                    
+                    if (genre) {
+                        params.append('genre', genre);
+                    }
+                    
+                    updateAnalysisProgress(`Analyzing with ${profile} profile...`, 30);
+                    log(`[UPLOAD] Sending to Railway API with advanced parameters...`);
                     
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+                    const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minute timeout for accurate analysis
                     
-                    const response = await fetch(`${API_BASE_URL}/analyze`, {
+                    const response = await fetch(`${API_BASE_URL}/analyze?${params.toString()}`, {
                         method: 'POST',
                         body: formData,
                         mode: 'cors',
@@ -2903,13 +3036,30 @@
                     // Update UI with Railway API results
                     document.getElementById('bpm-result').textContent = `${Math.round(results.bpm || 120)} BPM`;
                     document.getElementById('key-result').textContent = results.key || 'C Major';
+                    document.getElementById('duration-result').textContent = results.duration || `${(file.size / 44100 / 2).toFixed(1)}s`;
+                    document.getElementById('samplerate-result').textContent = results.sample_rate || '44100 Hz';
                     
-                    // Update additional fields if they exist
-                    const durationEl = document.getElementById('duration-result');
-                    const sampleRateEl = document.getElementById('samplerate-result');
-                    
-                    if (durationEl) durationEl.textContent = results.duration || `${(file.size / 44100 / 2).toFixed(1)}s`;
-                    if (sampleRateEl) sampleRateEl.textContent = results.sampleRate || '44100 Hz';
+                    // Show candidates if available
+                    if (results.bpm_candidates || results.key_candidates) {
+                        const candidatesDiv = document.getElementById('analysis-candidates');
+                        candidatesDiv.style.display = 'block';
+                        
+                        // Update BPM candidates
+                        if (results.bpm_candidates && results.bpm_candidates.length > 1) {
+                            const bpmCandidatesEl = document.getElementById('bpm-candidates');
+                            bpmCandidatesEl.innerHTML = results.bpm_candidates.slice(0, 5).map(c => 
+                                `<span style="background: #e6f3ff; padding: 2px 4px; margin: 1px; border-radius: 3px; display: inline-block;">${Math.round(c.bpm)} BPM (${(c.confidence * 100).toFixed(0)}%)</span>`
+                            ).join(' ');
+                        }
+                        
+                        // Update key candidates  
+                        if (results.key_candidates && results.key_candidates.length > 1) {
+                            const keyCandidatesEl = document.getElementById('key-candidates');
+                            keyCandidatesEl.innerHTML = results.key_candidates.slice(0, 5).map(c =>
+                                `<span style="background: #fff3e6; padding: 2px 4px; margin: 1px; border-radius: 3px; display: inline-block;">${c.key} (${(c.confidence * 100).toFixed(0)}%)</span>`
+                            ).join(' ');
+                        }
+                    }
                     
                     hideAnalysisProgress();
                     
