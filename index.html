@@ -4293,9 +4293,9 @@
             sessionManager: typeof window.sessionManager
         });
         
-        // Simple, robust start menu handler
-        setTimeout(() => {
-            console.log('🔧 DEBUG: Setting up production-ready start menu...');
+        // Immediate start button setup - no delay
+        function setupStartMenu() {
+            console.log('🔧 Setting up start menu...');
             
             const startButton = document.getElementById('start-button');
             const startMenu = document.getElementById('start-menu');
@@ -4303,63 +4303,70 @@
             const signupItem = document.getElementById('signup-item');
             const upgradeItem = document.getElementById('upgrade-item');
             
-            if (startButton && startMenu) {
-                console.log('🔧 DEBUG: Start menu elements found, setting up handlers');
-                
-                // Toggle start menu on click
-                startButton.addEventListener('click', function(e) {
-                    console.log('🔧 DEBUG: Start button clicked - toggling menu');
-                    e.stopPropagation();
-                    
-                    if (startMenu.style.display === 'none' || startMenu.style.display === '') {
-                        startMenu.style.display = 'block';
-                        console.log('🔧 DEBUG: Start menu opened');
-                    } else {
-                        startMenu.style.display = 'none';
-                        console.log('🔧 DEBUG: Start menu closed');
-                    }
+            if (!startButton || !startMenu) {
+                console.error('❌ Start button or menu not found!', {
+                    button: !!startButton,
+                    menu: !!startMenu
                 });
+                return false;
+            }
+            
+            console.log('✅ Start menu elements found');
+            
+            // Simple click handler - no cloning needed
+            startButton.onclick = function(e) {
+                console.log('🔧 Start button clicked!');
+                e.stopPropagation();
                 
-                // Handle sign in click
-                if (signinItem) {
-                    signinItem.addEventListener('click', function(e) {
-                        console.log('🔧 DEBUG: Sign in clicked');
-                        e.stopPropagation();
-                        startMenu.style.display = 'none';
-                        
-                        if (window.authModal && window.authModal.show) {
-                            window.authModal.show();
-                        } else {
-                            alert('Please wait for authentication system to load...');
-                        }
-                    });
+                if (startMenu.style.display === 'none' || startMenu.style.display === '') {
+                    startMenu.style.display = 'block';
+                    console.log('📂 Start menu opened');
+                } else {
+                    startMenu.style.display = 'none';
+                    console.log('📂 Start menu closed');
                 }
+            };
+            
+            // Handle sign in click
+            if (signinItem) {
+                signinItem.onclick = function(e) {
+                    console.log('🔧 Sign in clicked');
+                    e.stopPropagation();
+                    startMenu.style.display = 'none';
+                    
+                    if (window.authModal && window.authModal.show) {
+                        window.authModal.show();
+                    } else {
+                        alert('Please wait for authentication system to load...');
+                    }
+                };
+            }
                 
-                // Handle sign up click
-                if (signupItem) {
-                    signupItem.addEventListener('click', function(e) {
-                        console.log('🔧 DEBUG: Sign up clicked');
-                        e.stopPropagation();
-                        startMenu.style.display = 'none';
-                        
-                        if (window.authModal && window.authModal.show && window.authModal.switchTab) {
-                            window.authModal.show();
-                            window.authModal.switchTab('signup');
-                        } else {
-                            alert('Please wait for authentication system to load...');
-                        }
-                    });
-                }
+            // Handle sign up click
+            if (signupItem) {
+                signupItem.onclick = function(e) {
+                    console.log('🔧 Sign up clicked');
+                    e.stopPropagation();
+                    startMenu.style.display = 'none';
+                    
+                    if (window.authModal && window.authModal.show && window.authModal.switchTab) {
+                        window.authModal.show();
+                        window.authModal.switchTab('signup');
+                    } else {
+                        alert('Please wait for authentication system to load...');
+                    }
+                };
+            }
                 
-                // Handle upgrade click
-                if (upgradeItem) {
-                    upgradeItem.addEventListener('click', function(e) {
-                        console.log('🔧 DEBUG: Upgrade clicked');
-                        e.stopPropagation();
-                        startMenu.style.display = 'none';
-                        alert('Premium upgrade feature coming soon!');
-                    });
-                }
+            // Handle upgrade click
+            if (upgradeItem) {
+                upgradeItem.onclick = function(e) {
+                    console.log('🔧 Upgrade clicked');
+                    e.stopPropagation();
+                    startMenu.style.display = 'none';
+                    alert('Premium upgrade feature coming soon!');
+                };
+            }
                 
                 // Handle feature window clicks
                 const featureItems = startMenu.querySelectorAll('[data-window]');
@@ -4385,11 +4392,21 @@
                     }
                 });
                 
-                console.log('✅ Production-ready start menu initialized');
-            } else {
-                console.error('❌ Start menu elements not found');
+                console.log('✅ Start menu initialized successfully');
+                return true;
             }
-        }, 1000);
+            
+            return false;
+        }
+        
+        // Try to set up immediately
+        if (!setupStartMenu()) {
+            console.log('⏳ Start menu setup delayed, will retry in 1 second...');
+            setTimeout(setupStartMenu, 1000);
+        }
+        
+        // Global function to manually trigger setup
+        window.setupStartMenu = setupStartMenu;
         
         // Add manual test functions for debugging
         window.testAuthState = () => {
