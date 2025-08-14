@@ -317,6 +317,10 @@
                 <div class="icon">📊</div>
                 <div class="label">Key/BPM<br>Analyzer</div>
             </div>
+            <div class="desktop-icon" onclick="openWindow('vocal-remover')">
+                <div class="icon">🎤</div>
+                <div class="label">Vocal<br>Remover</div>
+            </div>
             <div class="desktop-icon" onclick="openWindow('settings')">
                 <div class="icon">⚙️</div>
                 <div class="label">System<br>Settings</div>
@@ -407,6 +411,54 @@
                     <h3>Results</h3>
                     <div>BPM: <span id="bpm-result">-</span></div>
                     <div>Key: <span id="key-result">-</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vocal Remover Window -->
+        <div class="window" id="vocal-remover-window" style="top: 150px; left: 350px;">
+            <div class="title-bar">
+                <div class="title-text">Vocal Remover & Stem Separator</div>
+                <div class="title-controls">
+                    <div class="title-btn" onclick="closeWindow('vocal-remover-window')">×</div>
+                </div>
+            </div>
+            <div class="window-content">
+                <div class="section">
+                    <h3>Audio Input</h3>
+                    <div>
+                        <label>Select Audio File:</label>
+                        <input type="file" id="vocal-input" accept="audio/*" style="width: 100%; margin: 4px 0;">
+                        <div id="vocal-file-info" style="font-size: 10px; color: #808080; height: 12px;"></div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>Stem Separation</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0;">
+                        <button onclick="separateStems('vocals')" style="background: linear-gradient(to bottom, #ff4444, #cc3333); color: white;">🎤 Extract Vocals</button>
+                        <button onclick="separateStems('instrumental')" style="background: linear-gradient(to bottom, #4444ff, #3333cc); color: white;">🎸 Extract Instrumental</button>
+                        <button onclick="separateStems('drums')" style="background: linear-gradient(to bottom, #44ff44, #33cc33); color: white;">🥁 Extract Drums</button>
+                        <button onclick="separateStems('bass')" style="background: linear-gradient(to bottom, #ffaa44, #cc8833); color: white;">🎵 Extract Bass</button>
+                    </div>
+                    <button onclick="separateAllStems()" style="width: 100%; margin: 4px 0; background: linear-gradient(to bottom, #8844ff, #6633cc); color: white;">🎭 Separate All Stems</button>
+                </div>
+
+                <div class="section">
+                    <h3>Progress</h3>
+                    <div id="vocal-progress-container" style="display: none; margin: 8px 0;">
+                        <div style="width: 100%; height: 20px; background: white; border: 2px inset #c0c0c0; position: relative;">
+                            <div id="vocal-progress-fill" style="height: 100%; background: linear-gradient(to right, #8844ff, #aa55ff); width: 0%; transition: width 0.3s ease;"></div>
+                        </div>
+                        <div id="vocal-progress-text" style="text-align: center; font-size: 10px; margin-top: 4px;">Processing...</div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>Results</h3>
+                    <div id="vocal-results" style="min-height: 60px; border: 2px inset #c0c0c0; padding: 8px; background: white; font-size: 10px;">
+                        No stems generated yet. Upload an audio file and click a separation button to begin.
+                    </div>
                 </div>
             </div>
         </div>
@@ -940,11 +992,11 @@
                 const formData = new FormData();
                 formData.append('audio', analyzeInput.files[0]);
 
-                // Upload directly to Railway analysis service
-                log('📤 Uploading directly to Railway BPM/key analysis service...');
+                // Upload to vocal-remover Railway service for analysis
+                log('📤 Uploading to vocal-remover Railway service for analysis...');
                 log(`📋 Analysis FormData: audio=${analyzeInput.files[0]?.name}`);
                 
-                const response = await fetch('https://song-key-bpm-finder-app-production.up.railway.app/analyze', {
+                const response = await fetch('https://vocal-remover-production.up.railway.app/analyze', {
                     method: 'POST',
                     body: formData,
                     mode: 'cors'
@@ -986,6 +1038,110 @@
             setInterval(updateClock, 1000);
             log('🚀 Studio Buddy Web initialized');
             log('🎯 Click desktop icons to open windows');
+        });
+
+        // Vocal Remover Functions
+        async function separateStems(stemType) {
+            try {
+                log(`🎤 Starting ${stemType} separation...`);
+                
+                const vocalInput = document.getElementById('vocal-input');
+                if (!vocalInput.files[0]) {
+                    log('❌ Please select an audio file first');
+                    return;
+                }
+
+                // Check file size (limit to 25MB)
+                const maxSize = 25 * 1024 * 1024;
+                if (vocalInput.files[0].size > maxSize) {
+                    log(`❌ File too large: ${Math.round(vocalInput.files[0].size/1024/1024)}MB. Please use files under 25MB.`);
+                    return;
+                }
+
+                // Show progress
+                const progressContainer = document.getElementById('vocal-progress-container');
+                const progressFill = document.getElementById('vocal-progress-fill');
+                const progressText = document.getElementById('vocal-progress-text');
+                
+                progressContainer.style.display = 'block';
+                progressText.textContent = `Separating ${stemType}...`;
+                progressFill.style.width = '10%';
+
+                // Create FormData
+                const formData = new FormData();
+                formData.append('audio', vocalInput.files[0]);
+                formData.append('stem_type', stemType);
+
+                log(`📤 Uploading to vocal-remover service...`);
+                
+                const response = await fetch('https://vocal-remover-production.up.railway.app/separate', {
+                    method: 'POST',
+                    body: formData,
+                    mode: 'cors'
+                });
+
+                log(`📊 Separation Response: ${response.status} ${response.statusText}`);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`❌ Separation Error: ${errorText}`);
+                    throw new Error(`Separation failed: ${response.status} - ${errorText}`);
+                }
+
+                progressFill.style.width = '80%';
+                progressText.textContent = 'Processing stems...';
+
+                // Get the separated audio
+                const separatedBlob = await response.blob();
+                const separatedUrl = URL.createObjectURL(separatedBlob);
+                
+                // Create download link
+                const downloadLink = document.createElement('a');
+                downloadLink.href = separatedUrl;
+                downloadLink.download = `${stemType}_separated.wav`;
+                downloadLink.textContent = `Download ${stemType}`;
+                downloadLink.style.display = 'block';
+                downloadLink.style.margin = '4px 0';
+                downloadLink.style.color = '#000080';
+                downloadLink.style.textDecoration = 'underline';
+                downloadLink.style.cursor = 'pointer';
+
+                // Add to results
+                const resultsDiv = document.getElementById('vocal-results');
+                resultsDiv.innerHTML = ''; // Clear previous results
+                resultsDiv.appendChild(downloadLink);
+
+                progressFill.style.width = '100%';
+                progressText.textContent = `${stemType} separation complete!`;
+                
+                log(`✅ ${stemType} separation successful!`);
+                log(`💾 Download ready: ${downloadLink.download}`);
+
+            } catch (error) {
+                log(`❌ Vocal Separation Error: ${error.message}`);
+                document.getElementById('vocal-progress-container').style.display = 'none';
+            }
+        }
+
+        async function separateAllStems() {
+            log('🎭 Starting full stem separation...');
+            // This would call the API to separate all stems at once
+            // For now, we'll just call separateStems for vocals as an example
+            await separateStems('all');
+        }
+
+        // File input handler for vocal remover
+        document.addEventListener('DOMContentLoaded', () => {
+            const vocalInput = document.getElementById('vocal-input');
+            if (vocalInput) {
+                vocalInput.addEventListener('change', (e) => {
+                    if (e.target.files[0]) {
+                        const info = `${e.target.files[0].name} - ${Math.round(e.target.files[0].size/1024)}KB`;
+                        document.getElementById('vocal-file-info').textContent = info;
+                        log(`📁 Vocal file loaded: ${e.target.files[0].name}`);
+                    }
+                });
+            }
         });
 
         log('📄 Script loaded successfully');
