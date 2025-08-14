@@ -3878,6 +3878,16 @@
             }
         };
         
+        // Force UI update function
+        window.forceAuthUI = () => {
+            console.log('🔧 Force updating auth UI...');
+            if (window.sessionManager && window.authManager) {
+                const user = window.authManager.getCurrentUser();
+                console.log('👤 Current user for UI update:', user?.email);
+                window.sessionManager.handleAuthStateChange(user);
+            }
+        };
+        
         // Test auth state every 5 seconds for debugging
         setInterval(() => {
             if (window.authManager && window.authManager.getCurrentUser()) {

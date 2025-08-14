@@ -38,6 +38,16 @@ class SessionManager {
       this.handleAuthStateChange(user);
     });
     console.log('✅ Auth state listener registered');
+    
+    // Immediately check current auth state in case we missed the initial change
+    console.log('🔍 Checking current auth state...');
+    const currentUser = window.authManager.getCurrentUser();
+    if (currentUser) {
+      console.log('🔄 Found existing user, updating UI:', currentUser.email);
+      setTimeout(() => {
+        this.handleAuthStateChange(currentUser);
+      }, 100);
+    }
 
     // Listen for successful sign-ins
     window.addEventListener('userSignedIn', (event) => {
