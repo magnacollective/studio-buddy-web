@@ -484,7 +484,6 @@
         <!-- Click to Start Button -->
         <div class="boot-content" id="boot-ui">
             <video class="boot-video" id="boot-video" src="assets/Video_Adjustment_and_Generation.mp4" playsinline muted loop autoplay></video>
-            <div id="boot-start-button" style="background: #fff; color: #000; padding: 20px 40px; font-family: 'Courier New', monospace; font-size: 16px; border: 2px solid #000; cursor: pointer; animation: blink 1s infinite;">CLICK TO START</div>
         </div>
         
         <!-- Boot sequence (hidden initially) -->
@@ -1047,6 +1046,11 @@
                     if (currentAudio && isPlaying) {
                         connectAudioToAudioMotion(currentAudio);
                     }
+                    // Stop any existing canvas animation since we're using audioMotion
+                    if (vizAnimationFrame) {
+                        cancelAnimationFrame(vizAnimationFrame);
+                        vizAnimationFrame = null;
+                    }
                     log('[VIZ] Using audioMotion visualizer');
                 } else {
                     // Fallback to original visualizer
@@ -1070,10 +1074,12 @@
         }
 
         function startVisualization() {
-            // If audioMotion is available and active, use it instead
-            if (audioMotion && currentAudio && isPlaying) {
-                connectAudioToAudioMotion(currentAudio);
-                return;
+            // Always prioritize audioMotion if it exists
+            if (audioMotion) {
+                if (currentAudio && isPlaying) {
+                    connectAudioToAudioMotion(currentAudio);
+                }
+                return; // Don't start canvas fallback if audioMotion exists
             }
             
             // Fallback to canvas visualizer
@@ -1801,12 +1807,14 @@
         // Railway API integration
         async function startMastering() {
             try {
-                // Reset previous audio session to prevent conflicts
-                if (window.sourceAudio || window.masteredAudio) {
-                    log('[RESET] Auto-resetting previous session...');
-                    resetForNewSong();
-                    // Wait a moment for cleanup to complete
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                // Only reset mastered audio, keep source audio
+                if (window.masteredAudio) {
+                    log('[RESET] Clearing previous mastered audio...');
+                    window.masteredAudio.pause();
+                    if (window.masteredAudio.src && window.masteredAudio.src.startsWith('blob:')) {
+                        URL.revokeObjectURL(window.masteredAudio.src);
+                    }
+                    window.masteredAudio = null;
                 }
                 
                 // Start realistic progress animation
@@ -1820,6 +1828,12 @@
                 if (!sourceInput.files[0]) {
                     log('[ERROR] Please select a source audio file first');
                     return;
+                }
+
+                // Ensure source audio is loaded if it wasn't already
+                if (!window.sourceAudio && sourceInput.files[0]) {
+                    log('[AUDIO] Creating source audio from file input...');
+                    loadSourceAudio(sourceInput);
                 }
 
                 // Check file size with smart handling
@@ -2614,27 +2628,32 @@
             }
         }
 
-        // Boot sequence
+        // Boot sequence - auto start on page click
         function startBootSequence() {
-            // Show click to start button first
-            document.getElementById('boot-start-button').style.display = 'block';
             // Start matrix effect behind boot
             createMatrixForBoot();
             
-            // Add click handler for starting with audio
-            document.getElementById('boot-start-button').onclick = async function() {
-                // Hide start button and show boot sequence
-                document.getElementById('boot-start-button').style.display = 'none';
+            // Add one-time click handler to entire page for starting
+            let hasStarted = false;
+            const startBoot = async function() {
+                if (hasStarted) return;
+                hasStarted = true;
+                
+                // Remove click listener
+                document.removeEventListener('click', startBoot);
+                
+                // Show boot sequence immediately
                 document.getElementById('boot-sequence').style.display = 'block';
                 
                 // Now we can play beeps with user interaction
                 await playDOSBootBeeps();
                 
-                // Video is already playing in same position behind the start screen; keep looping
-                
                 // Continue with normal boot sequence
                 startBootAnimation();
             };
+            
+            // Listen for any click on the page
+            document.addEventListener('click', startBoot);
         }
 
         // Create a separate matrix for boot background into #boot-matrix
