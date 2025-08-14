@@ -2514,26 +2514,26 @@
         }
         
         function startBootAnimation() {
-            // Progress bar animation (target total boot ~8s)
+            // Time-based progress (reliable across deploys). Target total boot ~8s from click
+            const delayBeforeProgressMs = 1200; // brief delay to show early text
+            const progressDurationMs = 5200; // progress runs ~5.2s
             setTimeout(() => {
                 const progressFill = document.getElementById('boot-progress-fill');
                 const progressPercentage = document.getElementById('boot-percentage');
-                let progress = 0;
-                
-                const progressInterval = setInterval(() => {
-                    progress += Math.random() * 22 + 10; // Finish quickly within ~1.8s window
-                    if (progress > 100) progress = 100;
-                    
-                    progressFill.style.width = progress + '%';
-                    progressPercentage.textContent = Math.floor(progress) + '%';
-                    
-                    if (progress >= 100) {
-                        clearInterval(progressInterval);
-                        // Complete boot sequence ~8s total from click
+                const start = Date.now();
+                const tick = () => {
+                    const elapsed = Date.now() - start;
+                    const pct = Math.min(100, (elapsed / progressDurationMs) * 100);
+                    if (progressFill) progressFill.style.width = pct + '%';
+                    if (progressPercentage) progressPercentage.textContent = Math.floor(pct) + '%';
+                    if (pct < 100) {
+                        requestAnimationFrame(tick);
+                    } else {
                         setTimeout(completeBootSequence, 300);
                     }
-                }, 120);
-            }, 6200); // Start progress bar around 6.2s, finish ~7.7-7.9s
+                };
+                requestAnimationFrame(tick);
+            }, delayBeforeProgressMs);
         }
         
         function completeBootSequence() {
