@@ -45,8 +45,8 @@ export default async function handler(req, res) {
         quantity: 1,
       }],
       mode: 'subscription',
-      success_url: `${process.env.APP_URL || process.env.DOMAIN || 'https://studio-buddy-web.vercel.app'}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.APP_URL || process.env.DOMAIN || 'https://studio-buddy-web.vercel.app'}/cancel`,
+      success_url: `${process.env.APP_URL || process.env.DOMAIN || 'https://studiobuddy.xyz'}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.APP_URL || process.env.DOMAIN || 'https://studiobuddy.xyz'}/cancel`,
       metadata: {
         userId: userId,
         source: 'studio_buddy_web'
