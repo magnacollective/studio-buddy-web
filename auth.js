@@ -312,6 +312,13 @@ class AuthManager {
       const sessionId = this.getSessionId();
       const userPlan = await this.getUserPlan();
       
+      console.log('📡 Calling check-limits API with:', {
+        processType: 'mastering',
+        userId: userId,
+        sessionId: sessionId,
+        userPlan: userPlan
+      });
+      
       const response = await fetch('/api/check-limits', {
         method: 'POST',
         headers: {
@@ -325,9 +332,15 @@ class AuthManager {
         })
       });
       
+      console.log('📡 Check-limits API response status:', response.status);
+      
       if (response.ok) {
         const result = await response.json();
+        console.log('📡 Check-limits API result:', result);
         return result.usage || {};
+      } else {
+        const errorText = await response.text();
+        console.error('📡 Check-limits API error:', response.status, errorText);
       }
     } catch (error) {
       console.error('Error getting usage stats:', error);

@@ -384,8 +384,20 @@ class UsageManager {
 
         const userPlan = await window.authManager.getUserPlan();
         console.log('👤 User plan:', userPlan);
+        
+        // Debug: Check Firebase data directly
+        const userData = await window.authManager.getUserData();
+        console.log('🔥 Firebase user data:', userData);
+        console.log('🔥 Firebase subscription:', userData?.subscription);
+        
         const usageStats = await window.authManager.getUsageStats();
         console.log('📊 Usage stats received:', usageStats);
+        console.log('📊 Usage stats breakdown:', {
+          mastering: usageStats.mastering,
+          vocal_separation: usageStats.vocal_separation,
+          remaining: usageStats.remaining,
+          limits: usageStats.limits
+        });
         
         // Update status indicator
         const statusElement = document.getElementById('usage-status');
