@@ -988,9 +988,11 @@ async function generateLyrics() {
         
         // Display the lyrics with enhanced formatting
         const lyricsText = result.lyrics.join('\n');
-        const sourceIcon = result.source === 'openai_gpt' ? '🤖' : 
-                          result.source === 'template_based' ? '🎯' : '💻';
-        const sourceText = result.source === 'openai_gpt' ? 'AI Generated (GPT)' :
+        const sourceIcon = result.source === 'gpt_dataset_guided' ? '🚀' :
+                          result.source === 'openai_gpt' ? '🤖' : 
+                          result.source === 'hybrid_dataset' ? '🎯' : '💻';
+        const sourceText = result.source === 'gpt_dataset_guided' ? 'GPT-5 + Your Dataset' :
+                          result.source === 'openai_gpt' ? 'AI Generated (GPT)' :
                           result.source === 'hybrid_dataset' ? 'Your Dataset + Templates' : 
                           result.source === 'template_based' ? 'Enhanced Templates' : 'Local Fallback';
         

@@ -2249,10 +2249,10 @@
             const currentOrigin = window.location.origin;
             console.log('🧪 Testing Railway API connectivity...');
             console.log('🌐 Current Origin:', currentOrigin);
-            console.log('🔒 Railway CORS Origins: https://studio-buddy-web.vercel.app, http://localhost:3000');
+            console.log('🔒 Railway CORS Origins: https://studiobuddy.xyz, https://studio-buddy-web.vercel.app, http://localhost:3000');
             
             // Check if origin is allowed
-            const allowedOrigins = ['https://studio-buddy-web.vercel.app', 'http://localhost:3000'];
+            const allowedOrigins = ['https://studiobuddy.xyz', 'https://www.studiobuddy.xyz', 'https://studio-buddy-web.vercel.app', 'http://localhost:3000'];
             const isAllowed = allowedOrigins.includes(currentOrigin);
             console.log(`🚦 Origin allowed: ${isAllowed ? '✅' : '❌'}`);
             
