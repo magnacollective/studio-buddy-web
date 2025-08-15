@@ -4891,9 +4891,41 @@
             }
         };
 
+        // Test usage tracking API endpoints
+        async function testUsageAPIs() {
+            console.log('🧪 Testing usage tracking APIs...');
+            
+            try {
+                // Test the check-limits endpoint
+                const checkResponse = await fetch('/api/check-limits', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        processType: 'mastering',
+                        sessionId: 'test_session',
+                        userPlan: 'free'
+                    })
+                });
+                console.log('📊 Check-limits API status:', checkResponse.status);
+                
+                if (checkResponse.ok) {
+                    const checkData = await checkResponse.json();
+                    console.log('✅ Check-limits API working:', checkData);
+                } else {
+                    console.error('❌ Check-limits API error:', await checkResponse.text());
+                }
+                
+            } catch (error) {
+                console.error('❌ Usage API test failed:', error);
+            }
+        }
+
         // Initialize usage counter when page loads
         document.addEventListener('DOMContentLoaded', function() {
             console.log('📊 Initializing usage counter...');
+            
+            // Test APIs first
+            setTimeout(testUsageAPIs, 2000);
             
             // Initial update
             setTimeout(window.updateUsageCounter, 1000);

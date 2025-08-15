@@ -13,6 +13,18 @@
     },
     "api/customer-portal.js": {
       "maxDuration": 10
+    },
+    "api/config.js": {
+      "maxDuration": 5
+    },
+    "api/check-limits.js": {
+      "maxDuration": 5
+    },
+    "api/track-usage.js": {
+      "maxDuration": 5
+    },
+    "api/validate-request.js": {
+      "maxDuration": 5
     }
   },
   "headers": [
