@@ -51,6 +51,9 @@ export default async function handler(req, res) {
     const ipStorageKey = `usage_${ipIdentifier}_${today}`;
     
     console.log(`🗂️ Storage key for tracking: ${userStorageKey}`);
+    console.log(`🔧 User identifier: "${userIdentifier}"`);
+    console.log(`🔧 Today: "${today}"`);
+    console.log(`🔧 Input userId: "${userId}", sessionId: "${sessionId}"`);
 
     // For this demo, we'll use a simple in-memory store
     // In production, you'd want to use Redis, database, or similar persistent storage
@@ -113,7 +116,9 @@ export default async function handler(req, res) {
     // Store updated usage
     global.usageStore[userStorageKey] = currentUserUsage;
     global.usageStore[ipStorageKey] = currentIPUsage;
-
+    
+    console.log(`💾 Stored data for key "${userStorageKey}":`, currentUserUsage);
+    console.log(`💾 All storage keys after storing:`, Object.keys(global.usageStore));
     console.log(`✅ Usage tracked: User ${userCount + 1}/${dailyLimit}, IP ${ipCount + 1}/${ipDailyLimit}`);
 
     // Return success with current usage stats

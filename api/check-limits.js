@@ -57,6 +57,9 @@ export default async function handler(req, res) {
 
     console.log(`🔍 Checking limits: ${userIdentifier}, IP: ${userIP}`);
     console.log(`🗂️ Storage key: ${userStorageKey}`);
+    console.log(`🔧 User identifier: "${userIdentifier}"`);
+    console.log(`🔧 Today: "${today}"`);
+    console.log(`🔧 Input userId: "${userId}", sessionId: "${sessionId}"`);
 
     // Get current usage for both user and IP
     global.usageStore = global.usageStore || {};
@@ -64,6 +67,7 @@ export default async function handler(req, res) {
     // Debug: Show all stored data
     console.log(`🗄️ All stored usage data:`, Object.keys(global.usageStore));
     console.log(`🗄️ Looking for key: ${userStorageKey}`);
+    console.log(`🗄️ Found data for key:`, global.usageStore[userStorageKey]);
     
     const currentUserUsage = global.usageStore[userStorageKey] || {
       mastering: 0,
