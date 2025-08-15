@@ -768,16 +768,32 @@ class SessionManager {
 
   // Track usage after successful processing
   async trackUsage(operationType = 'mastering') {
+    console.log('🎯 trackUsage called with operationType:', operationType);
+    
     try {
-      // Use the new usage manager for tracking
+      if (!window.usageManager) {
+        console.error('❌ Usage manager not available');
+        return;
+      }
+      
+      console.log('📊 Tracking operation with usage manager...');
       await window.usageManager.trackOperation(operationType);
+      console.log('✅ Usage tracking completed successfully');
       
       // Refresh user menu to show updated usage
       if (window.authManager.isAuthenticated()) {
         this.handleAuthStateChange(window.authManager.getCurrentUser());
       }
+      
+      // Force update the usage counter
+      if (window.updateUsageCounter) {
+        console.log('🔄 Updating usage counter display...');
+        setTimeout(window.updateUsageCounter, 500);
+      }
+      
     } catch (error) {
-      console.error('Error tracking usage:', error);
+      console.error('❌ Error tracking usage:', error);
+      console.error('Full error details:', error.stack);
       // Don't throw error here as the operation was successful
     }
   }

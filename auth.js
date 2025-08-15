@@ -190,29 +190,43 @@ class AuthManager {
       const userId = this.currentUser ? this.currentUser.uid : null;
       const sessionId = this.getSessionId();
       
+      console.log('🎯 AuthManager: trackProcessUsage called');
+      console.log('📋 Process type:', processType);
+      console.log('👤 User ID:', userId);
+      console.log('🆔 Session ID:', sessionId);
+      
+      const requestBody = {
+        processType: processType,
+        userId: userId,
+        sessionId: sessionId
+      };
+      
+      console.log('📤 Sending request to /api/track-usage:', requestBody);
+      
       const response = await fetch('/api/track-usage', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          processType: processType,
-          userId: userId,
-          sessionId: sessionId
-        })
+        body: JSON.stringify(requestBody)
       });
+      
+      console.log('📥 Response status:', response.status);
       
       if (!response.ok) {
         const error = await response.json();
+        console.error('❌ API error response:', error);
         if (response.status === 429) {
           throw new Error(`Daily limit exceeded for ${processType}. You can process ${error.limit} ${processType} operations per day. Try again tomorrow.`);
         }
         throw new Error(error.error || 'Failed to track usage');
       }
       
-      return await response.json();
+      const result = await response.json();
+      console.log('✅ API success response:', result);
+      return result;
     } catch (error) {
-      console.error('Error tracking usage:', error);
+      console.error('❌ AuthManager: Error tracking usage:', error);
       throw error;
     }
   }

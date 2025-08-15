@@ -36,16 +36,26 @@ class UsageManager {
   // Track usage after successful operation
   async trackOperation(operationType) {
     try {
-      console.log(`📊 Tracking usage for: ${operationType}`);
+      console.log(`📊 UsageManager: Tracking usage for: ${operationType}`);
       
+      if (!window.authManager || !window.authManager.trackProcessUsage) {
+        console.error('❌ AuthManager or trackProcessUsage not available');
+        throw new Error('Authentication manager not ready');
+      }
+      
+      console.log('🔗 Calling authManager.trackProcessUsage...');
       const result = await window.authManager.trackProcessUsage(operationType);
+      console.log('✅ TrackProcessUsage returned:', result);
+      
       this.currentUsage = result.usage;
       
       // Update UI to reflect new usage
+      console.log('🎨 Updating UI displays...');
       this.updateUsageDisplay();
       
       // Update desktop usage counter
       if (window.updateUsageCounter) {
+        console.log('📈 Updating desktop counter...');
         setTimeout(window.updateUsageCounter, 100);
       }
       
@@ -54,7 +64,8 @@ class UsageManager {
       
       return result;
     } catch (error) {
-      console.error('Error tracking operation:', error);
+      console.error('❌ UsageManager: Error tracking operation:', error);
+      console.error('Error details:', error.stack);
       this.showErrorDialog(error.message);
       throw error;
     }
