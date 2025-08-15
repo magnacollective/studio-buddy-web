@@ -1,5 +1,5 @@
-// Endpoint to reset user subscription status for testing
-// This should only be used for debugging/testing
+// Safer endpoint for users to reset their own subscription status
+// Requires actual user authentication
 
 const admin = require('firebase-admin');
 
@@ -8,26 +8,15 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // 🔒 SECURITY: Only allow in development/testing
-  const isDevelopment = process.env.NODE_ENV === 'development' || process.env.VERCEL_ENV === 'preview';
-  const hasDebugKey = req.headers['x-debug-key'] === process.env.DEBUG_API_KEY;
-  
-  if (!isDevelopment && !hasDebugKey) {
-    return res.status(403).json({ 
-      error: 'Forbidden',
-      message: 'This endpoint is only available in development or with proper authorization'
-    });
-  }
-
-  const { userId, newPlan = 'free', newStatus = 'active' } = req.body;
-
-  if (!userId) {
-    return res.status(400).json({ error: 'userId required' });
-  }
-
-  console.log(`🚨 ADMIN ACTION: Resetting user ${userId} subscription (authorized: ${isDevelopment ? 'dev' : 'debug-key'})`);
-
   try {
+    // Get user's Firebase ID token from Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Missing or invalid authorization header' });
+    }
+
+    const idToken = authHeader.split('Bearer ')[1];
+
     // Initialize Firebase Admin SDK if not already done
     if (!admin.apps.length) {
       admin.initializeApp({
@@ -39,6 +28,14 @@ export default async function handler(req, res) {
         databaseURL: `https://${process.env.FIREBASE_PROJECT_ID}-default-rtdb.firebaseio.com/`
       });
     }
+
+    // Verify the ID token and get user info
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const userId = decodedToken.uid;
+
+    const { newPlan = 'free', newStatus = 'active' } = req.body;
+
+    console.log(`🔒 AUTHENTICATED RESET: User ${userId} (${decodedToken.email}) resetting own subscription`);
 
     const db = admin.firestore();
     const userDoc = db.collection('users').doc(userId);
@@ -54,18 +51,19 @@ export default async function handler(req, res) {
       'subscription.plan': newPlan,
       'subscription.status': newStatus,
       'subscription.updatedAt': new Date(),
-      'subscription.resetBy': 'debug-endpoint',
+      'subscription.resetBy': 'user-self-reset',
       'subscription.resetAt': new Date()
     };
 
     await userDoc.update(updateData);
 
-    console.log(`✅ User ${userId} subscription reset to ${newPlan}/${newStatus}`);
+    console.log(`✅ User ${userId} self-reset subscription to ${newPlan}/${newStatus}`);
 
     res.status(200).json({
       success: true,
-      message: `User subscription reset successfully`,
+      message: 'Your subscription has been reset successfully',
       userId: userId,
+      email: decodedToken.email,
       oldPlan: currentUser.data()?.subscription?.plan || 'unknown',
       newPlan: newPlan,
       newStatus: newStatus,
@@ -73,11 +71,20 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('❌ Error resetting user subscription:', error);
+    console.error('❌ Error in user self-reset:', error);
+    
+    if (error.code === 'auth/id-token-expired') {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication token expired',
+        message: 'Please sign in again'
+      });
+    }
+
     res.status(500).json({
       success: false,
       error: error.message,
-      userId: userId
+      message: 'Failed to reset subscription'
     });
   }
 }

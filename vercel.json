@@ -34,6 +34,9 @@
     },
     "api/test-env.js": {
       "maxDuration": 5
+    },
+    "api/user-self-reset.js": {
+      "maxDuration": 5
     }
   },
   "headers": [
