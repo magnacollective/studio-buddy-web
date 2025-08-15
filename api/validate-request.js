@@ -18,12 +18,21 @@ export default async function handler(req, res) {
   try {
     const { processType, userId, sessionId, userPlan = 'free' } = req.body;
 
+    // Get user's IP address for tracking and validation
+    const userIP = req.headers['x-forwarded-for'] || 
+                   req.headers['x-real-ip'] || 
+                   req.connection.remoteAddress || 
+                   req.socket.remoteAddress ||
+                   (req.connection.socket ? req.connection.socket.remoteAddress : null);
+
     // Validate required fields
     if (!processType || (!userId && !sessionId)) {
       return res.status(400).json({ 
         error: 'Missing required fields: processType and user identifier' 
       });
     }
+
+    console.log(`🛡️ Validating request: ${userId ? `user_${userId}` : `session_${sessionId}`}, IP: ${userIP}`);
 
     // Validate process type
     const validTypes = ['mastering', 'vocal_separation'];
