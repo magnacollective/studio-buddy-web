@@ -2482,9 +2482,15 @@
             try {
                 // ✨ USAGE TRACKING: Check if user can perform mastering operation
                 console.log('🔍 Checking mastering limits before processing...');
+                console.log('🔧 Available managers:', {
+                    usageManager: !!window.usageManager,
+                    authManager: !!window.authManager,
+                    updateUsageCounter: !!window.updateUsageCounter
+                });
                 
                 if (!window.usageManager) {
                     log('[ERROR] Usage manager not available. Please refresh the page.');
+                    console.error('❌ window.usageManager is missing!');
                     return;
                 }
                 
@@ -5044,6 +5050,32 @@
                 window.updateUsageCounter();
             }
         }, 3000);
+
+        // AGGRESSIVE: Try initialization every few seconds until it works
+        let initAttempts = 0;
+        const aggressiveInit = setInterval(function() {
+            initAttempts++;
+            console.log(`🔄 Aggressive init attempt ${initAttempts}...`);
+            
+            if (window.updateUsageCounter && window.authManager) {
+                console.log('✅ Found updateUsageCounter and authManager, calling now');
+                window.updateUsageCounter();
+                if (initAttempts >= 3) {
+                    clearInterval(aggressiveInit);
+                    console.log('🛑 Stopping aggressive initialization');
+                }
+            } else {
+                console.log('❌ Missing:', {
+                    updateUsageCounter: !!window.updateUsageCounter,
+                    authManager: !!window.authManager
+                });
+            }
+            
+            if (initAttempts >= 10) {
+                clearInterval(aggressiveInit);
+                console.log('🛑 Giving up on initialization after 10 attempts');
+            }
+        }, 2000);
 
         // Test auth state every 5 seconds for debugging
         setInterval(() => {
