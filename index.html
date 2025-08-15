@@ -21,6 +21,17 @@
         import AudioMotionAnalyzer from 'https://cdn.skypack.dev/audiomotion-analyzer?min';
         window.AudioMotionAnalyzer = AudioMotionAnalyzer;
     </script>
+    
+    <!-- Stripe Configuration - Replace with your actual keys -->
+    <script>
+        // IMPORTANT: Add your Stripe publishable key here
+        // This is safe to expose in frontend code
+        window._env = {
+            STRIPE_PUBLISHABLE_KEY: 'pk_test_YOUR_PUBLISHABLE_KEY_HERE', // Replace this!
+            STRIPE_PRICE_ID: 'price_YOUR_PRICE_ID_HERE', // Replace this!
+            API_URL: window.location.origin
+        };
+    </script>
     <style>
         * {
             box-sizing: border-box;
