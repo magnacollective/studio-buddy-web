@@ -22,15 +22,34 @@
         window.AudioMotionAnalyzer = AudioMotionAnalyzer;
     </script>
     
-    <!-- Stripe Configuration - Replace with your actual keys -->
+    <!-- Stripe Configuration - Loaded from API -->
     <script>
-        // IMPORTANT: Add your Stripe publishable key here
-        // This is safe to expose in frontend code
+        // Initialize environment configuration
         window._env = {
-            STRIPE_PUBLISHABLE_KEY: 'pk_test_YOUR_PUBLISHABLE_KEY_HERE', // Replace this!
-            STRIPE_PRICE_ID: 'price_YOUR_PRICE_ID_HERE', // Replace this!
+            STRIPE_PUBLISHABLE_KEY: '',
+            STRIPE_PRICE_ID: '',
             API_URL: window.location.origin
         };
+        
+        // Load configuration from API endpoint
+        (async function loadConfig() {
+            try {
+                const response = await fetch('/api/config');
+                if (response.ok) {
+                    const config = await response.json();
+                    window._env.STRIPE_PUBLISHABLE_KEY = config.stripePublishableKey;
+                    window._env.STRIPE_PRICE_ID = config.stripePriceId;
+                    console.log('✅ Stripe configuration loaded from API');
+                } else {
+                    console.error('⚠️ Failed to load Stripe configuration from API');
+                    const error = await response.json();
+                    console.error(error.message);
+                }
+            } catch (error) {
+                console.error('⚠️ Error loading configuration:', error);
+                console.log('Make sure STRIPE_PUBLISHABLE_KEY and STRIPE_PRICE_ID are set in Vercel environment variables');
+            }
+        })();
     </script>
     <style>
         * {

@@ -49,7 +49,7 @@ class Config {
       
       // Feature flags
       features: {
-        demoMode: this.isDevelopment || !this.hasStripeKeys(),
+        demoMode: false, // Demo mode disabled - real Stripe required
         analytics: this.isProduction,
         logging: this.isDevelopment
       },
@@ -69,7 +69,7 @@ class Config {
     
     console.log('🚀 Studio Buddy Config initialized');
     console.log('📊 Environment:', this.environment);
-    console.log('🎭 Demo Mode:', window._studioConfig.features.demoMode);
+    console.log('💳 Stripe Mode: Production');
   }
 
   hasStripeKeys() {

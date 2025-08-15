@@ -2,15 +2,15 @@
 
 class PaymentManager {
   constructor() {
-    // Configuration - uses environment variables or defaults to demo mode
+    // Configuration - uses environment variables (Stripe integration required)
     this.config = {
-      stripePublishableKey: this.getEnvVar('STRIPE_PUBLISHABLE_KEY') || 'pk_test_demo_mode',
-      priceId: this.getEnvVar('STRIPE_PRICE_ID') || 'price_1RvySh0R5PD3apLx2nTyNXkw',
+      stripePublishableKey: this.getEnvVar('STRIPE_PUBLISHABLE_KEY') || '',
+      priceId: this.getEnvVar('STRIPE_PRICE_ID') || '',
       apiUrl: this.getEnvVar('API_URL') || window.location.origin
     };
     
-    // Determine if we're in demo mode based on actual Stripe key validity
-    this.config.demoMode = this.shouldUseDemoMode();
+    // Demo mode is disabled - real Stripe integration required
+    this.config.demoMode = false;
     
     this.stripe = null;
     this.isInitialized = false;
@@ -38,33 +38,30 @@ class PaymentManager {
     return null;
   }
 
-  // Determine if we should use demo mode
-  shouldUseDemoMode() {
+  // Validate Stripe configuration
+  validateStripeConfig() {
     const pubKey = this.config.stripePublishableKey;
-    const secretKey = this.getEnvVar('STRIPE_SECRET_KEY');
+    const priceId = this.config.priceId;
     
-    // If no keys provided or placeholder values, use demo mode
-    if (!pubKey || !secretKey || 
-        pubKey === 'pk_test_demo_mode' ||
-        pubKey === 'pk_test_YOUR_PUBLISHABLE_KEY_HERE' ||
-        secretKey === 'sk_test_YOUR_SECRET_KEY_HERE') {
-      return true;
+    if (!pubKey || !priceId) {
+      throw new Error('Stripe configuration missing. Please configure STRIPE_PUBLISHABLE_KEY and STRIPE_PRICE_ID.');
     }
     
-    // If keys don't start with proper prefixes, use demo mode
+    // Check if keys are valid format
     const validPubKey = pubKey.startsWith('pk_live_') || pubKey.startsWith('pk_test_');
-    const validSecretKey = secretKey.startsWith('sk_live_') || secretKey.startsWith('sk_test_');
     
-    if (!validPubKey || !validSecretKey) {
-      return true;
+    if (!validPubKey) {
+      throw new Error('Invalid Stripe publishable key format.');
     }
     
-    // All checks passed, we can use real Stripe
-    return false;
+    return true;
   }
 
   async init() {
     try {
+      // Wait for configuration to be loaded from API
+      await this.waitForConfig();
+      
       // Load Stripe.js dynamically
       if (typeof Stripe === 'undefined') {
         const script = document.createElement('script');
@@ -79,27 +76,47 @@ class PaymentManager {
     }
   }
 
+  async waitForConfig() {
+    // Wait up to 5 seconds for config to be loaded
+    const maxAttempts = 50;
+    let attempts = 0;
+    
+    while (attempts < maxAttempts) {
+      // Check if config is loaded
+      if (this.config.stripePublishableKey && this.config.priceId) {
+        return;
+      }
+      
+      // Update config from window._env
+      this.config.stripePublishableKey = this.getEnvVar('STRIPE_PUBLISHABLE_KEY') || '';
+      this.config.priceId = this.getEnvVar('STRIPE_PRICE_ID') || '';
+      
+      if (this.config.stripePublishableKey && this.config.priceId) {
+        return;
+      }
+      
+      // Wait 100ms before next attempt
+      await new Promise(resolve => setTimeout(resolve, 100));
+      attempts++;
+    }
+    
+    throw new Error('Failed to load Stripe configuration from API');
+  }
+
   initializeStripe() {
     try {
-      // Check if we have real Stripe keys or are in demo mode
-      const hasRealStripeKeys = this.config.stripePublishableKey.startsWith('pk_live_') || 
-                                this.config.stripePublishableKey.startsWith('pk_test_');
-      
-      if (!hasRealStripeKeys) {
-        console.log('💡 No valid Stripe keys found, enabling demo mode');
-        this.config.demoMode = true;
-      }
+      // Validate configuration before initializing
+      this.validateStripeConfig();
       
       this.stripe = Stripe(this.config.stripePublishableKey);
       this.isInitialized = true;
       
       console.log('✅ Stripe initialized successfully');
-      console.log(`💡 Demo mode: ${this.config.demoMode ? 'ON' : 'OFF'}`);
       console.log(`💡 Environment: ${this.isProductionReady() ? 'Production Ready' : 'Development'}`);
     } catch (error) {
       console.error('Error initializing Stripe:', error);
-      console.log('💡 Using demo mode due to Stripe initialization error');
-      this.config.demoMode = true;
+      this.isInitialized = false;
+      throw error;
     }
   }
 
@@ -130,10 +147,9 @@ class PaymentManager {
       throw new Error('User must be authenticated to subscribe');
     }
 
-    // Check if demo mode or production mode
-    if (this.config.demoMode) {
-      console.log('🎭 Demo mode: Using simulated checkout');
-      return this.simulateSuccessfulUpgrade();
+    // Ensure Stripe is properly initialized
+    if (!this.isInitialized) {
+      throw new Error('Stripe is not properly initialized. Please check your configuration.');
     }
 
     try {
@@ -171,11 +187,9 @@ class PaymentManager {
     } catch (error) {
       console.error('Error creating checkout session:', error);
       
-      // Fallback to demo mode if API is not available
+      // API must be available for payments
       if (error.message.includes('Failed to fetch')) {
-        console.log('🎭 API unavailable, falling back to demo mode');
-        this.config.demoMode = true;
-        return this.simulateSuccessfulUpgrade();
+        throw new Error('Payment API is unavailable. Please check your backend configuration.');
       }
       
       throw error;
@@ -298,21 +312,9 @@ class PaymentManager {
             </button>
             
             <div class="payment-info">
-              <div class="secure-payment">🔒 ${this.config.demoMode ? 'Demo Mode - No actual payment required' : 'Secure Payment via Stripe'}</div>
-              <div class="trial-info">${this.config.demoMode ? 'For testing • Real Stripe integration ready' : 'Cancel anytime • Secure billing'}</div>
+              <div class="secure-payment">🔒 Secure Payment via Stripe</div>
+              <div class="trial-info">Cancel anytime • Secure billing</div>
             </div>
-            
-            ${this.config.demoMode ? `
-            <div class="demo-controls" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #808080;">
-              <div style="font-size: 10px; margin-bottom: 8px; color: #666;">Demo Controls:</div>
-              <button class="demo-btn" id="downgrade-btn" style="background: #ff6666; color: white; border: 1px solid #ff6666; padding: 4px 8px; margin-right: 8px; font-size: 10px; cursor: pointer;">
-                Simulate Downgrade
-              </button>
-              <button class="demo-btn" onclick="alert('Feature: View payment history, manage billing, update payment methods')" style="background: #666; color: white; border: 1px solid #666; padding: 4px 8px; font-size: 10px; cursor: pointer;">
-                Billing Settings
-              </button>
-            </div>
-            ` : ''}
           </div>
         </div>
       </div>
@@ -337,13 +339,8 @@ class PaymentManager {
         modal.querySelector('#subscribe-btn').textContent = 'Processing...';
         modal.querySelector('#subscribe-btn').disabled = true;
         
-        if (this.config.demoMode) {
-          // For demo purposes - simulate successful upgrade
-          await this.simulateSuccessfulUpgrade();
-        } else {
-          // Real checkout session
-          await this.createPremiumCheckout();
-        }
+        // Real checkout session
+        await this.createPremiumCheckout();
       } catch (error) {
         this.showPaymentNotification('Error processing upgrade: ' + error.message, 'error');
         modal.querySelector('#subscribe-btn').textContent = 'Subscribe Now';
@@ -351,18 +348,6 @@ class PaymentManager {
       }
     });
 
-    // Add downgrade button event listener (only in demo mode)
-    if (this.config.demoMode) {
-      const downgradeBtn = modal.querySelector('#downgrade-btn');
-      if (downgradeBtn) {
-        downgradeBtn.addEventListener('click', async () => {
-          if (confirm('Downgrade to Free Plan?\n\nYou will lose Premium benefits and be limited to 3 tracks per month.')) {
-            modal.remove();
-            await this.simulateDowngrade();
-          }
-        });
-      }
-    }
 
     return modal;
   }
@@ -512,59 +497,6 @@ class PaymentManager {
     modal.appendChild(style);
   }
 
-  // Simulate successful upgrade for demo purposes
-  async simulateSuccessfulUpgrade() {
-    return new Promise((resolve) => {
-      setTimeout(async () => {
-        try {
-          // Update user subscription to premium
-          const success = await window.authManager.updateSubscription('premium', 'active', null);
-          
-          if (success) {
-            // Close modal
-            const modal = document.querySelector('.upgrade-modal');
-            if (modal) modal.remove();
-            
-            this.showPaymentNotification('🎉 Welcome to Premium! You now have unlimited access to all features.', 'success');
-            
-            // Update the start button to reflect premium status
-            const userStatus = document.getElementById('user-status');
-            if (userStatus) {
-              userStatus.textContent = '⭐';
-            }
-            
-            resolve();
-          } else {
-            throw new Error('Failed to update subscription');
-          }
-        } catch (error) {
-          this.showPaymentNotification('Error upgrading account: ' + error.message, 'error');
-          throw error;
-        }
-      }, 2000); // 2 second delay to simulate processing
-    });
-  }
-
-  // Simulate downgrade for demo purposes
-  async simulateDowngrade() {
-    try {
-      const success = await window.authManager.updateSubscription('free', 'active', null);
-      
-      if (success) {
-        this.showPaymentNotification('Downgraded to Free Plan. You now have 3 tracks per month.', 'info');
-        
-        // Update the start button to reflect free status
-        const userStatus = document.getElementById('user-status');
-        if (userStatus) {
-          userStatus.textContent = '👤';
-        }
-      } else {
-        throw new Error('Failed to downgrade subscription');
-      }
-    } catch (error) {
-      this.showPaymentNotification('Error downgrading account: ' + error.message, 'error');
-    }
-  }
 
   showPaymentNotification(message, type = 'info') {
     const notification = document.createElement('div');
@@ -599,16 +531,14 @@ class PaymentManager {
     }, timeout);
   }
 
-  // Mock backend endpoints for development
-  static createMockEndpoints() {
-    console.log('🚀 Payment system ready for backend integration');
+  // Log backend requirements
+  static logBackendRequirements() {
+    console.log('🚀 Stripe payment system initialized');
     console.log('📋 Required backend endpoints:');
     console.log('  - POST /api/create-checkout-session');
     console.log('  - POST /api/verify-payment');
     console.log('  - POST /api/cancel-subscription');
     console.log('  - POST /api/webhook/stripe (for payment webhooks)');
-    console.log('');
-    console.log('💡 Currently using demo mode - upgrades are simulated');
   }
 }
 
@@ -616,5 +546,5 @@ class PaymentManager {
 const paymentManager = new PaymentManager();
 window.paymentManager = paymentManager;
 
-// Log setup instructions
-PaymentManager.createMockEndpoints();
+// Log backend requirements
+PaymentManager.logBackendRequirements();
