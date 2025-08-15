@@ -5004,7 +5004,7 @@
         }
 
         // Initialize usage counter when page loads
-        document.addEventListener('DOMContentLoaded', function() {
+        function initializeUsageCounter() {
             console.log('📊 Initializing usage counter...');
             
             // Test APIs first
@@ -5015,7 +5015,18 @@
             
             // Update every 30 seconds
             setInterval(window.updateUsageCounter, 30000);
-        });
+        }
+        
+        document.addEventListener('DOMContentLoaded', initializeUsageCounter);
+        
+        // Backup initialization in case DOMContentLoaded already fired
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeUsageCounter);
+        } else {
+            // DOM is already loaded
+            console.log('🔄 DOM already loaded, initializing counter immediately');
+            setTimeout(initializeUsageCounter, 100);
+        }
 
         // Update usage counter when auth state changes
         if (window.sessionManager) {
@@ -5025,6 +5036,14 @@
                 setTimeout(window.updateUsageCounter, 500);
             };
         }
+        
+        // Force initialization after 3 seconds if not already done
+        setTimeout(function() {
+            console.log('🔄 Backup usage counter initialization...');
+            if (window.updateUsageCounter) {
+                window.updateUsageCounter();
+            }
+        }, 3000);
 
         // Test auth state every 5 seconds for debugging
         setInterval(() => {
