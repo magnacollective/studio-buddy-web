@@ -31,6 +31,9 @@
     },
     "api/test-firebase.js": {
       "maxDuration": 5
+    },
+    "api/test-env.js": {
+      "maxDuration": 5
     }
   },
   "headers": [
