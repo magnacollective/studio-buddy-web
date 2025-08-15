@@ -28,6 +28,9 @@
     },
     "api/reset-user-plan.js": {
       "maxDuration": 5
+    },
+    "api/test-firebase.js": {
+      "maxDuration": 5
     }
   },
   "headers": [
