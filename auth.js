@@ -184,18 +184,43 @@ class AuthManager {
     }
   }
 
-  // Increment usage counter
-  async incrementUsage() {
-    if (!this.currentUser) return false;
-    
+  // Track usage for specific process types (mastering or vocal_separation)
+  async trackProcessUsage(processType) {
     try {
-      const userData = await this.getUserData();
-      const newCount = (userData.usage?.processedTracks || 0) + 1;
+      const userId = this.currentUser ? this.currentUser.uid : null;
+      const sessionId = this.getSessionId();
       
-      const userDoc = window.firebaseDB.collection('users').doc(this.currentUser.uid);
-      await userDoc.update({
-        'usage.processedTracks': newCount
+      const response = await fetch('/api/track-usage', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          processType: processType,
+          userId: userId,
+          sessionId: sessionId
+        })
       });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        if (response.status === 429) {
+          throw new Error(`Daily limit exceeded for ${processType}. You can process ${error.limit} ${processType} operations per day. Try again tomorrow.`);
+        }
+        throw new Error(error.error || 'Failed to track usage');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error tracking usage:', error);
+      throw error;
+    }
+  }
+  
+  // Legacy method for backward compatibility
+  async incrementUsage() {
+    try {
+      await this.trackProcessUsage('mastering');
       return true;
     } catch (error) {
       console.error('Error incrementing usage:', error);
@@ -203,24 +228,103 @@ class AuthManager {
     }
   }
 
-  // Check if user can process more tracks
+  // Check if user can process specific operation type
+  async canProcess(processType) {
+    try {
+      const userId = this.currentUser ? this.currentUser.uid : null;
+      const sessionId = this.getSessionId();
+      const userPlan = await this.getUserPlan();
+      
+      const response = await fetch('/api/check-limits', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          processType: processType,
+          userId: userId,
+          sessionId: sessionId,
+          userPlan: userPlan
+        })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to check limits');
+      }
+      
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('Error checking process limits:', error);
+      return { canProcess: false, error: error.message };
+    }
+  }
+  
+  // Legacy method for backward compatibility
   async canProcessTrack() {
-    if (!this.currentUser) return false;
+    const result = await this.canProcess('mastering');
+    return result.canProcess;
+  }
+  
+  // Get or create session ID for anonymous users
+  getSessionId() {
+    let sessionId = localStorage.getItem('studio_buddy_session_id');
+    if (!sessionId) {
+      sessionId = 'anon_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('studio_buddy_session_id', sessionId);
+    }
+    return sessionId;
+  }
+  
+  // Get user plan
+  async getUserPlan() {
+    if (!this.currentUser) return 'free';
     
-    const userData = await this.getUserData();
-    const subscription = userData.subscription || {};
-    const usage = userData.usage || {};
-    
-    // Premium users have unlimited access
-    if (subscription.plan === 'premium' && subscription.status === 'active') {
-      return true;
+    try {
+      const userData = await this.getUserData();
+      const subscription = userData?.subscription || {};
+      return (subscription.plan === 'premium' && subscription.status === 'active') ? 'premium' : 'free';
+    } catch (error) {
+      console.error('Error getting user plan:', error);
+      return 'free';
+    }
+  }
+  
+  // Get current usage stats for display
+  async getUsageStats() {
+    try {
+      const userId = this.currentUser ? this.currentUser.uid : null;
+      const sessionId = this.getSessionId();
+      const userPlan = await this.getUserPlan();
+      
+      const response = await fetch('/api/check-limits', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          processType: 'mastering', // Get stats for any type
+          userId: userId,
+          sessionId: sessionId,
+          userPlan: userPlan
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        return result.usage || {};
+      }
+    } catch (error) {
+      console.error('Error getting usage stats:', error);
     }
     
-    // Free users have monthly limit
-    const monthlyLimit = usage.monthlyLimit || 3;
-    const processedTracks = usage.processedTracks || 0;
-    
-    return processedTracks < monthlyLimit;
+    return {
+      mastering: 0,
+      vocal_separation: 0,
+      limits: { mastering: 2, vocal_separation: 2 },
+      remaining: { mastering: 2, vocal_separation: 2 }
+    };
   }
 }
 

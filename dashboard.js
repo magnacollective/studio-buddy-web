@@ -413,26 +413,17 @@ class UserDashboard {
     document.getElementById('dashboard-plan').textContent = planDisplay;
     document.getElementById('dashboard-plan').style.color = plan === 'premium' ? '#ff6600' : '#0080ff';
 
-    // Update usage stats
-    const processedTracks = usage.processedTracks || 0;
-    const monthlyLimit = plan === 'premium' ? Infinity : (usage.monthlyLimit || 3);
-    const remaining = plan === 'premium' ? '∞' : Math.max(0, monthlyLimit - processedTracks);
-
-    document.getElementById('dashboard-tracks-processed').textContent = processedTracks;
-    
+    // Update usage stats with new daily limits
     if (plan === 'premium') {
-      document.getElementById('dashboard-monthly-usage').textContent = `${processedTracks}/∞`;
+      document.getElementById('dashboard-tracks-processed').textContent = 'Unlimited';
+      document.getElementById('dashboard-monthly-usage').textContent = '∞/∞';
       document.getElementById('dashboard-remaining').textContent = '∞';
-      document.getElementById('dashboard-usage-text').textContent = 'Unlimited tracks available';
+      document.getElementById('dashboard-usage-text').textContent = 'Unlimited processing available';
+      document.getElementById('dashboard-usage-fill').style.width = '100%';
     } else {
-      document.getElementById('dashboard-monthly-usage').textContent = `${processedTracks}/${monthlyLimit}`;
-      document.getElementById('dashboard-remaining').textContent = remaining;
-      document.getElementById('dashboard-usage-text').textContent = `${remaining} tracks remaining this month`;
+      // Get current daily usage stats
+      this.updateDailyUsageStats();
     }
-
-    // Update usage bar
-    const usagePercentage = plan === 'premium' ? 100 : (processedTracks / monthlyLimit) * 100;
-    document.getElementById('dashboard-usage-fill').style.width = Math.min(usagePercentage, 100) + '%';
 
     // Update subscription section based on plan
     const subscriptionHeader = document.getElementById('subscription-header');
@@ -474,6 +465,49 @@ class UserDashboard {
       } catch (error) {
         this.showNotification('Error resetting usage: ' + error.message, 'error');
       }
+    }
+  }
+
+  async updateDailyUsageStats() {
+    try {
+      const usageStats = await window.authManager.getUsageStats();
+      
+      // Update mastering usage
+      const masteringUsed = usageStats.mastering || 0;
+      const masteringLimit = usageStats.limits?.mastering || 2;
+      const masteringRemaining = usageStats.remaining?.mastering || 0;
+      
+      // Update vocal separation usage
+      const vocalUsed = usageStats.vocal_separation || 0;
+      const vocalLimit = usageStats.limits?.vocal_separation || 2;
+      const vocalRemaining = usageStats.remaining?.vocal_separation || 0;
+      
+      // Update UI elements
+      document.getElementById('dashboard-tracks-processed').textContent = `${masteringUsed + vocalUsed}`;
+      document.getElementById('dashboard-monthly-usage').innerHTML = `
+        <div>Mastering: ${masteringUsed}/${masteringLimit}</div>
+        <div>Vocal Separation: ${vocalUsed}/${vocalLimit}</div>
+      `;
+      document.getElementById('dashboard-remaining').innerHTML = `
+        <div>Mastering: ${masteringRemaining}</div>
+        <div>Vocal Separation: ${vocalRemaining}</div>
+      `;
+      document.getElementById('dashboard-usage-text').textContent = 
+        `Daily limits: ${masteringRemaining} mastering, ${vocalRemaining} vocal separation remaining`;
+      
+      // Update usage bar (combined usage)
+      const totalUsed = masteringUsed + vocalUsed;
+      const totalLimit = masteringLimit + vocalLimit;
+      const usagePercentage = (totalUsed / totalLimit) * 100;
+      document.getElementById('dashboard-usage-fill').style.width = Math.min(usagePercentage, 100) + '%';
+      
+    } catch (error) {
+      console.error('Error updating daily usage stats:', error);
+      // Fallback to default display
+      document.getElementById('dashboard-tracks-processed').textContent = '0';
+      document.getElementById('dashboard-monthly-usage').textContent = 'Loading...';
+      document.getElementById('dashboard-remaining').textContent = 'Loading...';
+      document.getElementById('dashboard-usage-text').textContent = 'Daily limits: 2 mastering, 2 vocal separation';
     }
   }
 

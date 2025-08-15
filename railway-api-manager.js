@@ -16,12 +16,26 @@ class RailwayAPIManager {
         console.log('🎵 Audio buffer:', audioBuffer);
 
         try {
+            // Check usage limits before processing
+            const processType = options.processType || 'mastering';
+            const canProcess = await window.usageManager.canPerformOperation(processType);
+            
+            if (!canProcess) {
+                throw new Error('Usage limit exceeded');
+            }
+
             // Convert AudioBuffer to File/Blob for upload
             const audioFile = await this.audioBufferToFile(audioBuffer);
             console.log('📄 Audio file created:', audioFile);
             
+            // Validate request with server before processing
+            await this.validateRequest(processType);
+            
             // Call Railway API for analysis
             const result = await this.callAnalyzeEndpoint(audioFile, options);
+            
+            // Track usage after successful processing
+            await window.usageManager.trackOperation(processType);
             
             console.log(`✅ Railway API analysis complete (${(performance.now() - startTime).toFixed(1)}ms)`);
             return result;
@@ -203,6 +217,39 @@ class RailwayAPIManager {
         }
 
         return new Blob([buffer], { type: 'audio/wav' });
+    }
+
+    // Server-side validation before processing
+    async validateRequest(processType) {
+        try {
+            const userId = window.authManager?.currentUser?.uid || null;
+            const sessionId = window.authManager?.getSessionId() || null;
+            const userPlan = await window.authManager?.getUserPlan() || 'free';
+
+            const response = await fetch('/api/validate-request', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    processType: processType,
+                    userId: userId,
+                    sessionId: sessionId,
+                    userPlan: userPlan
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || error.error || 'Request validation failed');
+            }
+
+            const result = await response.json();
+            return result;
+        } catch (error) {
+            console.error('Server validation failed:', error);
+            throw error;
+        }
     }
 
     calculateConfidenceFromCandidates(result) {

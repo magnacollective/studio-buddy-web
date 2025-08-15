@@ -756,27 +756,29 @@ class SessionManager {
   }
 
   // Check if user can process audio (for monetization)
-  async canUserProcess() {
+  async canUserProcess(operationType = 'mastering') {
     if (!window.authManager.isAuthenticated()) {
       this.showAuthRequiredDialog();
       return false;
     }
     
-    const canProcess = await window.authManager.canProcessTrack();
-    if (!canProcess) {
-      this.showUpgradePrompt();
-      return false;
-    }
-    
-    return true;
+    // Use the new usage manager for limit checking
+    return await window.usageManager.canPerformOperation(operationType);
   }
 
-  // Increment usage after successful processing
-  async trackUsage() {
-    if (window.authManager.isAuthenticated()) {
-      await window.authManager.incrementUsage();
+  // Track usage after successful processing
+  async trackUsage(operationType = 'mastering') {
+    try {
+      // Use the new usage manager for tracking
+      await window.usageManager.trackOperation(operationType);
+      
       // Refresh user menu to show updated usage
-      this.handleAuthStateChange(window.authManager.getCurrentUser());
+      if (window.authManager.isAuthenticated()) {
+        this.handleAuthStateChange(window.authManager.getCurrentUser());
+      }
+    } catch (error) {
+      console.error('Error tracking usage:', error);
+      // Don't throw error here as the operation was successful
     }
   }
 
