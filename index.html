@@ -267,7 +267,8 @@
         }
 
         #studio-buddy-window {
-            min-width: 640px; /* Reduced by 20% from 800px */
+            min-width: 640px; /* Keep original width, scale with transform */
+            transform-origin: top left;
         }
 
         .title-bar {
@@ -980,7 +981,7 @@
         </div>
 
         <!-- Studio Buddy Window -->
-        <div class="window" id="studio-buddy-window" style="top: 50px; left: 50px; width: 640px;">
+        <div class="window" id="studio-buddy-window" style="top: 50px; left: 50px; width: 640px; transform: scale(0.8);">
             <div class="title-bar">
                 <div class="title-text">Studio Buddy - Professional Audio Mastering</div>
                 <div class="title-controls">
@@ -1100,7 +1101,7 @@
                         </div>
                         
                         <!-- Main Visualizer Canvas -->
-                        <div id="visualizer" style="width: 750px; height: 200px; background: black; display: block; margin: 2px auto; border-radius: 4px;"></div>
+                        <div id="visualizer" style="width: 600px; height: 160px; background: black; display: block; margin: 2px auto; border-radius: 4px;"></div>
                         
                         <!-- Frequency Labels -->
                         <div style="display: flex; justify-content: space-between; font-size: 8px; color: #00ff00; margin-top: 2px; padding: 0 8px;">
