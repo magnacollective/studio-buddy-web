@@ -80,7 +80,7 @@ class UserDashboard {
                   <button class="action-btn" onclick="window.paymentManager.showUpgradeModal();">
                     Manage Subscription
                   </button>
-                  <button class="action-btn danger" onclick="window.paymentManager.simulateDowngrade();">
+                  <button class="action-btn danger" onclick="window.paymentManager.cancelSubscription();">
                     Cancel Premium
                   </button>
                 </div>

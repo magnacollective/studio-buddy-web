@@ -738,12 +738,20 @@ class SessionManager {
     console.log('⭐ Opening upgrade modal...');
     console.log('🔍 window.paymentManager exists:', !!window.paymentManager);
     console.log('🔍 window.paymentManager.showUpgradeModal exists:', !!(window.paymentManager && window.paymentManager.showUpgradeModal));
+    
     if (window.paymentManager && typeof window.paymentManager.showUpgradeModal === 'function') {
-      window.paymentManager.showUpgradeModal();
+      try {
+        window.paymentManager.showUpgradeModal();
+      } catch (error) {
+        console.error('❌ Error showing upgrade modal:', error);
+        alert('Payment system error: ' + error.message);
+      }
     } else {
       console.error('❌ Payment manager not available');
       console.error('Payment manager object:', window.paymentManager);
-      alert('Payment system is loading... Please try again in a moment.');
+      
+      // CRITICAL: Do not grant premium if payment system is unavailable
+      alert('Payment system is not available. Premium upgrades are currently disabled.');
     }
   }
 

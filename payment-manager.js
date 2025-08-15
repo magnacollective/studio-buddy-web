@@ -72,7 +72,10 @@ class PaymentManager {
         this.initializeStripe();
       }
     } catch (error) {
-      console.error('Error loading Stripe:', error);
+      console.error('❌ Failed to initialize payment system:', error);
+      this.isInitialized = false;
+      // Do not allow any payments if configuration fails
+      throw error;
     }
   }
 
@@ -339,12 +342,30 @@ class PaymentManager {
         modal.querySelector('#subscribe-btn').textContent = 'Processing...';
         modal.querySelector('#subscribe-btn').disabled = true;
         
-        // Real checkout session
+        // Validate configuration before proceeding
+        if (!this.config.stripePublishableKey || !this.config.priceId) {
+          throw new Error('Stripe is not configured. Please contact support.');
+        }
+        
+        // Ensure Stripe is initialized
+        if (!this.isInitialized || !this.stripe) {
+          throw new Error('Payment system is not ready. Please try again in a moment.');
+        }
+        
+        // Real checkout session - this should redirect to Stripe
         await this.createPremiumCheckout();
+        
+        // If we reach this point without redirecting, something went wrong
+        throw new Error('Payment system failed to redirect to checkout. Please try again.');
+        
       } catch (error) {
-        this.showPaymentNotification('Error processing upgrade: ' + error.message, 'error');
+        console.error('❌ Payment error:', error);
+        this.showPaymentNotification('Error: ' + error.message, 'error');
         modal.querySelector('#subscribe-btn').textContent = 'Subscribe Now';
         modal.querySelector('#subscribe-btn').disabled = false;
+        
+        // CRITICAL: Do not grant premium on error
+        // Premium access is only granted after successful Stripe payment
       }
     });
 
