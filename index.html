@@ -4907,13 +4907,16 @@
         // Usage Counter Management
         window.updateUsageCounter = async function() {
             try {
+                console.log('🔄 updateUsageCounter called');
                 if (!window.authManager || !window.authManager.getUsageStats) {
                     console.log('⏳ Usage manager not ready yet');
                     return;
                 }
 
                 const userPlan = await window.authManager.getUserPlan();
+                console.log('👤 User plan:', userPlan);
                 const usageStats = await window.authManager.getUsageStats();
+                console.log('📊 Usage stats received:', usageStats);
                 
                 // Update status indicator
                 const statusElement = document.getElementById('usage-status');

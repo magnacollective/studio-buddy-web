@@ -56,7 +56,10 @@ class UsageManager {
       // Update desktop usage counter
       if (window.updateUsageCounter) {
         console.log('📈 Updating desktop counter...');
+        console.log('📊 Usage data for counter update:', result.usage);
         setTimeout(window.updateUsageCounter, 100);
+      } else {
+        console.error('❌ window.updateUsageCounter not available');
       }
       
       // Show success message with remaining usage
