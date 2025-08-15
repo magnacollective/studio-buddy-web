@@ -2480,6 +2480,22 @@
         // Railway API integration
         async function startMastering() {
             try {
+                // ✨ USAGE TRACKING: Check if user can perform mastering operation
+                console.log('🔍 Checking mastering limits before processing...');
+                
+                if (!window.usageManager) {
+                    log('[ERROR] Usage manager not available. Please refresh the page.');
+                    return;
+                }
+                
+                const canProcess = await window.usageManager.canPerformOperation('mastering');
+                if (!canProcess) {
+                    log('[LIMIT] Daily mastering limit reached. Upgrade to Premium for unlimited access.');
+                    return;
+                }
+                
+                console.log('✅ Mastering operation approved - proceeding...');
+                
                 // Only reset mastered audio, keep source audio
                 if (window.masteredAudio) {
                     log('[RESET] Clearing previous mastered audio...');
@@ -2720,6 +2736,16 @@
                 log('[SUCCESS] Professional mastering complete!');
                 log('[AUDIO] Ready for A/B comparison');
                 log('[TIP] Click the A/B buttons to compare Original ↔ Mastered!');
+                
+                // ✨ USAGE TRACKING: Track successful mastering operation
+                try {
+                    console.log('📊 Tracking mastering usage...');
+                    await window.usageManager.trackOperation('mastering');
+                    console.log('✅ Mastering usage tracked successfully');
+                } catch (trackingError) {
+                    console.error('❌ Failed to track mastering usage:', trackingError);
+                    // Don't fail the entire operation for tracking errors
+                }
 
             } catch (error) {
                 // Clear progress timer and hide progress bar on error
@@ -3516,6 +3542,22 @@
         // Vocal Remover Functions
         async function separateStems(stemType) {
             try {
+                // ✨ USAGE TRACKING: Check if user can perform vocal separation
+                console.log('🔍 Checking vocal separation limits before processing...');
+                
+                if (!window.usageManager) {
+                    log('[ERROR] Usage manager not available. Please refresh the page.');
+                    return;
+                }
+                
+                const canProcess = await window.usageManager.canPerformOperation('vocal_separation');
+                if (!canProcess) {
+                    log('[LIMIT] Daily vocal separation limit reached. Upgrade to Premium for unlimited access.');
+                    return;
+                }
+                
+                console.log('✅ Vocal separation operation approved - proceeding...');
+                
                 log(`[VOCAL] Starting ${stemType} separation...`);
                 
                 const vocalInput = document.getElementById('vocal-input');
@@ -3726,6 +3768,16 @@
                 
                 log(`[SUCCESS] ${stemType} separation successful!`);
                 log(`[DOWNLOAD] Download ready: ${downloadLink.download}`);
+                
+                // ✨ USAGE TRACKING: Track successful vocal separation operation
+                try {
+                    console.log('📊 Tracking vocal separation usage...');
+                    await window.usageManager.trackOperation('vocal_separation');
+                    console.log('✅ Vocal separation usage tracked successfully');
+                } catch (trackingError) {
+                    console.error('❌ Failed to track vocal separation usage:', trackingError);
+                    // Don't fail the entire operation for tracking errors
+                }
 
             } catch (error) {
                 console.error('Vocal separation error:', error);
@@ -3761,6 +3813,22 @@
         }
 
         async function separateAllStems() {
+            // ✨ USAGE TRACKING: Check if user can perform vocal separation
+            console.log('🔍 Checking vocal separation limits before processing all stems...');
+            
+            if (!window.usageManager) {
+                log('[ERROR] Usage manager not available. Please refresh the page.');
+                return;
+            }
+            
+            const canProcess = await window.usageManager.canPerformOperation('vocal_separation');
+            if (!canProcess) {
+                log('[LIMIT] Daily vocal separation limit reached. Upgrade to Premium for unlimited access.');
+                return;
+            }
+            
+            console.log('✅ Vocal separation operation approved - proceeding with all stems...');
+            
             log('🎭 Starting full stem separation - processing each stem individually...');
             
             const vocalInput = document.getElementById('vocal-input');
@@ -3830,6 +3898,18 @@
             }
             
             log(`🎭 All stems processing complete! Processed: ${Object.keys(results).length}/${stemTypes.length} successfully`);
+            
+            // ✨ USAGE TRACKING: Track successful vocal separation operation (all stems)
+            if (Object.keys(results).length > 0) {
+                try {
+                    console.log('📊 Tracking vocal separation usage for all stems...');
+                    await window.usageManager.trackOperation('vocal_separation');
+                    console.log('✅ Vocal separation usage tracked successfully for all stems');
+                } catch (trackingError) {
+                    console.error('❌ Failed to track vocal separation usage:', trackingError);
+                    // Don't fail the entire operation for tracking errors
+                }
+            }
         }
         
         // Helper function to process a single stem (extracted from separateStems logic)
