@@ -49,6 +49,8 @@ export default async function handler(req, res) {
     // Create storage keys for both user and IP tracking
     const userStorageKey = `usage_${userIdentifier}_${today}`;
     const ipStorageKey = `usage_${ipIdentifier}_${today}`;
+    
+    console.log(`🗂️ Storage key for tracking: ${userStorageKey}`);
 
     // For this demo, we'll use a simple in-memory store
     // In production, you'd want to use Redis, database, or similar persistent storage
