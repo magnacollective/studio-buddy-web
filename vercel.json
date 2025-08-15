@@ -25,6 +25,9 @@
     },
     "api/validate-request.js": {
       "maxDuration": 5
+    },
+    "api/reset-user-plan.js": {
+      "maxDuration": 5
     }
   },
   "headers": [

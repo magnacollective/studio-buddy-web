@@ -2,11 +2,19 @@
 // This handles Stripe events like successful payments, subscription updates, etc.
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-// Uncomment if using Firebase Admin SDK
-// const admin = require('firebase-admin');
-// if (!admin.apps.length) {
-//   admin.initializeApp();
-// }
+
+// Initialize Firebase Admin SDK
+const admin = require('firebase-admin');
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    }),
+    databaseURL: `https://${process.env.FIREBASE_PROJECT_ID}-default-rtdb.firebaseio.com/`
+  });
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -124,19 +132,8 @@ async function updateUserSubscription(userId, plan, status, stripeData) {
       }
     }
 
-    // If using Firebase Admin SDK:
-    // await admin.firestore().collection('users').doc(userId).update(updateData);
-    
-    // Alternative: Make HTTP request to your Firebase API
-    const firebaseResponse = await fetch(`${process.env.FIREBASE_DATABASE_URL}/users/${userId}.json?auth=${process.env.FIREBASE_ADMIN_TOKEN}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updateData)
-    });
-
-    if (!firebaseResponse.ok) {
-      throw new Error('Failed to update Firebase');
-    }
+    // Update user subscription using Firebase Admin SDK
+    await admin.firestore().collection('users').doc(userId).update(updateData);
 
     console.log('✅ User subscription updated in Firebase:', userId);
   } catch (error) {
