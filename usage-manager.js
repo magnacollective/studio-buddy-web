@@ -59,7 +59,13 @@ class UsageManager {
         console.log('📊 Usage data for counter update:', result.usage);
         setTimeout(window.updateUsageCounter, 100);
       } else {
-        console.error('❌ window.updateUsageCounter not available');
+        console.error('❌ window.updateUsageCounter not available, trying to create it...');
+        // Create updateUsageCounter function if it doesn't exist
+        this.createUpdateUsageCounter();
+        if (window.updateUsageCounter) {
+          console.log('✅ Created updateUsageCounter, calling now...');
+          setTimeout(window.updateUsageCounter, 100);
+        }
       }
       
       // Show success message with remaining usage
@@ -361,6 +367,78 @@ class UsageManager {
       }
     }
     return null;
+  }
+
+  // Create updateUsageCounter function if it doesn't exist
+  createUpdateUsageCounter() {
+    console.log('🛠️ Creating updateUsageCounter function...');
+    
+    window.updateUsageCounter = async function() {
+      try {
+        console.log('🔄 updateUsageCounter called (created by UsageManager)');
+        
+        if (!window.authManager || !window.authManager.getUsageStats) {
+          console.log('⏳ Usage manager not ready yet');
+          return;
+        }
+
+        const userPlan = await window.authManager.getUserPlan();
+        console.log('👤 User plan:', userPlan);
+        const usageStats = await window.authManager.getUsageStats();
+        console.log('📊 Usage stats received:', usageStats);
+        
+        // Update status indicator
+        const statusElement = document.getElementById('usage-status');
+        const masteringElement = document.getElementById('mastering-count');
+        const vocalElement = document.getElementById('vocal-count');
+        const footerElement = document.getElementById('usage-footer');
+
+        if (!statusElement || !masteringElement || !vocalElement) {
+          console.log('🔍 Usage counter elements not found');
+          return;
+        }
+
+        if (userPlan === 'premium') {
+          // Premium user - unlimited
+          statusElement.textContent = 'PREMIUM';
+          statusElement.style.background = 'rgba(255, 215, 0, 0.3)';
+          statusElement.style.borderColor = '#ffd700';
+          statusElement.style.color = '#ffd700';
+          
+          masteringElement.textContent = 'UNLIMITED';
+          masteringElement.className = 'usage-item-count unlimited';
+          
+          vocalElement.textContent = 'UNLIMITED';
+          vocalElement.className = 'usage-item-count unlimited';
+          
+          footerElement.textContent = '✨ Premium: Unlimited processing';
+        } else {
+          // Free user - show limits
+          statusElement.textContent = 'FREE';
+          statusElement.style.background = 'rgba(0, 255, 136, 0.2)';
+          statusElement.style.borderColor = '#00ff88';
+          statusElement.style.color = '#00ff88';
+          
+          const masteringRemaining = usageStats.remaining?.mastering || 2;
+          const vocalRemaining = usageStats.remaining?.vocal_separation || 2;
+          
+          masteringElement.textContent = `${masteringRemaining} left`;
+          masteringElement.className = 'usage-item-count';
+          
+          vocalElement.textContent = `${vocalRemaining} left`;
+          vocalElement.className = 'usage-item-count';
+          
+          footerElement.textContent = `Resets daily at midnight UTC`;
+        }
+        
+        console.log('✅ Usage counter updated successfully (by UsageManager)');
+        
+      } catch (error) {
+        console.error('❌ Error updating usage counter:', error);
+      }
+    };
+    
+    console.log('✅ updateUsageCounter function created');
   }
 }
 
