@@ -267,7 +267,7 @@
         }
 
         #studio-buddy-window {
-            min-width: 800px;
+            min-width: 640px; /* Reduced by 20% from 800px */
         }
 
         .title-bar {
@@ -392,6 +392,109 @@
             z-index: 1000;
             font-family: 'MS Sans Serif', sans-serif;
             font-size: 11px;
+        }
+
+        /* Usage Counter in top right */
+        .usage-counter {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 2px solid #00ff88;
+            border-radius: 12px;
+            padding: 16px 20px;
+            font-family: 'Courier New', monospace;
+            color: #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3), inset 0 0 20px rgba(0, 255, 136, 0.1);
+            backdrop-filter: blur(10px);
+            z-index: 10000;
+            min-width: 280px;
+            animation: pulse-glow 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { 
+                box-shadow: 0 0 20px rgba(0, 255, 136, 0.3), inset 0 0 20px rgba(0, 255, 136, 0.1);
+                border-color: #00ff88;
+            }
+            50% { 
+                box-shadow: 0 0 30px rgba(0, 255, 136, 0.6), inset 0 0 30px rgba(0, 255, 136, 0.2);
+                border-color: #00ffcc;
+            }
+        }
+
+        .usage-counter-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .usage-counter-status {
+            font-size: 10px;
+            padding: 2px 8px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid #00ff88;
+            border-radius: 4px;
+            animation: blink 2s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.6; }
+        }
+
+        .usage-counter-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .usage-item {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 6px;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .usage-item-label {
+            font-size: 10px;
+            opacity: 0.8;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .usage-item-count {
+            font-size: 16px;
+            font-weight: bold;
+            color: #ffffff;
+            text-shadow: 0 0 8px #00ff88;
+        }
+
+        .usage-item-count.unlimited {
+            color: #ffd700;
+            text-shadow: 0 0 8px #ffd700;
+            animation: golden-glow 2s ease-in-out infinite;
+        }
+
+        @keyframes golden-glow {
+            0%, 100% { color: #ffd700; text-shadow: 0 0 8px #ffd700; }
+            50% { color: #ffed4e; text-shadow: 0 0 12px #ffd700; }
+        }
+
+        .usage-counter-footer {
+            font-size: 9px;
+            text-align: center;
+            opacity: 0.7;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(0, 255, 136, 0.2);
         }
 
         .start-button {
@@ -831,6 +934,27 @@
 
         <!-- Desktop -->
     <div class="desktop">
+        <!-- Usage Counter -->
+        <div class="usage-counter" id="usage-counter">
+            <div class="usage-counter-header">
+                <span>🎵 Daily Limits</span>
+                <span class="usage-counter-status" id="usage-status">FREE</span>
+            </div>
+            <div class="usage-counter-grid">
+                <div class="usage-item">
+                    <div class="usage-item-label">Mastering</div>
+                    <div class="usage-item-count" id="mastering-count">2 left</div>
+                </div>
+                <div class="usage-item">
+                    <div class="usage-item-label">Vocal Separation</div>
+                    <div class="usage-item-count" id="vocal-count">2 left</div>
+                </div>
+            </div>
+            <div class="usage-counter-footer" id="usage-footer">
+                Resets daily at midnight UTC
+            </div>
+        </div>
+
         <!-- Desktop icons -->
         <div class="desktop-icons">
             <div class="desktop-icon" onclick="openWindow('studio-buddy')">
@@ -856,7 +980,7 @@
         </div>
 
         <!-- Studio Buddy Window -->
-        <div class="window" id="studio-buddy-window" style="top: 50px; left: 50px; width: 800px;">
+        <div class="window" id="studio-buddy-window" style="top: 50px; left: 50px; width: 640px;">
             <div class="title-bar">
                 <div class="title-text">Studio Buddy - Professional Audio Mastering</div>
                 <div class="title-controls">
@@ -4702,6 +4826,93 @@
             }
         };
         
+        // Usage Counter Management
+        window.updateUsageCounter = async function() {
+            try {
+                if (!window.authManager || !window.authManager.getUsageStats) {
+                    console.log('⏳ Usage manager not ready yet');
+                    return;
+                }
+
+                const userPlan = await window.authManager.getUserPlan();
+                const usageStats = await window.authManager.getUsageStats();
+                
+                // Update status indicator
+                const statusElement = document.getElementById('usage-status');
+                const masteringElement = document.getElementById('mastering-count');
+                const vocalElement = document.getElementById('vocal-count');
+                const footerElement = document.getElementById('usage-footer');
+
+                if (!statusElement || !masteringElement || !vocalElement) {
+                    console.log('🔍 Usage counter elements not found');
+                    return;
+                }
+
+                if (userPlan === 'premium') {
+                    // Premium user - unlimited
+                    statusElement.textContent = 'PREMIUM';
+                    statusElement.style.background = 'rgba(255, 215, 0, 0.3)';
+                    statusElement.style.borderColor = '#ffd700';
+                    statusElement.style.color = '#ffd700';
+                    
+                    masteringElement.textContent = 'UNLIMITED';
+                    masteringElement.className = 'usage-item-count unlimited';
+                    
+                    vocalElement.textContent = 'UNLIMITED';
+                    vocalElement.className = 'usage-item-count unlimited';
+                    
+                    footerElement.textContent = '✨ Premium: Unlimited processing';
+                } else {
+                    // Free user - show limits
+                    statusElement.textContent = 'FREE';
+                    statusElement.style.background = 'rgba(0, 255, 136, 0.2)';
+                    statusElement.style.borderColor = '#00ff88';
+                    statusElement.style.color = '#00ff88';
+                    
+                    const masteringRemaining = usageStats.remaining?.mastering || 2;
+                    const vocalRemaining = usageStats.remaining?.vocal_separation || 2;
+                    
+                    masteringElement.textContent = `${masteringRemaining} left`;
+                    masteringElement.className = 'usage-item-count';
+                    
+                    vocalElement.textContent = `${vocalRemaining} left`;
+                    vocalElement.className = 'usage-item-count';
+                    
+                    // Calculate reset time
+                    const now = new Date();
+                    const resetTime = new Date(now);
+                    resetTime.setHours(24, 0, 0, 0); // Next midnight
+                    const hoursUntilReset = Math.ceil((resetTime - now) / (1000 * 60 * 60));
+                    
+                    footerElement.textContent = `Resets in ${hoursUntilReset}h`;
+                }
+
+                console.log('✅ Usage counter updated:', { userPlan, usageStats });
+            } catch (error) {
+                console.error('❌ Error updating usage counter:', error);
+            }
+        };
+
+        // Initialize usage counter when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📊 Initializing usage counter...');
+            
+            // Initial update
+            setTimeout(window.updateUsageCounter, 1000);
+            
+            // Update every 30 seconds
+            setInterval(window.updateUsageCounter, 30000);
+        });
+
+        // Update usage counter when auth state changes
+        if (window.sessionManager) {
+            const originalHandleAuthStateChange = window.sessionManager.handleAuthStateChange;
+            window.sessionManager.handleAuthStateChange = function(user) {
+                originalHandleAuthStateChange.call(this, user);
+                setTimeout(window.updateUsageCounter, 500);
+            };
+        }
+
         // Test auth state every 5 seconds for debugging
         setInterval(() => {
             if (window.authManager && window.authManager.getCurrentUser()) {

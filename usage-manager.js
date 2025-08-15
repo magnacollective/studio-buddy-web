@@ -44,6 +44,11 @@ class UsageManager {
       // Update UI to reflect new usage
       this.updateUsageDisplay();
       
+      // Update desktop usage counter
+      if (window.updateUsageCounter) {
+        setTimeout(window.updateUsageCounter, 100);
+      }
+      
       // Show success message with remaining usage
       this.showUsageUpdate(operationType, result.usage.remaining);
       
